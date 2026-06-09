@@ -623,7 +623,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.93";
+const APP_VERSION = "v.1.1.94";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -1250,12 +1250,22 @@ const els = {
   statsFocusBanner: document.getElementById("statsFocusBanner"),
   statsFocusLabel: document.getElementById("statsFocusLabel"),
   clearStatsFocusBtn: document.getElementById("clearStatsFocusBtn"),
+  statsDashboardEmpty: document.getElementById("statsDashboardEmpty"),
+  statsDashboardGrid: document.getElementById("statsDashboardGrid"),
+  statsPlayerSpotlight: document.getElementById("statsPlayerSpotlight"),
+  statsOffensiveProfile: document.getElementById("statsOffensiveProfile"),
+  statsPitchingProfile: document.getElementById("statsPitchingProfile"),
   statsSnapshotCard: document.querySelector("#statsView .stats-snapshot-card"),
   statsSnapshotGrid: document.getElementById("statsSnapshotGrid"),
   statsModeTabs: document.getElementById("statsModeTabs"),
   statsLeadersShell: document.querySelector("#statsView .stats-leaders-shell"),
   statsLeadersSectionTitle: document.getElementById("statsLeadersSectionTitle"),
+  statsHotBats: document.getElementById("statsHotBats"),
+  statsHotBatsGrid: document.getElementById("statsHotBatsGrid"),
   statsSprayShell: document.querySelector("#statsView .stats-spray-shell"),
+  statsSpraySummary: document.getElementById("statsSpraySummary"),
+  statsSprayPreviewMarkers: document.getElementById("statsSprayPreviewMarkers"),
+  statsTendenciesPanel: document.getElementById("statsTendenciesPanel"),
   statsHittingSection: document.getElementById("statsHittingSection"),
   statsPitchingSection: document.getElementById("statsPitchingSection"),
   statsHittingMeta: document.getElementById("statsHittingMeta"),
@@ -5116,6 +5126,11 @@ window.addEventListener("resize", () => {
     const target = document.getElementById(button.dataset.scrollTarget || "");
     if (!target) return;
     target.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  els.statsPlayerSpotlight?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-spotlight-player]");
+    if (!button) return;
+    focusStatsPlayerFromSpotlight(button.dataset.spotlightPlayer || "");
   });
   els.archiveGrid.addEventListener("click", handleGameActionClick);
   els.gameSummaryBody?.addEventListener("click", handleGameActionClick);
@@ -13795,7 +13810,9 @@ function applyStatsPageMode() {
     els.statsView.classList.toggle("is-player-focused", focusedMode);
   }
   if (els.statsPageHead) els.statsPageHead.hidden = focusedMode;
+  if (els.statsDashboardEmpty) els.statsDashboardEmpty.hidden = focusedMode || els.statsDashboardEmpty.hidden;
   if (els.statsSnapshotCard) els.statsSnapshotCard.hidden = focusedMode;
+  if (els.statsDashboardGrid) els.statsDashboardGrid.hidden = focusedMode;
   if (els.statsLeadersShell) els.statsLeadersShell.hidden = focusedMode;
   if (els.statsView) {
     if (focusedMode) {
@@ -13810,8 +13827,11 @@ function applyStatsPageMode() {
       if (els.statsFocusBanner && els.statsSnapshotCard) {
         els.statsFocusBanner.insertAdjacentElement("afterend", els.statsSnapshotCard);
       }
-      if (els.statsSnapshotCard && els.statsLeadersShell) {
-        els.statsSnapshotCard.insertAdjacentElement("afterend", els.statsLeadersShell);
+      if (els.statsSnapshotCard && els.statsDashboardGrid) {
+        els.statsSnapshotCard.insertAdjacentElement("afterend", els.statsDashboardGrid);
+      }
+      if (els.statsDashboardGrid && els.statsLeadersShell) {
+        els.statsDashboardGrid.insertAdjacentElement("afterend", els.statsLeadersShell);
       }
       if (els.statsLeadersShell && els.statsSprayShell) {
         els.statsLeadersShell.insertAdjacentElement("afterend", els.statsSprayShell);
@@ -16968,6 +16988,12 @@ function renderSeasonStats() {
   const focusedPlayerId = statsFocusedPlayerId();
   const allHittingRows = getSeasonHittingRows();
   const allPitchingRows = getSeasonPitchingRows();
+  const seasonHasStats = allHittingRows.some(playerHasHittingLine) || allPitchingRows.some(({ pit }) => hasPitchingStats(pit));
+  if (els.statsDashboardEmpty && !focusedPlayerId) els.statsDashboardEmpty.hidden = seasonHasStats;
+  renderPlayerSpotlight(recentHittingRowsForSpotlight());
+  renderHotBats(allHittingRows);
+  renderStatsProfiles(teamStats(statsSeasonFilter), teamPitchingStats(statsSeasonFilter));
+  renderStatsSprayDashboard();
   renderDesktopStatsFilters(allHittingRows, allPitchingRows);
   const hittingPlayerFilter = focusedPlayerId || (desktopHitPlayerFilter !== "all" ? desktopHitPlayerFilter : "");
   const pitchingPlayerFilter = focusedPlayerId || (desktopPitPlayerFilter !== "all" ? desktopPitPlayerFilter : "");
@@ -16984,9 +17010,9 @@ function renderSeasonStats() {
         <td>${hit.doubles}</td>
         <td>${hit.triples}</td>
         <td>${hit.hr}</td>
-        <td>${formatRate(hit.avg)}</td>
-        <td>${formatRate(hit.ops)}</td>
-        <td>${formatRispRate(hit)}</td>
+        <td${statsThresholdClass("avg", hit.avg, hit.ab > 0)}>${formatRate(hit.avg)}</td>
+        <td${statsThresholdClass("ops", hit.ops, hit.pa > 0)}>${formatRate(hit.ops)}</td>
+        <td${statsThresholdClass("risp", hit.risp, hit.rispAB > 0)}>${formatRispRate(hit)}</td>
         <td>${formatRate(hit.obp)}</td>
         <td>${formatRate(hit.slg)}</td>
         <td>${hit.rbi}</td>
@@ -17002,7 +17028,7 @@ function renderSeasonStats() {
       </tr>`;
     })
     .join("")
-    || `<tr><td colspan="24" class="stats-empty-row">No batting stats yet.</td></tr>`;
+    || `<tr><td colspan="24" class="stats-empty-row">No season stats yet. Score a game to populate the Lions dashboard.</td></tr>`;
   const pitchingRows = allPitchingRows.filter(({ player }) => !pitchingPlayerFilter || player.id === pitchingPlayerFilter);
   els.pitchingStatsBody.innerHTML = pitchingRows
     .map(({ player, pit }) => {
@@ -17034,7 +17060,7 @@ function renderSeasonStats() {
       </tr>`;
     })
     .join("")
-    || `<tr><td colspan="24" class="stats-empty-row">No pitching stats yet.</td></tr>`;
+    || `<tr><td colspan="24" class="stats-empty-row">No season stats yet. Score a game to populate the Lions dashboard.</td></tr>`;
   if (els.statsHittingMeta) {
     els.statsHittingMeta.textContent = hittingPlayerFilter
       ? `${statsSeasonLabel()} batting lines for ${playerDisplayName(hittingPlayerFilter)} across completed and in-progress games.`
@@ -17142,6 +17168,13 @@ function renderStatsMode() {
   }
   if (els.statsLeadersSectionTitle) {
     els.statsLeadersSectionTitle.textContent = statsMode === "pitching" ? "Pitching Leaders" : "Hitting Leaders";
+  }
+  const showSprayShell = focusedMode || statsMode !== "pitching";
+  if (els.statsHotBats) els.statsHotBats.hidden = focusedMode || statsMode === "pitching";
+  if (els.statsSprayShell) els.statsSprayShell.hidden = !showSprayShell;
+  if (!showSprayShell && statsSprayExpanded) {
+    statsSprayExpanded = false;
+    if (els.statsSprayModal) els.statsSprayModal.hidden = true;
   }
   if (els.statsHittingSection) els.statsHittingSection.hidden = focusedMode ? false : statsMode !== "hitting";
   if (els.statsPitchingSection) els.statsPitchingSection.hidden = focusedMode ? false : statsMode !== "pitching";
@@ -17293,6 +17326,234 @@ function renderBulkStatPlayerCell(player, options = {}) {
     <span>${escapeHtml(formatPositions(player.positions))}</span>
     ${sprayButton}
   </th>`;
+}
+
+function playerNumberName(player) {
+  return `#${player?.number || "--"} ${player?.name || "Player"}`;
+}
+
+function playerHasHittingLine(row) {
+  const hit = row?.hit || {};
+  return Boolean((row?.gp || 0) > 0 || hit.pa > 0 || hit.ab > 0 || hit.h > 0 || hit.rbi > 0 || hit.rispAB > 0);
+}
+
+const PLAYER_SPOTLIGHT_GAME_LIMIT = 3;
+
+function gamesPlayedForPlayerInGames(playerId, games = []) {
+  return games.filter((game) => {
+    const storedLineupIds = Array.isArray(game.lineupEntries)
+      ? game.lineupEntries
+        .filter((entry) => entry?.active !== false && entry?.playerId)
+        .map((entry) => entry.playerId)
+      : [];
+    return hasHittingStatEdit(game, playerId)
+      || offensiveEventsForStatsGame(game).some((event) => event.playerId === playerId)
+      || (gameUsesLineupForGamesPlayed(game) && storedLineupIds.includes(playerId));
+  }).length;
+}
+
+function statsForPlayerInGames(playerId, games = []) {
+  const stats = emptyStats();
+  games
+    .flatMap((game) => offensiveEventsForStatsGame(game))
+    .filter((event) => event.playerId === playerId)
+    .forEach((event) => applyEventToStats(stats, event));
+  finishStats(stats);
+  return stats;
+}
+
+function recentHittingRowsForSpotlight(limit = PLAYER_SPOTLIGHT_GAME_LIMIT) {
+  const recentGames = statsGamesWithDataForSeason(statsSeasonFilter).slice(0, limit);
+  return state.roster.map((player) => ({
+    player,
+    hit: statsForPlayerInGames(player.id, recentGames),
+    gp: gamesPlayedForPlayerInGames(player.id, recentGames),
+    spotlightGameCount: recentGames.length
+  }));
+}
+
+function topHittingRows(rows = [], limit = 3) {
+  return rows
+    .filter(playerHasHittingLine)
+    .sort((a, b) =>
+      (b.hit.ops || 0) - (a.hit.ops || 0)
+      || (b.hit.avg || 0) - (a.hit.avg || 0)
+      || (b.hit.rbi || 0) - (a.hit.rbi || 0)
+      || String(a.player.name || "").localeCompare(String(b.player.name || ""))
+    )
+    .slice(0, limit);
+}
+
+function statProfileMetric(label, value, detail = "") {
+  return `<div class="stats-profile-metric">
+    <span>${escapeHtml(label)}</span>
+    <strong>${escapeHtml(value)}</strong>
+    ${detail ? `<small>${escapeHtml(detail)}</small>` : ""}
+  </div>`;
+}
+
+function formatRatio(numerator, denominator) {
+  if (denominator > 0) return (numerator / denominator).toFixed(2);
+  return numerator > 0 ? "INF" : "--";
+}
+
+function formatNullableRate(value, eligible = true) {
+  return eligible ? formatRate(value) : "--";
+}
+
+function renderPlayerSpotlight(rows = []) {
+  if (!els.statsPlayerSpotlight) return;
+  const [row] = topHittingRows(rows, 1);
+  if (!row) {
+    els.statsPlayerSpotlight.innerHTML = `<p class="player-meta">Player Spotlight</p>
+      <h3>No season stats yet.</h3>
+      <p>Score a game to populate the Lions dashboard.</p>`;
+    return;
+  }
+  const { player, hit } = row;
+  const gameCount = Math.max(1, Math.min(row.spotlightGameCount || PLAYER_SPOTLIGHT_GAME_LIMIT, PLAYER_SPOTLIGHT_GAME_LIMIT));
+  const gameWindowLabel = gameCount === 1 ? "the last game" : `the last ${gameCount} games`;
+  els.statsPlayerSpotlight.innerHTML = `<div class="stats-spotlight-copy">
+      <p class="player-meta">Player Spotlight</p>
+      <h3>${escapeHtml(playerNumberName(player))}</h3>
+      <p>Best hitter over ${escapeHtml(gameWindowLabel)} by OPS.</p>
+    </div>
+    <div class="stats-spotlight-metrics">
+      ${statProfileMetric("AVG", formatRate(hit.avg))}
+      ${statProfileMetric("OPS", formatRate(hit.ops))}
+      ${statProfileMetric("RBI", String(hit.rbi))}
+      ${statProfileMetric("H", String(hit.h))}
+      ${statProfileMetric("RISP", formatRispRate(hit), hit.rispAB ? `${hit.rispH}/${hit.rispAB}` : "")}
+    </div>
+    <button type="button" class="secondary-action compact-action stats-spotlight-action" data-spotlight-player="${escapeHtml(player.id)}">View Player Card</button>`;
+}
+
+function renderHotBats(rows = []) {
+  if (!els.statsHotBatsGrid || !els.statsHotBats) return;
+  const hotRows = topHittingRows(rows, 3);
+  els.statsHotBats.hidden = isPlayerFocusedStatsMode() || statsMode === "pitching";
+  els.statsHotBatsGrid.innerHTML = hotRows.length
+    ? hotRows.map(({ player, hit }, index) => `<article class="stats-hot-bat-card">
+        <span class="stats-hot-bat-rank">${index + 1}</span>
+        <strong>${escapeHtml(playerNumberName(player))}</strong>
+        <div class="stats-hot-bat-line">
+          <span>AVG <b>${escapeHtml(formatRate(hit.avg))}</b></span>
+          <span>OPS <b>${escapeHtml(formatRate(hit.ops))}</b></span>
+          <span>RBI <b>${escapeHtml(String(hit.rbi))}</b></span>
+        </div>
+      </article>`).join("")
+    : `<p class="player-meta">No season stats yet. Score a game to populate the Lions dashboard.</p>`;
+}
+
+function renderStatsProfiles(hitting, pitching) {
+  if (els.statsOffensiveProfile) {
+    els.statsOffensiveProfile.innerHTML = `<div class="mini-head">
+        <h3 class="stats-subhead">Team Offensive Profile</h3>
+      </div>
+      <div class="stats-profile-grid">
+        ${statProfileMetric("AVG", formatRate(hitting.avg))}
+        ${statProfileMetric("OBP", formatRate(hitting.obp))}
+        ${statProfileMetric("SLG", formatRate(hitting.slg))}
+        ${statProfileMetric("OPS", formatRate(hitting.ops))}
+        ${statProfileMetric("RISP", formatRispRate(hitting), hitting.rispAB ? `${hitting.rispH}/${hitting.rispAB}` : "")}
+        ${statProfileMetric("BB/K", formatRatio(hitting.bb, hitting.k))}
+      </div>`;
+  }
+  if (els.statsPitchingProfile) {
+    const ip = pitching.ip || 0;
+    const opponentAtBats = Math.max(0, (pitching.batters || 0) - (pitching.bb || 0) - (pitching.hbp || 0));
+    const opponentAvg = opponentAtBats ? divide(pitching.h, opponentAtBats) : 0;
+    const kPerSeven = ip ? divide(pitching.k * ERA_GAME_INNINGS, ip) : 0;
+    els.statsPitchingProfile.innerHTML = `<div class="mini-head">
+        <h3 class="stats-subhead">Team Pitching Profile</h3>
+      </div>
+      <div class="stats-profile-grid">
+        ${statProfileMetric("ERA", formatEra(pitching.era))}
+        ${statProfileMetric("WHIP", ip ? pitching.whip.toFixed(2) : "--")}
+        ${statProfileMetric("K", String(pitching.k || 0))}
+        ${statProfileMetric("BB", String(pitching.bb || 0))}
+        ${statProfileMetric(`K/${ERA_GAME_INNINGS}`, ip ? kPerSeven.toFixed(1) : "--")}
+        ${statProfileMetric("Opp AVG", formatNullableRate(opponentAvg, opponentAtBats > 0))}
+      </div>`;
+  }
+}
+
+function sprayTendencyLane(event) {
+  const x = Number(event?.spray?.x);
+  if (!Number.isFinite(x)) return "center";
+  if (x < 40) return "pull";
+  if (x > 60) return "oppo";
+  return "center";
+}
+
+function teamSprayDashboardEvents(season = statsSeasonFilter) {
+  return statsGamesForSeason(season)
+    .flatMap((game) => sprayEventsForGame(game))
+    .filter(({ event }) => event?.spray);
+}
+
+function renderStatsSprayDashboard() {
+  const events = teamSprayDashboardEvents(statsSeasonFilter);
+  if (els.statsSpraySummary) {
+    els.statsSpraySummary.textContent = events.length
+      ? `${events.length} tracked balls in play from the ${statsSeasonLabel()}.`
+      : "Spray chart data will appear after balls in play are recorded.";
+  }
+  if (els.statsSprayPreviewMarkers) {
+    const previewEvents = events.slice(-18);
+    els.statsSprayPreviewMarkers.innerHTML = previewEvents.length
+      ? previewEvents.map(({ event, game }) => {
+        const rule = eventRules[event.result] || {};
+        const kind = rule.hit ? "hit" : "out";
+        const player = state.roster.find((item) => item.id === event.playerId);
+        const title = `${player?.name || "Lions hitter"} ${rule.label || event.result || "Batted ball"} vs ${game.opponent}`;
+        return `<span class="stats-spray-preview-dot ${kind}" style="left:${Number(event.spray.x) || 50}%;top:${Number(event.spray.y) || 50}%;" title="${escapeHtml(title)}"></span>`;
+      }).join("")
+      : `<span class="stats-spray-preview-empty">No spray data</span>`;
+  }
+  if (!els.statsTendenciesPanel) return;
+  const total = events.length;
+  const hits = events.filter(({ event }) => eventRules[event.result]?.hit).length;
+  const outs = events.filter(({ event }) => eventRules[event.result]?.out).length;
+  const pull = events.filter(({ event }) => sprayTendencyLane(event) === "pull").length;
+  const center = events.filter(({ event }) => sprayTendencyLane(event) === "center").length;
+  const oppo = events.filter(({ event }) => sprayTendencyLane(event) === "oppo").length;
+  const pct = (value) => total ? `${Math.round((value / total) * 100)}%` : "--";
+  els.statsTendenciesPanel.innerHTML = `<div class="mini-head">
+      <h3 class="stats-subhead">Team Tendencies</h3>
+    </div>
+    <div class="stats-tendency-grid">
+      ${statProfileMetric("Pull", pct(pull))}
+      ${statProfileMetric("Center", pct(center))}
+      ${statProfileMetric("Oppo", pct(oppo))}
+      ${statProfileMetric("Hits", pct(hits))}
+      ${statProfileMetric("Outs", pct(outs))}
+    </div>`;
+}
+
+function statsThresholdClass(metric, value, eligible = true) {
+  if (!eligible) return "";
+  if (metric === "avg" && value > 0.35) return " class=\"stats-highlight-cell\"";
+  if (metric === "ops" && value > 1) return " class=\"stats-highlight-cell\"";
+  if (metric === "risp" && value > 0.4) return " class=\"stats-highlight-cell\"";
+  return "";
+}
+
+function focusStatsPlayerFromSpotlight(playerId) {
+  const player = state.roster.find((item) => item.id === playerId);
+  if (!player) return;
+  statsPlayerFocus = player.id;
+  statsMode = "hitting";
+  desktopHitPlayerFilter = player.id;
+  desktopPitPlayerFilter = player.id;
+  mobileHitPlayerFilter = player.id;
+  mobilePitPlayerFilter = player.id;
+  mobileHitGameFilter = "all";
+  mobilePitGameFilter = "all";
+  renderSeasonStats();
+  renderLeaders();
+  renderStatsSprayControls();
+  window.requestAnimationFrame(() => els.statsHittingSection?.scrollIntoView({ behavior: "smooth", block: "start" }));
 }
 
 function renderBulkHittingStatTable(game) {
@@ -18006,8 +18267,9 @@ function savePitchingStatEditGameStats(event) {
 function renderLeaders() {
   const focusedPlayerId = statsPlayerFocus !== "all" ? statsPlayerFocus : "";
   const hitterRows = state.roster
-    .map((player) => ({ player, stats: statsForPlayer(player.id, statsSeasonFilter) }))
-    .filter((row) => !focusedPlayerId || row.player.id === focusedPlayerId);
+    .map((player) => ({ player, stats: statsForPlayer(player.id, statsSeasonFilter), gp: gamesPlayedForPlayer(player.id, statsSeasonFilter) }))
+    .filter((row) => !focusedPlayerId || row.player.id === focusedPlayerId)
+    .filter((row) => playerHasHittingLine({ player: row.player, hit: row.stats, gp: row.gp }));
   const pitcherRows = state.roster
     .map((player) => ({ player, stats: pitcherStats(player.id, null, statsSeasonFilter) }))
     .filter((row) => !focusedPlayerId || row.player.id === focusedPlayerId)
@@ -18022,7 +18284,7 @@ function renderLeaders() {
     ]
     : [
       leaderCard("AVG", hitterRows, (row) => row.stats.avg, (value) => formatRate(value), { targetId: "statsHittingSection" }),
-      leaderCard("Hits", hitterRows, (row) => row.stats.h, String, { targetId: "statsHittingSection" }),
+      leaderCard("OBP", hitterRows, (row) => row.stats.obp, (value) => formatRate(value), { targetId: "statsHittingSection" }),
       leaderCard("RBI", hitterRows, (row) => row.stats.rbi, String, { targetId: "statsHittingSection" }),
       leaderCard("OPS", hitterRows, (row) => row.stats.ops, (value) => formatRate(value), { targetId: "statsHittingSection" })
     ];
