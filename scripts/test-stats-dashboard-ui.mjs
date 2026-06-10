@@ -44,7 +44,7 @@ assert.doesNotMatch(renderLeadersBody, /leaderCard\("Hits"/, "Hits should not be
 const spotlightBody = functionBody(appJs, "renderPlayerSpotlight");
 assert.match(appJs, /const PLAYER_SPOTLIGHT_MIN_PA = 5/, "Player Spotlight should require a 5 PA eligibility floor when possible");
 assert.match(spotlightBody, /Limited recent sample over \$\{gameWindowLabel\}\./, "Player Spotlight should flag the fallback when no hitter has enough recent PA");
-assert.match(spotlightBody, /Best hitter over \$\{gameWindowLabel\} by OPS\. Min \$\{PLAYER_SPOTLIGHT_MIN_PA\} PA\./, "Player Spotlight should explain the recent-game OPS window and PA floor");
+assert.match(spotlightBody, /Best hitter over \$\{gameWindowLabel\} by production score\. Min \$\{PLAYER_SPOTLIGHT_MIN_PA\} PA\./, "Player Spotlight should explain the recent-game production score window and PA floor");
 assert.match(spotlightBody, /data-spotlight-player/, "Player Spotlight should expose an action to focus that player");
 assert.match(spotlightBody, /statProfileMetric\("R", String\(hit\.runs\)\)/, "Player Spotlight should show runs scored instead of RISP");
 assert.doesNotMatch(spotlightBody, /statProfileMetric\("RISP"/, "Player Spotlight should not show RISP as a metric card");
@@ -57,8 +57,17 @@ assert.match(statsForPlayerInGamesBody, /stats\.runs = runsScoredForPlayerInGame
 const runsScoredForPlayerInGamesBody = functionBody(appJs, "runsScoredForPlayerInGames");
 assert.match(runsScoredForPlayerInGamesBody, /offensiveEventsForStatsGame\(game\)/, "Player Spotlight runs should be calculated from the selected game window");
 
+const spotlightScoreBody = functionBody(appJs, "playerSpotlightHitterScore");
+assert.match(spotlightScoreBody, /boxScoreHitterStarScore/, "Player Spotlight should reuse the Three Stars hitter scoring model");
+assert.match(spotlightScoreBody, /r: hit\.runs/, "Player Spotlight score should include runs scored");
+assert.match(spotlightScoreBody, /so: hit\.k/, "Player Spotlight score should apply the strikeout penalty from hitter star scoring");
+
+const topSpotlightRowsBody = functionBody(appJs, "topPlayerSpotlightRows");
+assert.match(topSpotlightRowsBody, /playerSpotlightHitterScore\(b\) - playerSpotlightHitterScore\(a\)/, "Player Spotlight should rank by weighted production score before rate-stat tie breakers");
+
 const spotlightSelectionBody = functionBody(appJs, "playerSpotlightSelection");
 assert.match(spotlightSelectionBody, /\(row\.hit\?\.pa \|\| 0\) >= PLAYER_SPOTLIGHT_MIN_PA/, "Player Spotlight should filter to hitters with enough PA before ranking");
+assert.match(spotlightSelectionBody, /topPlayerSpotlightRows\(qualifiedRows, 1\)/, "Player Spotlight should select qualified hitters by production score");
 assert.match(spotlightSelectionBody, /limitedSample: false/, "Player Spotlight should mark qualified leaders as normal samples");
 assert.match(spotlightSelectionBody, /limitedSample: Boolean\(fallbackRow\)/, "Player Spotlight should fall back with a limited sample indicator");
 

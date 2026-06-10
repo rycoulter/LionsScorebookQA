@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.98";
+const APP_VERSION = "v.1.1.99";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -17676,7 +17676,7 @@ function playerNumberName(player) {
 
 function playerHasHittingLine(row) {
   const hit = row?.hit || {};
-  return Boolean((row?.gp || 0) > 0 || hit.pa > 0 || hit.ab > 0 || hit.h > 0 || hit.rbi > 0 || hit.rispAB > 0);
+  return Boolean((row?.gp || 0) > 0 || hit.pa > 0 || hit.ab > 0 || hit.h > 0 || hit.rbi > 0 || hit.runs > 0 || hit.rispAB > 0);
 }
 
 const PLAYER_SPOTLIGHT_GAME_LIMIT = 3;
@@ -17742,11 +17742,39 @@ function topHittingRows(rows = [], limit = 3) {
     .slice(0, limit);
 }
 
+function playerSpotlightHitterScore(row = {}) {
+  const hit = row.hit || {};
+  return boxScoreHitterStarScore({
+    h: hit.h || 0,
+    rbi: hit.rbi || 0,
+    r: hit.runs || 0,
+    bb: hit.bb || 0,
+    hbp: hit.hbp || 0,
+    sb: hit.sb || 0,
+    doubles: hit.doubles || 0,
+    triples: hit.triples || 0,
+    hr: hit.hr || 0,
+    so: hit.k || 0
+  });
+}
+
+function topPlayerSpotlightRows(rows = [], limit = 1) {
+  return rows
+    .filter(playerHasHittingLine)
+    .sort((a, b) =>
+      playerSpotlightHitterScore(b) - playerSpotlightHitterScore(a)
+      || (b.hit?.ops || 0) - (a.hit?.ops || 0)
+      || (b.hit?.avg || 0) - (a.hit?.avg || 0)
+      || String(a.player.name || "").localeCompare(String(b.player.name || ""))
+    )
+    .slice(0, limit);
+}
+
 function playerSpotlightSelection(rows = []) {
   const qualifiedRows = rows.filter((row) => playerHasHittingLine(row) && (row.hit?.pa || 0) >= PLAYER_SPOTLIGHT_MIN_PA);
-  const [qualifiedRow] = topHittingRows(qualifiedRows, 1);
+  const [qualifiedRow] = topPlayerSpotlightRows(qualifiedRows, 1);
   if (qualifiedRow) return { row: qualifiedRow, limitedSample: false };
-  const [fallbackRow] = topHittingRows(rows, 1);
+  const [fallbackRow] = topPlayerSpotlightRows(rows, 1);
   return { row: fallbackRow || null, limitedSample: Boolean(fallbackRow) };
 }
 
@@ -17781,7 +17809,7 @@ function renderPlayerSpotlight(rows = []) {
   const gameWindowLabel = gameCount === 1 ? "the last game" : `the last ${gameCount} games`;
   const spotlightSummary = limitedSample
     ? `Limited recent sample over ${gameWindowLabel}.`
-    : `Best hitter over ${gameWindowLabel} by OPS. Min ${PLAYER_SPOTLIGHT_MIN_PA} PA.`;
+    : `Best hitter over ${gameWindowLabel} by production score. Min ${PLAYER_SPOTLIGHT_MIN_PA} PA.`;
   els.statsPlayerSpotlight.innerHTML = `<div class="stats-spotlight-copy">
       <p class="player-meta">Player Spotlight</p>
       <h3>${escapeHtml(playerNumberName(player))}</h3>
