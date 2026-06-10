@@ -52,6 +52,10 @@ assert.doesNotMatch(spotlightBody, /statProfileMetric\("RISP"/, "Player Spotligh
 const recentSpotlightBody = functionBody(appJs, "recentHittingRowsForSpotlight");
 assert.match(recentSpotlightBody, /statsGamesWithDataForSeason\(statsSeasonFilter\)\.slice\(0, limit\)/, "Player Spotlight should use the latest stat-bearing games in the selected season");
 assert.match(recentSpotlightBody, /statsForPlayerInGames\(player\.id, recentGames\)/, "Player Spotlight should aggregate each hitter only across recent games");
+const statsForPlayerInGamesBody = functionBody(appJs, "statsForPlayerInGames");
+assert.match(statsForPlayerInGamesBody, /stats\.runs = runsScoredForPlayerInGames\(playerId, games\)/, "Player Spotlight recent stats should include runs");
+const runsScoredForPlayerInGamesBody = functionBody(appJs, "runsScoredForPlayerInGames");
+assert.match(runsScoredForPlayerInGamesBody, /offensiveEventsForStatsGame\(game\)/, "Player Spotlight runs should be calculated from the selected game window");
 
 const spotlightSelectionBody = functionBody(appJs, "playerSpotlightSelection");
 assert.match(spotlightSelectionBody, /\(row\.hit\?\.pa \|\| 0\) >= PLAYER_SPOTLIGHT_MIN_PA/, "Player Spotlight should filter to hitters with enough PA before ranking");

@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.97";
+const APP_VERSION = "v.1.1.98";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -815,7 +815,6 @@ let mobileHitPlayerFilter = "all";
 let mobileHitGameFilter = "all";
 let mobilePitPlayerFilter = "all";
 let mobilePitGameFilter = "all";
-let archivePage = 1;
 let lineupBuilderReturnView = "games";
 let lineupBuilderSelectedEntryId = "";
 let selectedFieldRunnerBase = "";
@@ -1201,10 +1200,6 @@ const els = {
   rosterListBody: document.getElementById("rosterListBody"),
   archiveSeasonSelect: document.getElementById("archiveSeasonSelect"),
   archiveGrid: document.getElementById("archiveGrid"),
-  archivePagination: document.getElementById("archivePagination"),
-  archivePrevPageBtn: document.getElementById("archivePrevPageBtn"),
-  archivePageLabel: document.getElementById("archivePageLabel"),
-  archiveNextPageBtn: document.getElementById("archiveNextPageBtn"),
   gameSummaryPanel: document.getElementById("gameSummaryPanel"),
   gameSummaryTitle: document.getElementById("gameSummaryTitle"),
   gameSummaryMeta: document.getElementById("gameSummaryMeta"),
@@ -3940,16 +3935,6 @@ function boxScoreReturnLabel(view = boxScoreReturnView) {
   return "Archive";
 }
 
-function archiveUsesContinuousScroll() {
-  try {
-    return window.matchMedia?.("(max-width: 760px)")?.matches ?? false;
-  } catch (error) {
-    return false;
-  }
-}
-
-let archiveContinuousScrollMode = archiveUsesContinuousScroll();
-
 function loadStoredAdminEmail() {
   try {
     return String(window.localStorage?.getItem(ADMIN_EMAIL_STORAGE_KEY) || "").trim().toLowerCase();
@@ -5033,12 +5018,6 @@ window.addEventListener("pageshow", () => {
   requestLifecycleSupabaseRefresh("pageshow", { skipWhenHidden: false });
 });
 
-window.addEventListener("resize", () => {
-  const nextMode = archiveUsesContinuousScroll();
-  if (nextMode === archiveContinuousScrollMode) return;
-  archiveContinuousScrollMode = nextMode;
-  if (currentView === "archive") renderArchive();
-});
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
       scheduleScoreGameRenderFlush("visibility");
@@ -5096,7 +5075,6 @@ window.addEventListener("resize", () => {
 
   els.archiveSeasonSelect?.addEventListener("change", (event) => {
     archiveSeasonFilter = normalizeArchiveSeasonFilter(event.target.value);
-    archivePage = 1;
     renderArchive();
   });
   els.statsSeasonSelect?.addEventListener("change", (event) => {
@@ -5126,14 +5104,6 @@ window.addEventListener("resize", () => {
     statsMode = requestedMode;
     renderStatsMode();
     renderLeaders();
-  });
-  els.archivePrevPageBtn?.addEventListener("click", () => {
-    archivePage = Math.max(1, archivePage - 1);
-    renderArchive();
-  });
-  els.archiveNextPageBtn?.addEventListener("click", () => {
-    archivePage += 1;
-    renderArchive();
   });
   els.leadersGrid?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-scroll-target]");
@@ -13216,28 +13186,11 @@ function populateArchiveSeasonSelect() {
   els.archiveSeasonSelect.value = archiveSeasonFilter;
 }
 
-function renderArchivePagination(totalGames, pageSize) {
-  if (!els.archivePagination || !els.archivePageLabel) return;
-  const totalPages = Math.max(1, Math.ceil(totalGames / pageSize));
-  archivePage = Math.min(Math.max(1, archivePage), totalPages);
-  const shouldShow = !archiveUsesContinuousScroll() && totalGames > pageSize;
-  els.archivePagination.hidden = !shouldShow;
-  els.archivePageLabel.textContent = `Page ${archivePage} of ${totalPages}`;
-  if (els.archivePrevPageBtn) els.archivePrevPageBtn.disabled = archivePage <= 1;
-  if (els.archiveNextPageBtn) els.archiveNextPageBtn.disabled = archivePage >= totalPages;
-}
-
 function renderArchive() {
   populateArchiveSeasonSelect();
-  const allGames = state.games
+  const games = state.games
     .filter((game) => gameIsFinal(game) && String(game?.date || "").startsWith(`${archiveSeasonFilter}-`))
     .sort(sortGamesNewestFirst);
-  const pageSize = archiveUsesContinuousScroll() ? Math.max(allGames.length, 1) : 6;
-  const totalPages = Math.max(1, Math.ceil(allGames.length / pageSize));
-  archivePage = Math.min(Math.max(1, archivePage), totalPages);
-  const pageStart = (archivePage - 1) * pageSize;
-  const games = allGames.slice(pageStart, pageStart + pageSize);
-  renderArchivePagination(allGames.length, pageSize);
 
   els.archiveGrid.innerHTML = games.length
     ? games.map(renderArchiveCard).join("")
@@ -17748,8 +17701,23 @@ function statsForPlayerInGames(playerId, games = []) {
     .flatMap((game) => offensiveEventsForStatsGame(game))
     .filter((event) => event.playerId === playerId)
     .forEach((event) => applyEventToStats(stats, event));
+  stats.runs = runsScoredForPlayerInGames(playerId, games);
   finishStats(stats);
   return stats;
+}
+
+function runsScoredForPlayerInGames(playerId, games = []) {
+  return games.reduce((total, game) => {
+    return total + offensiveEventsForStatsGame(game).reduce((gameTotal, event) => {
+      const runs = (event.runnerAdvancements || []).filter((advancement) => (
+        advancement?.runnerId === playerId
+        && advancement.to === "home"
+        && !advancement.out
+        && !advancement.remove
+      )).length;
+      return gameTotal + runs;
+    }, 0);
+  }, 0);
 }
 
 function recentHittingRowsForSpotlight(limit = PLAYER_SPOTLIGHT_GAME_LIMIT) {

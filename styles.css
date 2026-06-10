@@ -4287,21 +4287,6 @@ main {
     white-space: normal;
   }
 
-  .archive-pagination {
-    justify-content: space-between;
-    gap: 10px;
-  }
-
-  .archive-pagination .secondary-action {
-    min-width: 0;
-    flex: 1 1 0;
-  }
-
-  .archive-pagination-label {
-    font-size: 0.9rem;
-    text-align: center;
-  }
-
   .schedule-toolbar {
     gap: 10px;
     margin-bottom: 12px;
@@ -7523,24 +7508,6 @@ button:focus-visible {
 .archive-grid > .player-meta {
   grid-column: 1 / -1;
   margin: 0;
-}
-
-.archive-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  margin-top: 18px;
-}
-
-.archive-pagination[hidden] {
-  display: none;
-}
-
-.archive-pagination-label {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 0.96rem;
-  font-weight: 850;
 }
 
 .archive-card {
