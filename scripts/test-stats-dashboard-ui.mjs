@@ -46,6 +46,8 @@ assert.match(appJs, /const PLAYER_SPOTLIGHT_MIN_PA = 5/, "Player Spotlight shoul
 assert.match(spotlightBody, /Limited recent sample over \$\{gameWindowLabel\}\./, "Player Spotlight should flag the fallback when no hitter has enough recent PA");
 assert.match(spotlightBody, /Best hitter over \$\{gameWindowLabel\} by OPS\. Min \$\{PLAYER_SPOTLIGHT_MIN_PA\} PA\./, "Player Spotlight should explain the recent-game OPS window and PA floor");
 assert.match(spotlightBody, /data-spotlight-player/, "Player Spotlight should expose an action to focus that player");
+assert.match(spotlightBody, /statProfileMetric\("R", String\(hit\.runs\)\)/, "Player Spotlight should show runs scored instead of RISP");
+assert.doesNotMatch(spotlightBody, /statProfileMetric\("RISP"/, "Player Spotlight should not show RISP as a metric card");
 
 const recentSpotlightBody = functionBody(appJs, "recentHittingRowsForSpotlight");
 assert.match(recentSpotlightBody, /statsGamesWithDataForSeason\(statsSeasonFilter\)\.slice\(0, limit\)/, "Player Spotlight should use the latest stat-bearing games in the selected season");

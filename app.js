@@ -347,6 +347,7 @@ const bulkPitchingStatFields = [
   { key: "bb", label: "BB" },
   { key: "hbp", label: "HBP" },
   { key: "k", label: "K" },
+  { key: "sv", label: "SV" },
   { key: "decision", label: "Decision", type: "select" }
 ];
 
@@ -623,7 +624,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.95";
+const APP_VERSION = "v.1.1.96";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -1236,6 +1237,7 @@ const els = {
   boxScoreMobileStatsBtn: document.getElementById("boxScoreMobileStatsBtn"),
   boxScoreMeta: document.getElementById("boxScoreMeta"),
   boxScoreSummary: document.getElementById("boxScoreSummary"),
+  boxScoreStars: document.getElementById("boxScoreStars"),
   boxScoreLineHead: document.getElementById("boxScoreLineHead"),
   boxScoreLineBody: document.getElementById("boxScoreLineBody"),
   boxScoreTeamTabs: document.getElementById("boxScoreTeamTabs"),
@@ -1437,6 +1439,7 @@ const els = {
     bb: document.getElementById("pitchingStatEditBb"),
     hbp: document.getElementById("pitchingStatEditHbp"),
     k: document.getElementById("pitchingStatEditK"),
+    sv: document.getElementById("pitchingStatEditSv"),
     decision: document.getElementById("pitchingStatEditDecision")
   },
   scoutingTeamSelect: document.getElementById("scoutingTeamSelect"),
@@ -15859,6 +15862,7 @@ function renderBoxScore() {
     if (els.boxScoreMobileMetaPrimary) els.boxScoreMobileMetaPrimary.textContent = "No games saved yet.";
     if (els.boxScoreMobileMetaSecondary) els.boxScoreMobileMetaSecondary.textContent = "";
     els.boxScoreSummary.innerHTML = `<p class="player-meta">Box scores appear after a game is created.</p>`;
+    if (els.boxScoreStars) els.boxScoreStars.innerHTML = renderBoxScoreStars(null, []);
     els.boxScoreLineHead.innerHTML = "";
     els.boxScoreLineBody.innerHTML = "";
     els.boxScoreTeamTabs.innerHTML = "";
@@ -15893,6 +15897,7 @@ function renderBoxScore() {
     els.boxScoreMobileMetaSecondary.textContent = `Away: ${away?.name || "Away"} | Home: ${home?.name || "Home"}`;
   }
   els.boxScoreSummary.innerHTML = renderBoxScoreSummary(game, teams);
+  if (els.boxScoreStars) els.boxScoreStars.innerHTML = renderBoxScoreStars(game, teams);
   els.boxScoreLineHead.innerHTML = `<tr><th>Team</th>${innings.map((inning) => `<th>${inning}</th>`).join("")}<th>R</th><th>H</th><th>E</th></tr>`;
   els.boxScoreLineBody.innerHTML = lineScores.map((line) => renderBoxScoreLineRow(line, innings)).join("");
   els.boxScoreTeamTabs.innerHTML = teams
@@ -15927,6 +15932,12 @@ function boxScoreBattingEvents(game, team) {
   const scope = team.key === "lions" ? "offense" : "defense";
   const sourceEvents = team.key === "lions" ? offensiveEventsForStatsGame(game) : (game.events || []);
   return sourceEvents.filter((event) => event.scope === scope && eventRules[event.result]?.pa);
+}
+
+function boxScoreBaseRunningEvents(game, team) {
+  const scope = team.key === "lions" ? "offense" : "defense";
+  const sourceEvents = team.key === "lions" ? offensiveEventsForStatsGame(game) : (game.events || []);
+  return sourceEvents.filter((event) => event.scope === scope && scorebookBaseRunningResults.has(event.result));
 }
 
 function boxScoreFieldingErrorEvents(game, team) {
@@ -15971,6 +15982,172 @@ function renderBoxScoreSummary(game, teams) {
   </div>`;
 }
 
+function parseBoxScoreDisplayName(value = "") {
+  const text = String(value || "").trim();
+  const match = text.match(/^#([^\s]+)\s+(.+)$/);
+  return {
+    number: match ? match[1] : "",
+    name: match ? match[2] : text
+  };
+}
+
+function boxScoreStarIdentity(team, row = {}) {
+  const player = team?.key === "lions" ? state.roster.find((item) => item.id === row.id) : null;
+  const parsed = parseBoxScoreDisplayName(row.name);
+  return {
+    key: `${team?.key || "team"}:${row.id || parsed.name}`,
+    teamName: team?.name || "",
+    name: player?.name || parsed.name || "Player",
+    number: player?.number || parsed.number || "",
+    position: row.position || (player ? playerPrimaryPosition(player) : "")
+  };
+}
+
+function boxScoreHitterStarSummary(row = {}) {
+  const parts = [];
+  if (row.ab > 0) {
+    parts.push(`${row.h || 0}-${row.ab}`);
+  } else if (row.h > 0) {
+    parts.push(`${row.h} H`);
+  }
+  if (row.hr) parts.push(row.hr === 1 ? "HR" : `${row.hr} HR`);
+  if (row.triples) parts.push(row.triples === 1 ? "3B" : `${row.triples} 3B`);
+  if (row.doubles) parts.push(row.doubles === 1 ? "2B" : `${row.doubles} 2B`);
+  if (row.rbi) parts.push(`${row.rbi} RBI`);
+  if (row.r) parts.push(`${row.r} R`);
+  if (row.bb) parts.push(row.bb === 1 ? "BB" : `${row.bb} BB`);
+  if (row.hbp) parts.push(row.hbp === 1 ? "HBP" : `${row.hbp} HBP`);
+  if (row.sb) parts.push(`${row.sb} SB`);
+  return parts.join(", ") || `${row.pa || 0} PA`;
+}
+
+function boxScorePitcherStarSummary(row = {}) {
+  const erLabel = row.erUnknown ? `${row.r || 0} R` : `${row.er || 0} ER`;
+  const extras = [];
+  if (row.w) extras.push("W");
+  if (row.sv) extras.push(row.sv === 1 ? "SV" : `${row.sv} SV`);
+  if (row.qs) extras.push("QS");
+  return [
+    `${formatInnings(row.outs || 0)} IP`,
+    `${row.h || 0} H`,
+    erLabel,
+    `${row.so || 0} K`,
+    ...extras
+  ].join(", ");
+}
+
+function boxScoreHitterStarScore(row = {}) {
+  return ((row.h || 0) * 3)
+    + ((row.rbi || 0) * 3)
+    + ((row.r || 0) * 2)
+    + ((row.bb || 0) * 1)
+    + ((row.hbp || 0) * 1)
+    + ((row.sb || 0) * 2)
+    + ((row.doubles || 0) * 1)
+    + ((row.triples || 0) * 2)
+    + ((row.hr || 0) * 4)
+    - ((row.so || 0) * 0.5);
+}
+
+function boxScorePitcherQualityStart(row = {}) {
+  return !row.erUnknown && (row.outs || 0) >= 18 && (row.er || 0) <= 3 ? 1 : 0;
+}
+
+function boxScorePitcherStarScore(row = {}) {
+  const inningsPitched = (row.outs || 0) / 3;
+  const earnedRuns = row.erUnknown ? (row.r || 0) : (row.er || 0);
+  const qualityStart = row.qs ?? boxScorePitcherQualityStart(row);
+  return (inningsPitched * 3)
+    + ((row.so || 0) * 1.5)
+    + ((row.w || 0) * 4)
+    + ((row.sv || 0) * 3)
+    + (qualityStart * 3)
+    - (earnedRuns * 4)
+    - ((row.h || 0) * 0.75)
+    - ((row.bb || 0) * 1)
+    - ((row.hbp || 0) * 1);
+}
+
+function upsertBoxScoreStarCandidate(candidates, identity, score, summary, type) {
+  if (!identity?.key || !summary) return;
+  const existing = candidates.get(identity.key) || {
+    ...identity,
+    score: 0,
+    summaries: [],
+    types: new Set()
+  };
+  existing.score += score;
+  existing.summaries.push({ type, text: summary });
+  if (type) existing.types.add(type);
+  candidates.set(identity.key, existing);
+}
+
+function boxScoreThreeStars(game, teams = []) {
+  if (!game) return [];
+  const candidates = new Map();
+  teams.forEach((team) => {
+    boxScoreBattingRows(game, team, { includeBaseRunning: true }).forEach((row) => {
+      upsertBoxScoreStarCandidate(candidates, boxScoreStarIdentity(team, row), boxScoreHitterStarScore(row), boxScoreHitterStarSummary(row), "Hitting");
+    });
+    boxScorePitchingRows(game, team).forEach((row) => {
+      row.qs = boxScorePitcherQualityStart(row);
+      upsertBoxScoreStarCandidate(candidates, boxScoreStarIdentity(team, row), boxScorePitcherStarScore(row), boxScorePitcherStarSummary(row), "Pitching");
+    });
+  });
+  return [...candidates.values()]
+    .sort((a, b) => b.score - a.score || String(a.name || "").localeCompare(String(b.name || "")))
+    .slice(0, 3)
+    .map((star) => ({
+      ...star,
+      typeLabel: star.types.size > 1 ? "Two-Way" : [...star.types][0],
+      summary: star.summaries.length > 1
+        ? star.summaries.slice(0, 2).map((item) => `${item.type}: ${item.text}`).join(" | ")
+        : star.summaries[0]?.text || ""
+    }));
+}
+
+function renderBoxScoreStarCard(star, index) {
+  const labels = ["First Star", "Second Star", "Third Star"];
+  if (!star) {
+    return `<article class="box-score-star-card is-empty">
+      <div class="box-score-star-rank"><span aria-hidden="true">&#9733;</span><strong>${labels[index]}</strong></div>
+      <p>More game statistics needed.</p>
+    </article>`;
+  }
+  const detail = [
+    star.number ? `#${star.number}` : "",
+    star.position || star.typeLabel,
+    star.teamName
+  ].filter(Boolean).join(" | ");
+  return `<article class="box-score-star-card ${index === 0 ? "is-first" : ""}">
+    <div class="box-score-star-rank"><span aria-hidden="true">&#9733;</span><strong>${labels[index]}</strong></div>
+    <div class="box-score-star-player">
+      <strong>${escapeHtml(star.name)}</strong>
+      <span>${escapeHtml(detail)}</span>
+    </div>
+    <span class="box-score-star-badge">${escapeHtml(star.typeLabel)}</span>
+    <p>${escapeHtml(star.summary)}</p>
+  </article>`;
+}
+
+function renderBoxScoreStars(game, teams = []) {
+  const stars = boxScoreThreeStars(game, teams);
+  if (!stars.length) {
+    return `<div class="mini-head">
+      <h3>3 Stars of the Game</h3>
+      <span>Top game performances</span>
+    </div>
+    <p class="box-score-stars-empty">Three Stars will be generated when game statistics are available.</p>`;
+  }
+  return `<div class="mini-head">
+    <h3>3 Stars of the Game</h3>
+    <span>Top game performances</span>
+  </div>
+  <div class="box-score-stars-grid">
+    ${[0, 1, 2].map((index) => renderBoxScoreStarCard(stars[index], index)).join("")}
+  </div>`;
+}
+
 function boxScoreTeamLogo(team) {
   return window.MatchupImages?.getTeamLogo?.(team?.name, team?.key) || "assets/team-logos/lions.png";
 }
@@ -15993,11 +16170,28 @@ function renderBoxScoreLineRow(line, innings) {
   </tr>`;
 }
 
-function boxScoreBattingRows(game, team) {
+function boxScoreBattingRows(game, team, options = {}) {
+  const includeBaseRunning = Boolean(options.includeBaseRunning);
   const rows = new Map();
   const ensureRow = (id, name, position = "") => {
     if (!rows.has(id)) {
-      rows.set(id, { id, name, position, pa: 0, ab: 0, r: 0, h: 0, rbi: 0, bb: 0, so: 0 });
+      rows.set(id, {
+        id,
+        name,
+        position,
+        pa: 0,
+        ab: 0,
+        r: 0,
+        h: 0,
+        rbi: 0,
+        bb: 0,
+        hbp: 0,
+        so: 0,
+        sb: 0,
+        doubles: 0,
+        triples: 0,
+        hr: 0
+      });
     }
     return rows.get(id);
   };
@@ -16023,10 +16217,26 @@ function boxScoreBattingRows(game, team) {
     if (rule.ab) row.ab += 1;
     if (rule.hit) row.h += 1;
     if (rule.bb) row.bb += 1;
+    if (rule.hbp) row.hbp += 1;
     if (rule.k) row.so += 1;
+    if (rule.sb) row.sb += 1;
+    if (event.result === "2B") row.doubles += 1;
+    if (event.result === "3B") row.triples += 1;
+    if (event.result === "HR") row.hr += 1;
     row.rbi += event.rbi || 0;
     row.r += boxScoreRunsScoredByBatter(event, id);
   });
+  if (includeBaseRunning) {
+    boxScoreBaseRunningEvents(game, team).forEach((event) => {
+      if (event.result !== "SB") return;
+      const id = team.key === "lions" ? event.playerId : event.playerId || `opp:${event.opponentBatter || "Opponent runner"}`;
+      const fallbackName = team.key === "lions"
+        ? state.roster.find((player) => player.id === event.playerId)?.name || "Unknown Lion"
+        : event.opponentBatter || String(event.playerId || "Opponent runner").replace(/^opp:/, "");
+      const row = ensureRow(id, fallbackName, "");
+      row.sb += 1;
+    });
+  }
   if (team.key === "lions") {
     Object.entries(hittingStatEditMap(game)).forEach(([playerId, edit]) => {
       const normalized = normalizeHittingStatEdit(edit, playerId, game);
@@ -16041,11 +16251,16 @@ function boxScoreBattingRows(game, team) {
       row.h = stats.h;
       row.rbi = stats.rbi;
       row.bb = stats.bb;
+      row.hbp = stats.hbp;
       row.so = stats.k;
+      row.sb = stats.sb;
+      row.doubles = stats.doubles;
+      row.triples = stats.triples;
+      row.hr = stats.hr;
       row.manualStatEdit = true;
     });
   }
-  return [...rows.values()].filter((row) => row.pa || row.ab || row.r || row.h || row.rbi || row.bb || row.so);
+  return [...rows.values()].filter((row) => row.pa || row.ab || row.r || row.h || row.rbi || row.bb || row.hbp || row.so || (includeBaseRunning && row.sb));
 }
 
 function boxScoreRunsScoredByBatter(event, batterId) {
@@ -16076,7 +16291,7 @@ function boxScorePitchingRows(game, team) {
   const lionsEarnedRunMap = team.key === "lions" ? lionsEarnedRunsByEvent(game) : null;
   const rows = new Map();
   const ensureRow = (id, name) => {
-    if (!rows.has(id)) rows.set(id, { id, name, pa: 0, outs: 0, h: 0, r: 0, er: 0, erUnknown: false, bb: 0, so: 0 });
+    if (!rows.has(id)) rows.set(id, { id, name, pa: 0, outs: 0, h: 0, r: 0, er: 0, erUnknown: false, bb: 0, hbp: 0, so: 0, w: 0, sv: 0, qs: 0 });
     return rows.get(id);
   };
   events.forEach((event) => {
@@ -16096,6 +16311,7 @@ function boxScorePitchingRows(game, team) {
       row.er += event.runs || 0;
     }
     row.bb += event.result === "BB" ? 1 : 0;
+    row.hbp += event.result === "HBP" ? 1 : 0;
     row.so += event.result === "K" ? 1 : 0;
   });
   if (team.key === "lions") {
@@ -16111,11 +16327,24 @@ function boxScorePitchingRows(game, team) {
       row.er = stats.earnedRuns;
       row.erUnknown = false;
       row.bb = stats.bb;
+      row.hbp = stats.hbp;
       row.so = stats.k;
+      row.w = stats.decision === "win" ? 1 : 0;
+      row.sv = stats.sv;
       row.manualStatEdit = true;
     });
+    if (gameIsFinal(game)) {
+      const decision = lionsPitchingDecision(game);
+      rows.forEach((row, playerId) => {
+        if (hasPitchingStatEdit(game, playerId)) return;
+        row.w = decision.winPitcherId === playerId ? 1 : 0;
+      });
+    }
   }
-  return [...rows.values()].filter((row) => row.pa || row.outs || row.h || row.r || row.er || row.bb || row.so);
+  rows.forEach((row) => {
+    row.qs = boxScorePitcherQualityStart(row);
+  });
+  return [...rows.values()].filter((row) => row.pa || row.outs || row.h || row.r || row.er || row.bb || row.hbp || row.so || row.w || row.sv);
 }
 
 function boxScoreOutsRecorded(event, rule = eventRules[event.result] || {}) {
@@ -17435,7 +17664,7 @@ function renderPlayerSpotlight(rows = []) {
       ${statProfileMetric("OPS", formatRate(hit.ops))}
       ${statProfileMetric("RBI", String(hit.rbi))}
       ${statProfileMetric("H", String(hit.h))}
-      ${statProfileMetric("RISP", formatRispRate(hit), hit.rispAB ? `${hit.rispH}/${hit.rispAB}` : "")}
+      ${statProfileMetric("R", String(hit.runs))}
     </div>
     <button type="button" class="secondary-action compact-action stats-spotlight-action" data-spotlight-player="${escapeHtml(player.id)}">View Player Card</button>`;
 }
@@ -18826,6 +19055,7 @@ function normalizeManualPitchingStats(input = {}) {
   if (outs < k) outs = k;
   const bb = manualStatValue(input, "bb", "BB") ?? 0;
   const hbp = manualStatValue(input, "hbp", "HBP") ?? 0;
+  const sv = manualStatValue(input, "sv", "SV") ?? 0;
   const runs = manualStatValue(input, "runs", "R") ?? 0;
   let earnedRuns = manualStatValue(input, "earnedRuns", "ER") ?? 0;
   if (runs < earnedRuns) earnedRuns = runs;
@@ -18850,6 +19080,7 @@ function normalizeManualPitchingStats(input = {}) {
     bb,
     hbp,
     k,
+    sv,
     decision: normalizePitchingDecision(input.decision)
   };
 }
@@ -19061,6 +19292,7 @@ function manualPitchingStatLineHasValues(stats = {}) {
       || stats.bb
       || stats.hbp
       || stats.k
+      || stats.sv
       || stats.decision
   );
 }

@@ -9035,6 +9035,103 @@ button:focus-visible {
   max-width: 420px;
 }
 
+.box-score-stars-card {
+  padding: 16px;
+}
+
+.box-score-stars-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.18fr) minmax(210px, 0.91fr) minmax(210px, 0.91fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.box-score-star-card {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid rgba(245, 189, 33, 0.24);
+  border-radius: 8px;
+  padding: 14px;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(245, 189, 33, 0.13), transparent 38%),
+    linear-gradient(145deg, rgba(18, 24, 43, 0.94), rgba(9, 13, 28, 0.96));
+}
+
+.box-score-star-card.is-first {
+  border-color: rgba(245, 189, 33, 0.68);
+  box-shadow: 0 0 0 1px rgba(245, 189, 33, 0.12), 0 18px 42px rgba(245, 189, 33, 0.13);
+}
+
+.box-score-star-card.is-empty {
+  border-style: dashed;
+  opacity: 0.72;
+}
+
+.box-score-star-rank {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--lion-gold);
+  font-size: 0.76rem;
+  font-weight: 950;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.box-score-star-rank span {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 189, 33, 0.58);
+  background: rgba(245, 189, 33, 0.11);
+  font-size: 0.88rem;
+}
+
+.box-score-star-player {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.box-score-star-player strong {
+  color: var(--white);
+  font-size: clamp(1.06rem, 1.8vw, 1.36rem);
+  line-height: 1.05;
+}
+
+.box-score-star-player span,
+.box-score-star-card p,
+.box-score-stars-empty {
+  color: var(--text-soft);
+}
+
+.box-score-star-badge {
+  justify-self: start;
+  border: 1px solid rgba(245, 189, 33, 0.5);
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: rgba(245, 189, 33, 0.1);
+  color: var(--lion-gold);
+  font-size: 0.7rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.box-score-star-card p,
+.box-score-stars-empty {
+  margin: 0;
+  font-weight: 800;
+}
+
+.box-score-stars-empty {
+  padding: 8px 0 2px;
+}
+
 .box-score-mobile-toolbar {
   display: none;
 }
@@ -16738,6 +16835,29 @@ select option:checked {
     height: 44px;
   }
 
+  .box-score-stars-card {
+    padding: 12px;
+  }
+
+  .box-score-stars-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .box-score-star-card {
+    padding: 11px;
+  }
+
+  .box-score-star-rank {
+    gap: 6px;
+    font-size: 0.68rem;
+  }
+
+  .box-score-star-rank span {
+    width: 24px;
+    height: 24px;
+  }
+
   .box-score-tabs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     margin: 0 auto 10px;
@@ -21787,5 +21907,11 @@ select option:checked {
   .pitcher-select-status {
     grid-column: 2;
     justify-self: start;
+  }
+}
+
+@media (max-width: 640px) {
+  .box-score-stars-grid {
+    grid-template-columns: 1fr;
   }
 }

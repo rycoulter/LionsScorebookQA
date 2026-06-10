@@ -33,7 +33,7 @@ mustMatch(indexHtml, /id="pitchingStatEditGameModal"[\s\S]*Edit Pitching Stats/,
 ["Ab", "H", "RispAB", "RispH", "Singles", "Doubles", "Triples", "Hr", "Bb", "Hbp", "K", "Roe", "Errors", "Fc", "Sac", "Dp", "Go", "Lo", "Fo", "Sb", "Cs", "Po", "Rbi", "Runs"].forEach((field) => {
   mustMatch(indexHtml, new RegExp(`id="statEdit${field}"`), `${field} input should exist`);
 });
-["Ip", "Pitches", "Balls", "Strikes", "Batters", "H", "Hr", "Runs", "EarnedRuns", "Bb", "Hbp", "K", "Decision"].forEach((field) => {
+["Ip", "Pitches", "Balls", "Strikes", "Batters", "H", "Hr", "Runs", "EarnedRuns", "Bb", "Hbp", "K", "Sv", "Decision"].forEach((field) => {
   mustMatch(indexHtml, new RegExp(`id="pitchingStatEdit${field}"`), `${field} pitching input should exist`);
 });
 assert.equal(/id="statEdit(?:Avg|Obp|Slg|Ops|Total|Pa)"/i.test(indexHtml), false, "Derived or aggregate stats should not be directly editable");
@@ -96,6 +96,9 @@ const pitcherStatsBody = functionBody(appJs, "pitcherStats");
 mustMatch(pitcherStatsBody, /pitchingEventsForStatsGame\(game\)/, "Pitcher stats should read through edited pitching events");
 mustMatch(pitcherStatsBody, /pitchingEventEarnedRuns\(event, earnedRunMaps\.get\(game\.id\)\)/, "Pitcher ERA should use manual earned runs when edited");
 
+const normalizePitchingStatsBody = functionBody(appJs, "normalizeManualPitchingStats");
+mustMatch(normalizePitchingStatsBody, /const sv = manualStatValue\(input, "sv", "SV"\)/, "Manual pitching stats should normalize saves");
+
 const pitchingEventsBody = functionBody(appJs, "pitchingEventsForStatsGame");
 mustMatch(pitchingEventsBody, /manualPitchingStatEvents\(game, playerId, edit\)/, "Pitching edits should replace stat-source defensive events");
 mustMatch(pitchingEventsBody, /editedPlayerIds\.has\(event\.pitcherId\)/, "Edited pitcher events should replace original pitcher events");
@@ -111,7 +114,7 @@ mustMatch(boxScoreBattingRowsBody, /normalizeHittingStatEdit\(edit, playerId, ga
 const boxScorePitchingRowsBody = functionBody(appJs, "boxScorePitchingRows");
 mustMatch(boxScorePitchingRowsBody, /Object\.entries\(pitchingStatEditMap\(game\)\)/, "Box score pitching rows should include manual pitching stat lines");
 mustMatch(boxScorePitchingRowsBody, /normalizePitchingStatEdit\(edit, playerId, game\)/, "Box score pitching rows should normalize manual pitching edits");
-["batters", "outs", "h", "runs", "earnedRuns", "bb", "k"].forEach((field) => {
+["batters", "outs", "h", "runs", "earnedRuns", "bb", "hbp", "k", "sv"].forEach((field) => {
   mustMatch(boxScorePitchingRowsBody, new RegExp(`stats\\.${field}`), `Box score pitching rows should map manual ${field}`);
 });
 

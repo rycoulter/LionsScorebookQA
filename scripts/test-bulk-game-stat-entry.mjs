@@ -25,7 +25,7 @@ mustMatch(indexHtml, /data-bulk-stat-mode="hitting"[\s\S]*data-bulk-stat-mode="p
 mustMatch(indexHtml, /id="bulkStatEditBody"/, "Bulk stat modal should have a render target for the stat table");
 
 mustMatch(appJs, /bulkHittingStatFields[\s\S]*rispAB[\s\S]*rispH/, "Bulk hitting fields should include RISP entry");
-mustMatch(appJs, /bulkPitchingStatFields[\s\S]*earnedRuns[\s\S]*decision/, "Bulk pitching fields should include earned runs and decisions");
+mustMatch(appJs, /bulkPitchingStatFields[\s\S]*earnedRuns[\s\S]*sv[\s\S]*decision/, "Bulk pitching fields should include earned runs, saves, and decisions");
 mustMatch(appJs, /bulkStatEditBtn: document\.getElementById\("bulkStatEditBtn"\)/, "Bulk stat button should be cached");
 mustMatch(appJs, /els\.bulkStatEditBtn\?\.addEventListener\("click", openBulkStatEditModal\)/, "Bulk stat button should open the modal");
 mustMatch(appJs, /els\.bulkStatEditBody\?\.addEventListener\("click", handleBulkStatEditBodyClick\)/, "Bulk stat body should delegate spray chart buttons");
