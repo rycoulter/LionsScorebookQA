@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.99";
+const APP_VERSION = "v.1.1.100";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -13829,7 +13829,7 @@ function exportStatsTable(mode) {
     .filter(({ player }) => playerFilter === "all" || player.id === playerFilter);
   const headers = isPitching
     ? ["Player", "W", "L", "ND", "IP", "NP", "Balls", "Strikes", "Str%", "BF", "H", "R", "ERA", "BB", "HBP", "K", "K%", "BB%", "K/BB", "K/9", "R/9", "WHIP", "P/IP"]
-    : ["Player", "GP", "PA", "AB", "H", "1B", "2B", "3B", "HR", "AVG", "OPS", "RISP", "OBP", "SLG", "RBI", "BB", "HBP", "K", "SB", "CS", "PO", "ROE", "E"];
+    : ["Player", "GP", "PA", "AB", "H", "1B", "2B", "3B", "HR", "AVG", "OPS", "R", "OBP", "SLG", "RBI", "BB", "HBP", "K", "SB", "CS", "PO", "ROE", "E"];
   const dataRows = isPitching
     ? rows.map(({ player, pit }) => [
       `#${player.number} ${player.name}`,
@@ -13868,7 +13868,7 @@ function exportStatsTable(mode) {
       hit.hr,
       formatRate(hit.avg),
       formatRate(hit.ops),
-      formatRispRate(hit),
+      hit.runs,
       formatRate(hit.obp),
       formatRate(hit.slg),
       hit.rbi,
@@ -17327,7 +17327,7 @@ function renderSeasonStats() {
         <td>${hit.hr}</td>
         <td${statsThresholdClass("avg", hit.avg, hit.ab > 0)}>${formatRate(hit.avg)}</td>
         <td${statsThresholdClass("ops", hit.ops, hit.pa > 0)}>${formatRate(hit.ops)}</td>
-        <td${statsThresholdClass("risp", hit.risp, hit.rispAB > 0)}>${formatRispRate(hit)}</td>
+        <td>${hit.runs}</td>
         <td>${formatRate(hit.obp)}</td>
         <td>${formatRate(hit.slg)}</td>
         <td>${hit.rbi}</td>
@@ -17406,7 +17406,7 @@ function renderSeasonStats() {
             ${mobileStatPill("H", hit.h, mobileStatIsLeader(mobileHittingLeaders, "h", player.id))}
             ${mobileStatPill("OPS", formatRate(hit.ops), mobileStatIsLeader(mobileHittingLeaders, "ops", player.id))}
             ${mobileStatPill("RBI", hit.rbi, mobileStatIsLeader(mobileHittingLeaders, "rbi", player.id))}
-            ${mobileStatPill("RISP", formatRispRate(hit), mobileStatIsLeader(mobileHittingLeaders, "risp", player.id))}
+            ${mobileStatPill("R", hit.runs, mobileStatIsLeader(mobileHittingLeaders, "runs", player.id))}
             ${mobileStatPill("SB", hit.sb, mobileStatIsLeader(mobileHittingLeaders, "sb", player.id))}
             ${mobileStatPill("K", hit.k, mobileStatIsLeader(mobileHittingLeaders, "k", player.id))}
           </div>
@@ -17852,7 +17852,7 @@ function renderStatsProfiles(hitting, pitching) {
         ${statProfileMetric("OBP", formatRate(hitting.obp))}
         ${statProfileMetric("SLG", formatRate(hitting.slg))}
         ${statProfileMetric("OPS", formatRate(hitting.ops))}
-        ${statProfileMetric("RISP", formatRispRate(hitting), hitting.rispAB ? `${hitting.rispH}/${hitting.rispAB}` : "")}
+        ${statProfileMetric("R", String(hitting.runs || 0))}
         ${statProfileMetric("BB/K", formatRatio(hitting.bb, hitting.k))}
       </div>`;
   }
@@ -17932,7 +17932,6 @@ function statsThresholdClass(metric, value, eligible = true) {
   if (!eligible) return "";
   if (metric === "avg" && value > 0.35) return " class=\"stats-highlight-cell\"";
   if (metric === "ops" && value > 1) return " class=\"stats-highlight-cell\"";
-  if (metric === "risp" && value > 0.4) return " class=\"stats-highlight-cell\"";
   return "";
 }
 
@@ -18849,7 +18848,7 @@ function mobileHittingLeaderMap(rows = []) {
     { key: "h", value: (row) => row.hit.h, eligible: (row) => row.hit.h > 0 },
     { key: "ops", value: (row) => row.hit.ops, eligible: (row) => row.hit.pa > 0 },
     { key: "rbi", value: (row) => row.hit.rbi, eligible: (row) => row.hit.rbi > 0 },
-    { key: "risp", value: (row) => row.hit.risp, eligible: (row) => row.hit.rispAB > 0 },
+    { key: "runs", value: (row) => row.hit.runs, eligible: (row) => row.hit.runs > 0 },
     { key: "sb", value: (row) => row.hit.sb, eligible: (row) => row.hit.sb > 0 },
     { key: "k", value: (row) => row.hit.k, eligible: (row) => row.hit.pa > 0, lowWins: true }
   ]);
@@ -18902,7 +18901,7 @@ function mobileHittingSortLabel() {
     obp: "OBP",
     slg: "SLG",
     ops: "OPS",
-    risp: "RISP",
+    runs: "Runs",
     h: "Hits",
     rbi: "RBI",
     bb: "BB",
@@ -18949,7 +18948,6 @@ function mobilePitchingSortLabel() {
 function formatMobileHittingSortValue(hit, gp, player) {
   if (hittingSort.key === "name") return player.name;
   if (hittingSort.key === "gp") return String(gp);
-  if (hittingSort.key === "risp") return formatRispRate(hit);
   const value = hit[hittingSort.key] ?? 0;
   if (["avg", "obp", "slg", "ops"].includes(hittingSort.key)) return formatRate(value);
   return String(value);

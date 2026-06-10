@@ -20,7 +20,8 @@ function functionBody(source, functionName) {
 }
 
 mustMatch(indexHtml, /<th>Edit<\/th>/, "Hitting stats table should include an Edit column");
-mustMatch(indexHtml, /data-hit-sort="risp">RISP/, "RISP should be sortable in the hitting stats table");
+mustMatch(indexHtml, /data-hit-sort="runs">R/, "Runs should be sortable in the hitting stats table");
+assert.doesNotMatch(indexHtml, /data-hit-sort="risp">RISP/, "RISP should not be shown in the hitting stats table");
 mustMatch(appJs, /statsEditButtonMarkup\(player\)/, "Hitting stats rows should render edit buttons");
 mustMatch(appJs, /data-edit-hitting-player="\$\{escapeHtml\(player\.id\)\}"/, "Edit buttons should target a specific player");
 mustMatch(appJs, /colspan="24" class="stats-empty-row"/, "Empty hitting stats row should span the added edit column");
@@ -77,8 +78,8 @@ const manualEventsBody = functionBody(appJs, "manualHittingStatEvents");
 mustMatch(appJs, /function applyManualHittingRispToEvents/, "Manual RISP counts should be mapped to stat-source events");
 mustMatch(appJs, /event\.hasRISP = true/, "Manual RISP mapping should flag selected synthetic events");
 mustMatch(manualEventsBody, /applyManualHittingRispToEvents\(events, stats\)/, "Manual hitting events should apply RISP flags before stat calculation");
-mustMatch(appJs, /risp: "RISP"/, "Mobile hitting sort labels should include RISP");
-mustMatch(appJs, /if \(hittingSort\.key === "risp"\) return formatRispRate\(hit\)/, "Mobile hitting sort values should format RISP as a rate");
+mustMatch(appJs, /runs: "Runs"/, "Mobile hitting sort labels should include Runs");
+assert.doesNotMatch(appJs, /if \(hittingSort\.key === "risp"\) return formatRispRate\(hit\)/, "Mobile hitting sort values should not special-case RISP");
 
 const normalizeSpraysBody = functionBody(appJs, "normalizeStatEditSprays");
 mustMatch(normalizeSpraysBody, /normalizeStatEditSprayResult\(spray\?\.result, fallback\)/, "Edited spray dots should preserve selected result types");

@@ -31,7 +31,10 @@ assert.match(renderSeasonStatsBody, /renderStatsProfiles\(teamStats\(statsSeason
 assert.match(renderSeasonStatsBody, /renderStatsSprayDashboard\(\)/, "Season stats should refresh spray chart preview and tendencies");
 assert.match(renderSeasonStatsBody, /statsThresholdClass\("avg", hit\.avg, hit\.ab > 0\)/, "AVG table cells should get threshold formatting");
 assert.match(renderSeasonStatsBody, /statsThresholdClass\("ops", hit\.ops, hit\.pa > 0\)/, "OPS table cells should get threshold formatting");
-assert.match(renderSeasonStatsBody, /statsThresholdClass\("risp", hit\.risp, hit\.rispAB > 0\)/, "RISP table cells should get threshold formatting");
+assert.match(indexHtml, /data-hit-sort="runs">R<\/button>/, "Hitting stats table should show Runs instead of RISP");
+assert.doesNotMatch(indexHtml, /data-hit-sort="risp">RISP<\/button>/, "Hitting stats table should not show RISP as a column");
+assert.match(renderSeasonStatsBody, /<td>\$\{hit\.runs\}<\/td>/, "Desktop hitting rows should display runs scored");
+assert.match(renderSeasonStatsBody, /mobileStatPill\("R", hit\.runs, mobileStatIsLeader\(mobileHittingLeaders, "runs", player\.id\)\)/, "Mobile hitting cards should display runs scored");
 
 const renderStatsModeBody = functionBody(appJs, "renderStatsMode");
 assert.match(renderStatsModeBody, /showSprayShell = focusedMode \|\| statsMode !== "pitching"/, "Spray chart should stay off the standard pitching stats view");
@@ -40,6 +43,10 @@ assert.match(renderStatsModeBody, /els\.statsSprayShell\.hidden = !showSprayShel
 const renderLeadersBody = functionBody(appJs, "renderLeaders");
 assert.match(renderLeadersBody, /leaderCard\("OBP"/, "Hitting leaders should use OBP instead of Hits");
 assert.doesNotMatch(renderLeadersBody, /leaderCard\("Hits"/, "Hits should not be one of the preferred leader cards");
+
+const renderStatsProfilesBody = functionBody(appJs, "renderStatsProfiles");
+assert.match(renderStatsProfilesBody, /statProfileMetric\("R", String\(hitting\.runs \|\| 0\)\)/, "Offensive profile should show Runs instead of RISP");
+assert.doesNotMatch(renderStatsProfilesBody, /statProfileMetric\("RISP"/, "Offensive profile should not show RISP");
 
 const spotlightBody = functionBody(appJs, "renderPlayerSpotlight");
 assert.match(appJs, /const PLAYER_SPOTLIGHT_MIN_PA = 5/, "Player Spotlight should require a 5 PA eligibility floor when possible");
@@ -56,6 +63,10 @@ const statsForPlayerInGamesBody = functionBody(appJs, "statsForPlayerInGames");
 assert.match(statsForPlayerInGamesBody, /stats\.runs = runsScoredForPlayerInGames\(playerId, games\)/, "Player Spotlight recent stats should include runs");
 const runsScoredForPlayerInGamesBody = functionBody(appJs, "runsScoredForPlayerInGames");
 assert.match(runsScoredForPlayerInGamesBody, /offensiveEventsForStatsGame\(game\)/, "Player Spotlight runs should be calculated from the selected game window");
+
+const exportStatsTableBody = functionBody(appJs, "exportStatsTable");
+assert.match(exportStatsTableBody, /"OPS", "R", "OBP"/, "Hitting stats export should include Runs after OPS");
+assert.match(exportStatsTableBody, /formatRate\(hit\.ops\),[\s\S]*hit\.runs,[\s\S]*formatRate\(hit\.obp\)/, "Hitting stats export rows should write runs instead of RISP");
 
 const spotlightScoreBody = functionBody(appJs, "playerSpotlightHitterScore");
 assert.match(spotlightScoreBody, /boxScoreHitterStarScore/, "Player Spotlight should reuse the Three Stars hitter scoring model");
