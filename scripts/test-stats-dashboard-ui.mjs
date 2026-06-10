@@ -17,6 +17,7 @@ function functionBody(source, functionName) {
 
 assert.match(indexHtml, /id="statsPlayerSpotlight"/, "Stats page should include a Player Spotlight card");
 assert.match(indexHtml, /id="statsHotBatsGrid"/, "Stats page should include a Hot Bats render target");
+assert.match(indexHtml, /class="stats-profile-carousel"[\s\S]*id="statsOffensiveProfile"[\s\S]*id="statsPitchingProfile"/, "Stats profile cards should be grouped for mobile carousel layout");
 assert.match(indexHtml, /id="statsOffensiveProfile"/, "Stats page should include an offensive profile card");
 assert.match(indexHtml, /id="statsPitchingProfile"/, "Stats page should include a pitching profile card");
 assert.match(indexHtml, /id="statsTendenciesPanel"/, "Stats page should include a Team Tendencies panel");
@@ -41,12 +42,19 @@ assert.match(renderLeadersBody, /leaderCard\("OBP"/, "Hitting leaders should use
 assert.doesNotMatch(renderLeadersBody, /leaderCard\("Hits"/, "Hits should not be one of the preferred leader cards");
 
 const spotlightBody = functionBody(appJs, "renderPlayerSpotlight");
-assert.match(spotlightBody, /Best hitter over \$\{escapeHtml\(gameWindowLabel\)\} by OPS/, "Player Spotlight should explain the recent-game OPS window");
+assert.match(appJs, /const PLAYER_SPOTLIGHT_MIN_PA = 5/, "Player Spotlight should require a 5 PA eligibility floor when possible");
+assert.match(spotlightBody, /Limited recent sample over \$\{gameWindowLabel\}\./, "Player Spotlight should flag the fallback when no hitter has enough recent PA");
+assert.match(spotlightBody, /Best hitter over \$\{gameWindowLabel\} by OPS\. Min \$\{PLAYER_SPOTLIGHT_MIN_PA\} PA\./, "Player Spotlight should explain the recent-game OPS window and PA floor");
 assert.match(spotlightBody, /data-spotlight-player/, "Player Spotlight should expose an action to focus that player");
 
 const recentSpotlightBody = functionBody(appJs, "recentHittingRowsForSpotlight");
 assert.match(recentSpotlightBody, /statsGamesWithDataForSeason\(statsSeasonFilter\)\.slice\(0, limit\)/, "Player Spotlight should use the latest stat-bearing games in the selected season");
 assert.match(recentSpotlightBody, /statsForPlayerInGames\(player\.id, recentGames\)/, "Player Spotlight should aggregate each hitter only across recent games");
+
+const spotlightSelectionBody = functionBody(appJs, "playerSpotlightSelection");
+assert.match(spotlightSelectionBody, /\(row\.hit\?\.pa \|\| 0\) >= PLAYER_SPOTLIGHT_MIN_PA/, "Player Spotlight should filter to hitters with enough PA before ranking");
+assert.match(spotlightSelectionBody, /limitedSample: false/, "Player Spotlight should mark qualified leaders as normal samples");
+assert.match(spotlightSelectionBody, /limitedSample: Boolean\(fallbackRow\)/, "Player Spotlight should fall back with a limited sample indicator");
 
 const sprayDashboardBody = functionBody(appJs, "renderStatsSprayDashboard");
 assert.match(sprayDashboardBody, /Spray chart data will appear after balls in play are recorded\./, "Spray preview should have the requested empty state");
@@ -55,6 +63,9 @@ assert.match(sprayDashboardBody, /Pull[\s\S]*Center[\s\S]*Oppo[\s\S]*Hits[\s\S]*
 assert.match(stylesCss, /#statsView \.stats-spotlight-card[\s\S]*border-color: rgba\(245, 189, 33, 0\.38\)/, "Spotlight card should use a gold accent border");
 assert.match(stylesCss, /#statsView \.stats-spotlight-card[\s\S]*grid-column: 1 \/ -1/, "Spotlight card should span the dashboard width");
 assert.match(stylesCss, /#statsView \.stats-spotlight-metrics[\s\S]*repeat\(auto-fit, minmax\(104px, 1fr\)\)/, "Spotlight metrics should wrap before values crowd together");
+assert.match(stylesCss, /#statsView \.stats-profile-carousel[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/, "Profile cards should sit side-by-side on larger screens");
+assert.match(stylesCss, /#statsView \.stats-profile-carousel[\s\S]*display: flex[\s\S]*scroll-snap-type: x mandatory/, "Profile cards should become a swipe carousel on mobile");
+assert.match(stylesCss, /#statsView \.stats-profile-carousel \.stats-profile-card[\s\S]*flex: 0 0 calc\(100% - 64px\)/, "Mobile profile carousel should show one card plus a sliver of the next");
 assert.match(stylesCss, /#statsView \.stats-table th:first-child,[\s\S]*position: sticky/, "Stats table should keep the player column sticky");
 assert.match(stylesCss, /#statsView \.stats-highlight-cell[\s\S]*color: var\(--lion-gold\)/, "Stat threshold cells should use Lions gold");
 assert.match(stylesCss, /#statsView \.stats-hot-bats-grid[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/, "Hot Bats should render as compact desktop cards");

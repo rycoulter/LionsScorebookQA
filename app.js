@@ -623,7 +623,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.94";
+const APP_VERSION = "v.1.1.95";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -17338,6 +17338,7 @@ function playerHasHittingLine(row) {
 }
 
 const PLAYER_SPOTLIGHT_GAME_LIMIT = 3;
+const PLAYER_SPOTLIGHT_MIN_PA = 5;
 
 function gamesPlayedForPlayerInGames(playerId, games = []) {
   return games.filter((game) => {
@@ -17384,6 +17385,14 @@ function topHittingRows(rows = [], limit = 3) {
     .slice(0, limit);
 }
 
+function playerSpotlightSelection(rows = []) {
+  const qualifiedRows = rows.filter((row) => playerHasHittingLine(row) && (row.hit?.pa || 0) >= PLAYER_SPOTLIGHT_MIN_PA);
+  const [qualifiedRow] = topHittingRows(qualifiedRows, 1);
+  if (qualifiedRow) return { row: qualifiedRow, limitedSample: false };
+  const [fallbackRow] = topHittingRows(rows, 1);
+  return { row: fallbackRow || null, limitedSample: Boolean(fallbackRow) };
+}
+
 function statProfileMetric(label, value, detail = "") {
   return `<div class="stats-profile-metric">
     <span>${escapeHtml(label)}</span>
@@ -17403,7 +17412,7 @@ function formatNullableRate(value, eligible = true) {
 
 function renderPlayerSpotlight(rows = []) {
   if (!els.statsPlayerSpotlight) return;
-  const [row] = topHittingRows(rows, 1);
+  const { row, limitedSample } = playerSpotlightSelection(rows);
   if (!row) {
     els.statsPlayerSpotlight.innerHTML = `<p class="player-meta">Player Spotlight</p>
       <h3>No season stats yet.</h3>
@@ -17413,10 +17422,13 @@ function renderPlayerSpotlight(rows = []) {
   const { player, hit } = row;
   const gameCount = Math.max(1, Math.min(row.spotlightGameCount || PLAYER_SPOTLIGHT_GAME_LIMIT, PLAYER_SPOTLIGHT_GAME_LIMIT));
   const gameWindowLabel = gameCount === 1 ? "the last game" : `the last ${gameCount} games`;
+  const spotlightSummary = limitedSample
+    ? `Limited recent sample over ${gameWindowLabel}.`
+    : `Best hitter over ${gameWindowLabel} by OPS. Min ${PLAYER_SPOTLIGHT_MIN_PA} PA.`;
   els.statsPlayerSpotlight.innerHTML = `<div class="stats-spotlight-copy">
       <p class="player-meta">Player Spotlight</p>
       <h3>${escapeHtml(playerNumberName(player))}</h3>
-      <p>Best hitter over ${escapeHtml(gameWindowLabel)} by OPS.</p>
+      <p>${escapeHtml(spotlightSummary)}</p>
     </div>
     <div class="stats-spotlight-metrics">
       ${statProfileMetric("AVG", formatRate(hit.avg))}
