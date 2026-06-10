@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.100";
+const APP_VERSION = "v.1.1.101";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -17707,17 +17707,7 @@ function statsForPlayerInGames(playerId, games = []) {
 }
 
 function runsScoredForPlayerInGames(playerId, games = []) {
-  return games.reduce((total, game) => {
-    return total + offensiveEventsForStatsGame(game).reduce((gameTotal, event) => {
-      const runs = (event.runnerAdvancements || []).filter((advancement) => (
-        advancement?.runnerId === playerId
-        && advancement.to === "home"
-        && !advancement.out
-        && !advancement.remove
-      )).length;
-      return gameTotal + runs;
-    }, 0);
-  }, 0);
+  return runsScoredFromEvents(games.flatMap((game) => offensiveEventsForStatsGame(game)), playerId);
 }
 
 function recentHittingRowsForSpotlight(limit = PLAYER_SPOTLIGHT_GAME_LIMIT) {
@@ -19594,30 +19584,37 @@ function allOffensiveEvents(season = null, gameId = null) {
 
 function statsForPlayer(playerId, season = null, gameId = null) {
   const stats = emptyStats();
-  allOffensiveEvents(season, gameId)
-    .filter((event) => event.playerId === playerId)
+  const events = allOffensiveEvents(season, gameId);
+  events.filter((event) => event.playerId === playerId)
     .forEach((event) => applyEventToStats(stats, event));
+  stats.runs = runsScoredFromEvents(events, playerId);
   finishStats(stats);
   return stats;
 }
 
 function teamStats(season = null) {
   const stats = emptyStats();
-  allOffensiveEvents(season).forEach((event) => applyEventToStats(stats, event));
+  const events = allOffensiveEvents(season);
+  events.forEach((event) => applyEventToStats(stats, event));
+  stats.runs = runsScoredFromEvents(events);
   finishStats(stats);
   return stats;
 }
 
-function runsScoredForPlayer(playerId, season = null, gameId = null) {
-  return allOffensiveEvents(season, gameId).reduce((total, event) => {
+function runsScoredFromEvents(events = [], playerId = null) {
+  return events.reduce((total, event) => {
     const scoredOnAdvancement = (event.runnerAdvancements || []).filter((advancement) =>
-      advancement?.runnerId === playerId
+      (!playerId || advancement?.runnerId === playerId)
         && advancement.to === "home"
         && !advancement.out
         && !advancement.remove
     ).length;
     return total + scoredOnAdvancement;
   }, 0);
+}
+
+function runsScoredForPlayer(playerId, season = null, gameId = null) {
+  return runsScoredFromEvents(allOffensiveEvents(season, gameId), playerId);
 }
 
 function emptyStats() {
@@ -19638,6 +19635,7 @@ function emptyStats() {
     dp: 0,
     tb: 0,
     rbi: 0,
+    runs: 0,
     sb: 0,
     cs: 0,
     po: 0,

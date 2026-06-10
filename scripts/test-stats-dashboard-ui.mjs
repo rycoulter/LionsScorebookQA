@@ -36,6 +36,13 @@ assert.doesNotMatch(indexHtml, /data-hit-sort="risp">RISP<\/button>/, "Hitting s
 assert.match(renderSeasonStatsBody, /<td>\$\{hit\.runs\}<\/td>/, "Desktop hitting rows should display runs scored");
 assert.match(renderSeasonStatsBody, /mobileStatPill\("R", hit\.runs, mobileStatIsLeader\(mobileHittingLeaders, "runs", player\.id\)\)/, "Mobile hitting cards should display runs scored");
 
+const emptyStatsBody = functionBody(appJs, "emptyStats");
+assert.match(emptyStatsBody, /runs: 0/, "Hitting stat objects should initialize runs so the table never renders undefined");
+const statsForPlayerBody = functionBody(appJs, "statsForPlayer");
+assert.match(statsForPlayerBody, /stats\.runs = runsScoredFromEvents\(events, playerId\)/, "Player hitting stats should include runner-attributed runs scored");
+const teamStatsBody = functionBody(appJs, "teamStats");
+assert.match(teamStatsBody, /stats\.runs = runsScoredFromEvents\(events\)/, "Team offensive profile should include total runs scored");
+
 const renderStatsModeBody = functionBody(appJs, "renderStatsMode");
 assert.match(renderStatsModeBody, /showSprayShell = focusedMode \|\| statsMode !== "pitching"/, "Spray chart should stay off the standard pitching stats view");
 assert.match(renderStatsModeBody, /els\.statsSprayShell\.hidden = !showSprayShell/, "Stats mode should hide the spray section when pitching is selected");
