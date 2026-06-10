@@ -30,6 +30,7 @@ mustMatch(indexHtml, /id="statEditGameSelectModal"[\s\S]*Select Game to Edit/, "
 mustMatch(indexHtml, /id="statEditGameModal"[\s\S]*Edit Game Stats/, "Edit Game Stats modal should exist");
 mustMatch(indexHtml, /id="pitchingStatEditGameSelectModal"[\s\S]*Select Game to Edit/, "Select Game to Edit modal should exist for pitching");
 mustMatch(indexHtml, /id="pitchingStatEditGameModal"[\s\S]*Edit Pitching Stats/, "Edit Pitching Stats modal should exist");
+mustMatch(indexHtml, /id="statEditPosition"/, "Game-level hitting editor should include a game position selector");
 ["Ab", "H", "RispAB", "RispH", "Singles", "Doubles", "Triples", "Hr", "Bb", "Hbp", "K", "Roe", "Errors", "Fc", "Sac", "Dp", "Go", "Lo", "Fo", "Sb", "Cs", "Po", "Rbi", "Runs"].forEach((field) => {
   mustMatch(indexHtml, new RegExp(`id="statEdit${field}"`), `${field} input should exist`);
 });
@@ -47,6 +48,7 @@ mustMatch(appJs, /hittingStatEditMap\(game\)/, "Game-level hitting edit storage 
 mustMatch(appJs, /pitchingStatEditMap\(game\)/, "Game-level pitching edit storage should exist");
 mustMatch(appJs, /normalizeManualHittingStats/, "Manual game stat edits should be normalized before save");
 mustMatch(appJs, /normalizeManualPitchingStats/, "Manual pitching stat edits should be normalized before save");
+mustMatch(appJs, /function normalizeGameStatPosition/, "Manual game stat edits should normalize per-game positions");
 mustMatch(appJs, /manualHittingStatEvents/, "Manual game stat lines should become stat-source events");
 mustMatch(appJs, /manualPitchingStatEvents/, "Manual pitching stat lines should become stat-source events");
 mustMatch(appJs, /sprayEventsForGame/, "Spray chart should read through the game-aware spray event helper");
@@ -82,6 +84,7 @@ const normalizeSpraysBody = functionBody(appJs, "normalizeStatEditSprays");
 mustMatch(normalizeSpraysBody, /normalizeStatEditSprayResult\(spray\?\.result, fallback\)/, "Edited spray dots should preserve selected result types");
 
 const saveBody = functionBody(appJs, "saveStatEditGameStats");
+mustMatch(saveBody, /position: collectStatEditPosition\(\)/, "Saving should include the selected game position");
 mustMatch(saveBody, /hittingStatEditMap\(game\)\[player\.id\] = edit/, "Saving should write the edit to the selected game");
 mustMatch(saveBody, /saveStateWithOptions\(\{ liveSyncReason: "game-stat-edit" \}\)/, "Saving should persist the game edit");
 mustMatch(saveBody, /render\(\)/, "Saving should rerender stats and spray chart views immediately");
@@ -108,6 +111,7 @@ mustMatch(boxScoreBattingEventsBody, /offensiveEventsForStatsGame\(game\)/, "Lio
 const boxScoreBattingRowsBody = functionBody(appJs, "boxScoreBattingRows");
 mustMatch(boxScoreBattingRowsBody, /Object\.entries\(hittingStatEditMap\(game\)\)/, "Box score batting rows should include manual hitting stat lines");
 mustMatch(boxScoreBattingRowsBody, /normalizeHittingStatEdit\(edit, playerId, game\)/, "Box score batting rows should normalize manual hitting edits");
+mustMatch(boxScoreBattingRowsBody, /normalized\.position \|\| lineupEntry\?\.role/, "Box score batting rows should prefer a saved game position over roster defaults");
 ["ab", "runs", "h", "rbi", "bb", "k"].forEach((field) => {
   mustMatch(boxScoreBattingRowsBody, new RegExp(`stats\\.${field}`), `Box score batting rows should map manual ${field}`);
 });

@@ -26,16 +26,23 @@ mustMatch(indexHtml, /id="boxScoreEditModal"[\s\S]*Edit Box Score/, "Box score e
 mustMatch(indexHtml, /id="boxScoreEditFields"/, "Box score edit modal should have dynamic fields");
 mustMatch(indexHtml, /id="boxScoreEditForm"/, "Box score edit modal should have a save form");
 mustMatch(indexHtml, /id="boxScoreSummary"[\s\S]*id="boxScoreStars"[\s\S]*Line Score/, "Three Stars should render directly below the final score and above the line score");
+mustMatch(indexHtml, /id="boxScoreBattingHead"[\s\S]*id="boxScoreBattingBody"[\s\S]*id="boxScoreBattingFoot"/, "Batting box table should render dynamic head, body, and totals footer targets");
 
 mustMatch(appJs, /boxScoreEditBtn: document\.getElementById\("boxScoreEditBtn"\)/, "Box score edit button should be registered");
 mustMatch(appJs, /boxScoreMobileEditBtn: document\.getElementById\("boxScoreMobileEditBtn"\)/, "Mobile box score edit button should be registered");
 mustMatch(appJs, /boxScoreStars: document\.getElementById\("boxScoreStars"\)/, "Three Stars render target should be registered");
+mustMatch(appJs, /boxScoreBattingHead: document\.getElementById\("boxScoreBattingHead"\)/, "Dynamic batting box header target should be registered");
+mustMatch(appJs, /boxScoreBattingFoot: document\.getElementById\("boxScoreBattingFoot"\)/, "Dynamic batting box totals target should be registered");
 mustMatch(appJs, /boxScoreLineEdits/, "Game-level box score line edit storage should exist");
 
 const renderBody = functionBody(appJs, "renderBoxScore");
 mustMatch(renderBody, /setBoxScoreEditButtonsVisible\(false\)/, "Edit buttons should hide when no game is selected");
 mustMatch(renderBody, /setBoxScoreEditButtonsVisible\(isAdminMode\(\)\)/, "Edit buttons should only display in admin mode");
 mustMatch(renderBody, /renderBoxScoreStars\(game, teams\)/, "Box score should render Three Stars for the selected game");
+mustMatch(renderBody, /boxScoreBattingRows\(game, selectedTeam, \{ includeBaseRunning: true \}\)/, "Batting box score should include SB and CS base-running lines");
+mustMatch(renderBody, /boxScoreBattingColumns\(battingRows\)/, "Batting box score should derive a dynamic column list");
+mustMatch(renderBody, /renderBoxScoreBattingHeader\(battingColumns\)/, "Batting box score should render a dynamic header");
+mustMatch(renderBody, /renderBoxScoreBattingTotalsRow\(battingRows, battingColumns\)/, "Batting box score should render a totals footer");
 
 const openBody = functionBody(appJs, "openBoxScoreEditModal");
 mustMatch(openBody, /requireAdminAccess\("Admin sign-in required to edit box scores\."\)/, "Opening the editor should require admin access");
@@ -76,6 +83,22 @@ mustMatch(appJs, /Three Stars will be generated when game statistics are availab
 mustMatch(appJs, /function boxScoreBaseRunningEvents/, "Three Stars should account for non-PA base-running events");
 mustMatch(appJs, /typeLabel: star\.types\.size > 1 \? "Two-Way"/, "Two-way players should get a Two-Way badge");
 
+const battingRowsBody = functionBody(appJs, "boxScoreBattingRows");
+mustMatch(battingRowsBody, /row\.sac \+= 1/, "Batting rows should track sacrifice columns");
+mustMatch(battingRowsBody, /event\.result === "CS"[\s\S]*row\.cs \+= 1/, "Batting rows should track caught stealing from base-running events");
+
+const battingColumnsBody = functionBody(appJs, "boxScoreBattingColumns");
+["pa", "avg", "obp", "slg", "ops"].forEach((key) => {
+  mustMatch(battingColumnsBody, new RegExp(`key: "${key}"`), `Dynamic batting columns should include ${key.toUpperCase()}`);
+});
+["doubles", "triples", "hr", "sac", "sb", "cs"].forEach((key) => {
+  mustMatch(battingColumnsBody, new RegExp(`hasStat\\("${key}"\\)`), `Dynamic batting columns should conditionally show ${key}`);
+});
+
+const ratesBody = functionBody(appJs, "boxScoreBattingRates");
+mustMatch(ratesBody, /divide\(row\.h \|\| 0, row\.ab \|\| 0\)/, "Batting rates should calculate AVG from H/AB");
+mustMatch(ratesBody, /boxScoreBattingTotalBases\(row\)/, "Batting rates should calculate SLG from total bases");
+
 const teamFormBody = functionBody(appJs, "renderBoxScoreEditTeam");
 ["data-box-score-edit-inning", "data-box-score-edit-field=\"runs\"", "data-box-score-edit-field=\"hits\"", "data-box-score-edit-field=\"errors\""].forEach((snippet) => {
   mustMatch(teamFormBody, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `Editor should include ${snippet}`);
@@ -96,5 +119,6 @@ mustMatch(stylesCss, /\.box-score-edit-totals[\s\S]*grid-template-columns: repea
 mustMatch(stylesCss, /\.box-score-stars-grid[\s\S]*grid-template-columns: minmax\(240px, 1\.18fr\) minmax\(210px, 0\.91fr\) minmax\(210px, 0\.91fr\)/, "Three Stars should use a horizontal desktop card layout with a larger first slot");
 mustMatch(stylesCss, /\.box-score-star-card\.is-first[\s\S]*box-shadow/, "First Star should receive a gold glow");
 mustMatch(stylesCss, /\.box-score-star-badge/, "Three Stars should style the Hitting/Pitching/Two-Way badge");
+mustMatch(stylesCss, /\.box-score-table tfoot th,[\s\S]*font-weight: 950/, "Batting totals footer should be styled as a totals row");
 
 console.log("Box score line editing checks passed.");

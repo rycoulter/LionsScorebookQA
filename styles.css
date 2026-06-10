@@ -8824,6 +8824,11 @@ button:focus-visible {
   min-width: 48px;
 }
 
+.bulk-stat-table th.bulk-stat-position-col,
+.bulk-stat-table td.bulk-stat-position-cell {
+  min-width: 76px;
+}
+
 .bulk-stat-table thead th {
   position: sticky;
   top: 0;
@@ -8929,6 +8934,11 @@ button:focus-visible {
 .bulk-stat-table select {
   min-width: 104px;
   text-align: left;
+}
+
+.bulk-stat-table .bulk-stat-position-select {
+  min-width: 68px;
+  text-align: center;
 }
 
 .bulk-stat-table input:focus,
@@ -9251,6 +9261,20 @@ button:focus-visible {
 .box-score-table tbody tr:last-child th,
 .box-score-table tbody tr:last-child td {
   border-bottom: 0;
+}
+
+.box-score-table tfoot th,
+.box-score-table tfoot td {
+  border-top: 1px solid rgba(245, 189, 33, 0.32);
+  border-bottom: 0;
+  background: rgba(245, 189, 33, 0.08);
+  color: var(--white);
+  font-weight: 950;
+}
+
+.box-score-rate-cell,
+.box-score-rate-col {
+  font-variant-numeric: tabular-nums;
 }
 
 .line-score-table {
@@ -16937,6 +16961,7 @@ select option:checked {
 
   .box-score-table thead th:first-child,
   .box-score-table tbody th,
+  .box-score-table tfoot th,
   .box-score-table td:first-child {
     position: sticky;
     left: 0;

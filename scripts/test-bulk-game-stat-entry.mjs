@@ -39,9 +39,15 @@ mustMatch(gamesBody, /sort\(sortGamesNewestFirst\)/, "Bulk game picker should sh
 
 const hittingTableBody = functionBody(appJs, "renderBulkHittingStatTable");
 mustMatch(hittingTableBody, /bulkStatRosterPlayers\(game\)/, "Bulk hitting table should list roster players for the selected game");
+mustMatch(hittingTableBody, /bulk-stat-position-col/, "Bulk hitting table should include a compact POS column");
+mustMatch(hittingTableBody, /renderBulkHittingPositionSelect\(player, game, draft\.position\)/, "Bulk hitting rows should render a game-position selector");
 mustMatch(hittingTableBody, /renderBulkStatPlayerCell\(player, \{ sprayAction: true \}\)/, "Bulk hitting rows should expose a spray chart action");
 mustMatch(hittingTableBody, /data-bulk-stat-player="\$\{escapeHtml\(player\.id\)\}"/, "Bulk hitting inputs should be grouped by player");
 mustMatch(hittingTableBody, /data-bulk-stat-key="\$\{escapeHtml\(field\.key\)\}"/, "Bulk hitting inputs should be keyed by stat field");
+
+const positionSelectBody = functionBody(appJs, "renderBulkHittingPositionSelect");
+mustMatch(positionSelectBody, /data-bulk-stat-key="position"/, "Bulk position selector should save through the shared bulk row collector");
+mustMatch(positionSelectBody, /gameStatPositionOptions\(position, fallback\)/, "Bulk position selector should use the shared game-position options");
 
 const playerCellBody = functionBody(appJs, "renderBulkStatPlayerCell");
 mustMatch(playerCellBody, /data-bulk-stat-spray-player="\$\{escapeHtml\(player\.id\)\}"/, "Bulk player cell should render per-player spray buttons");
@@ -58,6 +64,8 @@ mustMatch(collectBody, /rows\.get\(playerId\)\[key\] = input\.value/, "Bulk save
 const applyHittingBody = functionBody(appJs, "applyBulkHittingStatRows");
 mustMatch(applyHittingBody, /const edits = hittingStatEditMap\(game\)/, "Bulk hitting save should use game-level hitting edit storage");
 mustMatch(applyHittingBody, /normalizeManualHittingStats\(raw\)/, "Bulk hitting save should normalize raw row values");
+mustMatch(applyHittingBody, /normalizeGameStatPosition\(rawPosition\)/, "Bulk hitting save should normalize game-position selections");
+mustMatch(applyHittingBody, /position,/, "Bulk hitting save should persist the selected game position");
 mustMatch(applyHittingBody, /const sprays = existing\?\.sprays \|\| \[\]/, "Bulk hitting save should preserve existing spray dots");
 mustMatch(applyHittingBody, /hittingStatEditMap\(game\)/, "Bulk hitting save should stay on the same storage path as individual edits");
 mustMatch(applyHittingBody, /delete edits\[player\.id\]/, "Blank bulk hitting rows should clear existing stat lines when safe");
@@ -88,6 +96,7 @@ mustMatch(appJs, /function manualHittingStatLineHasValues/, "Bulk hitting clear 
 mustMatch(stylesCss, /\.bulk-stat-edit-modal[\s\S]*width: min\(calc\(100vw - 32px\), 1180px\)/, "Bulk stat modal should have a compact desktop layout");
 mustMatch(stylesCss, /\.bulk-stat-table th:first-child,[\s\S]*position: sticky/, "Bulk stat table should keep the player column sticky");
 mustMatch(stylesCss, /\.bulk-stat-table input,[\s\S]*min-height: 30px/, "Bulk stat inputs should be compact and theme-matched");
+mustMatch(stylesCss, /\.bulk-stat-table \.bulk-stat-position-select[\s\S]*min-width: 68px/, "Bulk stat position selector should stay compact");
 mustMatch(stylesCss, /\.bulk-stat-spray-button[\s\S]*color: var\(--lion-gold\)/, "Bulk spray action should match the Lions stat editor theme");
 
 console.log("Bulk game stat entry checks passed.");

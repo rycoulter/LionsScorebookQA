@@ -3,24 +3,24 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <link rel="manifest" href="manifest.json?v=2026.06.10-build-260">
-    <link rel="icon" href="favicon.ico?v=2026.06.10-build-260" sizes="any">
-    <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png?v=2026.06.10-build-260">
-    <link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-48.png?v=2026.06.10-build-260">
-    <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=2026.06.10-build-260">
+    <link rel="manifest" href="manifest.json?v=2026.06.10-build-261">
+    <link rel="icon" href="favicon.ico?v=2026.06.10-build-261" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png?v=2026.06.10-build-261">
+    <link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-48.png?v=2026.06.10-build-261">
+    <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=2026.06.10-build-261">
     <meta name="theme-color" content="#1f2937">
   <title>Oakmont Lions</title>
     <link rel="preconnect" href="https://images.unsplash.com">
-    <link rel="stylesheet" href="styles.css?v=2026.06.10-build-260">
+    <link rel="stylesheet" href="styles.css?v=2026.06.10-build-261">
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
         <div class="brand-block">
-          <img src="assets/team-logos/lions-header-mark.png?v=2026.06.10-build-260" alt="" class="brand-logo" width="48" height="48">
+          <img src="assets/team-logos/lions-header-mark.png?v=2026.06.10-build-261" alt="" class="brand-logo" width="48" height="48">
           <div class="brand-copy">
             <h1 class="sr-only">Oakmont Lions</h1>
-            <img src="assets/team-logos/lions-header-wordmark-cropped.png?v=2026.06.10-build-260" alt="" class="brand-wordmark" width="170" height="67" aria-hidden="true">
+            <img src="assets/team-logos/lions-header-wordmark-cropped.png?v=2026.06.10-build-261" alt="" class="brand-wordmark" width="170" height="67" aria-hidden="true">
           </div>
         </div>
         <nav class="tabs" aria-label="Scorebook sections">
@@ -91,7 +91,7 @@
                   </p>
                 </div>
                 <img
-                src="assets/backgrounds/lions-no-game-hero.png?v=2026.06.10-build-260"
+                src="assets/backgrounds/lions-no-game-hero.png?v=2026.06.10-build-261"
                   alt="Oakmont Lions"
                   id="homeMatchupImage"
                   class="home-field-image is-no-game-hero">
@@ -524,7 +524,7 @@
                   </div>
                   <div class="spray-chart" id="sprayChart" role="button" tabindex="0" aria-label="Tap to set batted ball location">
                     <div class="field-layer field-background" aria-hidden="true">
-                      <img class="field-background-art" src="assets/updated-field.png?v=2026.06.10-build-260" alt="" aria-hidden="true">
+                      <img class="field-background-art" src="assets/updated-field.png?v=2026.06.10-build-261" alt="" aria-hidden="true">
                     </div>
                     <div class="field-layer position-marker-layer" aria-hidden="true"></div>
                     <div class="field-layer spray-chart-overlay">
@@ -1370,7 +1370,7 @@
             <div class="stats-spray-feature">
               <div class="stats-spray-preview" aria-hidden="true">
                 <div class="field-layer field-background stats-field-background">
-                  <img class="field-background-art stats-field-background-art" src="assets/updated-field.png?v=2026.06.10-build-260" alt="" aria-hidden="true">
+                  <img class="field-background-art stats-field-background-art" src="assets/updated-field.png?v=2026.06.10-build-261" alt="" aria-hidden="true">
                 </div>
                 <div class="stats-spray-preview-markers" id="statsSprayPreviewMarkers"></div>
               </div>
@@ -1795,23 +1795,14 @@
           <section class="box-score-card box-score-detail-card">
             <div class="mini-head">
               <h3 id="boxScoreBattingTitle">Batting</h3>
-              <span data-mobile-label="Scroll for more">AB, runs, hits, and run production</span>
+              <span data-mobile-label="Scroll for more">Full hitting line, base running, and rates</span>
             </div>
             <p class="box-score-mobile-hint">Swipe sideways to see the full batting line.</p>
             <div class="box-score-table-wrap">
               <table class="box-score-table batting-box-table">
-                <thead>
-                  <tr>
-                    <th>Player</th>
-                    <th>AB</th>
-                    <th>R</th>
-                    <th>H</th>
-                    <th>RBI</th>
-                    <th>BB</th>
-                    <th>SO</th>
-                  </tr>
-                </thead>
+                <thead id="boxScoreBattingHead"></thead>
                 <tbody id="boxScoreBattingBody"></tbody>
+                <tfoot id="boxScoreBattingFoot"></tfoot>
               </table>
             </div>
           </section>
@@ -2209,7 +2200,7 @@
           </div>
           <div class="spray-chart stats-spray-chart" id="statsSprayChart" aria-label="Player spray chart">
             <div class="field-layer field-background stats-field-background" aria-hidden="true">
-                <img class="field-background-art stats-field-background-art" src="assets/updated-field.png?v=2026.06.10-build-260" alt="" aria-hidden="true">
+                <img class="field-background-art stats-field-background-art" src="assets/updated-field.png?v=2026.06.10-build-261" alt="" aria-hidden="true">
             </div>
             <div class="field-layer stats-spray-chart-overlay">
               <div class="spray-markers stats-spray-markers" id="statsSprayMarkers"></div>
@@ -2275,6 +2266,7 @@
         <p class="player-meta" id="statEditGameMeta">Only game-level inputs are editable. Season rates recalculate after save.</p>
         <form class="stat-edit-form" id="statEditGameForm">
           <div class="stat-edit-grid">
+            <label>POS<select id="statEditPosition" name="position"></select></label>
             <label>AB<input id="statEditAb" name="ab" type="number" min="0" step="1" inputmode="numeric"></label>
             <label>H<input id="statEditH" name="h" type="number" min="0" step="1" inputmode="numeric"></label>
             <label>RISP AB<input id="statEditRispAB" name="rispAB" type="number" min="0" step="1" inputmode="numeric"></label>
@@ -2319,7 +2311,7 @@
             </div>
             <div class="spray-chart stat-edit-spray-chart" id="statEditSprayChart" role="button" tabindex="0" aria-label="Tap to add a spray chart location">
               <div class="field-layer field-background" aria-hidden="true">
-                <img class="field-background-art" src="assets/updated-field.png?v=2026.06.10-build-260" alt="" aria-hidden="true">
+                <img class="field-background-art" src="assets/updated-field.png?v=2026.06.10-build-261" alt="" aria-hidden="true">
               </div>
               <div class="field-layer stats-spray-chart-overlay">
                 <div class="spray-markers stats-spray-markers" id="statEditSprayMarkers"></div>
@@ -2392,16 +2384,16 @@
       </div>
     </div>
 
-    <script src="dexie.min.js?v=2026.06.10-build-260"></script>
-    <script src="db.js?v=2026.06.10-build-260"></script>
-    <script src="storage.js?v=2026.06.10-build-260"></script>
-    <script src="matchup-images.js?v=2026.06.10-build-260"></script>
+    <script src="dexie.min.js?v=2026.06.10-build-261"></script>
+    <script src="db.js?v=2026.06.10-build-261"></script>
+    <script src="storage.js?v=2026.06.10-build-261"></script>
+    <script src="matchup-images.js?v=2026.06.10-build-261"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=2026.06.10-build-260"></script>
-    <script src="supabase-storage.js?v=2026.06.10-build-260"></script>
-    <script src="data/league-standings-cache.js?v=2026.06.10-build-260"></script>
-    <script src="data/naba-rosters-cache.js?v=2026.06.10-build-260"></script>
+    <script src="supabase-config.js?v=2026.06.10-build-261"></script>
+    <script src="supabase-storage.js?v=2026.06.10-build-261"></script>
+    <script src="data/league-standings-cache.js?v=2026.06.10-build-261"></script>
+    <script src="data/naba-rosters-cache.js?v=2026.06.10-build-261"></script>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js"></script>
-    <script src="app.js?v=2026.06.10-build-260"></script>
+    <script src="app.js?v=2026.06.10-build-261"></script>
   </body>
 </html>

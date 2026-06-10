@@ -301,6 +301,7 @@ const pitchLabels = {
 const defensivePositions = ["P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"];
 const lineupPositions = ["C", "1B", "2B", "3B", "SS", "LF", "CF", "RF", "DH", "EH", "P"];
 const fieldPositionsWithoutPitcher = ["C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"];
+const gameStatPositions = ["P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF", "DH", "EH", "PH", "PR", "UTL"];
 
 const battedBallResults = new Set(["1B", "2B", "3B", "HR", "ROE", "FC", "DP", "GO", "FO", "LO", "SAC"]);
 const scorebookFielderResults = new Set(["GO", "FO", "LO", "DP", "FC", "SAC", "ROE"]);
@@ -624,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.96";
+const APP_VERSION = "v.1.1.97";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -1242,7 +1243,9 @@ const els = {
   boxScoreLineBody: document.getElementById("boxScoreLineBody"),
   boxScoreTeamTabs: document.getElementById("boxScoreTeamTabs"),
   boxScoreBattingTitle: document.getElementById("boxScoreBattingTitle"),
+  boxScoreBattingHead: document.getElementById("boxScoreBattingHead"),
   boxScoreBattingBody: document.getElementById("boxScoreBattingBody"),
+  boxScoreBattingFoot: document.getElementById("boxScoreBattingFoot"),
   boxScorePitchingTitle: document.getElementById("boxScorePitchingTitle"),
   boxScorePitchingBody: document.getElementById("boxScorePitchingBody"),
   valueBoard: document.getElementById("valueBoard"),
@@ -1325,6 +1328,7 @@ const els = {
   closeStatEditGameBtn: document.getElementById("closeStatEditGameBtn"),
   cancelStatEditGameBtn: document.getElementById("cancelStatEditGameBtn"),
   clearStatEditGameBtn: document.getElementById("clearStatEditGameBtn"),
+  statEditPosition: document.getElementById("statEditPosition"),
   statEditSprayChart: document.getElementById("statEditSprayChart"),
   statEditSprayMarkers: document.getElementById("statEditSprayMarkers"),
   statEditSprayList: document.getElementById("statEditSprayList"),
@@ -1536,6 +1540,14 @@ function normalizeWeight(weight) {
 function formatPositions(positions) {
   const normalized = normalizePositions(positions);
   return normalized.length ? normalized.join(", ") : "UTL";
+}
+
+function normalizeGameStatPosition(position = "") {
+  const normalized = String(position || "")
+    .trim()
+    .toUpperCase()
+    .replace(/^UTIL$/, "UTL");
+  return gameStatPositions.includes(normalized) ? normalized : "";
 }
 
 function playerPrimaryPosition(player) {
@@ -15866,7 +15878,9 @@ function renderBoxScore() {
     els.boxScoreLineHead.innerHTML = "";
     els.boxScoreLineBody.innerHTML = "";
     els.boxScoreTeamTabs.innerHTML = "";
+    if (els.boxScoreBattingHead) els.boxScoreBattingHead.innerHTML = renderBoxScoreBattingHeader(boxScoreBattingColumns([]));
     els.boxScoreBattingBody.innerHTML = "";
+    if (els.boxScoreBattingFoot) els.boxScoreBattingFoot.innerHTML = "";
     els.boxScorePitchingBody.innerHTML = "";
     return;
   }
@@ -15905,11 +15919,18 @@ function renderBoxScore() {
     .join("");
   els.boxScoreBattingTitle.textContent = `${selectedTeam.name} Batting`;
   els.boxScorePitchingTitle.textContent = `${selectedTeam.name} Pitching`;
-  const battingRows = boxScoreBattingRows(game, selectedTeam);
+  const battingRows = boxScoreBattingRows(game, selectedTeam, { includeBaseRunning: true });
+  const battingColumns = boxScoreBattingColumns(battingRows);
   const pitchingRows = boxScorePitchingRows(game, selectedTeam);
+  if (els.boxScoreBattingHead) els.boxScoreBattingHead.innerHTML = renderBoxScoreBattingHeader(battingColumns);
   els.boxScoreBattingBody.innerHTML = battingRows.length
-    ? battingRows.map(renderBoxScoreBattingRow).join("")
-    : `<tr><td colspan="7" class="box-score-empty">No batting events logged for this team.</td></tr>`;
+    ? battingRows.map((row) => renderBoxScoreBattingRow(row, battingColumns)).join("")
+    : `<tr><td colspan="${battingColumns.length}" class="box-score-empty">No batting events logged for this team.</td></tr>`;
+  if (els.boxScoreBattingFoot) {
+    els.boxScoreBattingFoot.innerHTML = battingRows.length
+      ? renderBoxScoreBattingTotalsRow(battingRows, battingColumns)
+      : "";
+  }
   els.boxScorePitchingBody.innerHTML = pitchingRows.length
     ? pitchingRows.map(renderBoxScorePitchingRow).join("")
     : `<tr><td colspan="7" class="box-score-empty">No pitching events logged for this team.</td></tr>`;
@@ -16188,6 +16209,8 @@ function boxScoreBattingRows(game, team, options = {}) {
         hbp: 0,
         so: 0,
         sb: 0,
+        cs: 0,
+        sac: 0,
         doubles: 0,
         triples: 0,
         hr: 0
@@ -16220,6 +16243,7 @@ function boxScoreBattingRows(game, team, options = {}) {
     if (rule.hbp) row.hbp += 1;
     if (rule.k) row.so += 1;
     if (rule.sb) row.sb += 1;
+    if (rule.sac) row.sac += 1;
     if (event.result === "2B") row.doubles += 1;
     if (event.result === "3B") row.triples += 1;
     if (event.result === "HR") row.hr += 1;
@@ -16228,13 +16252,14 @@ function boxScoreBattingRows(game, team, options = {}) {
   });
   if (includeBaseRunning) {
     boxScoreBaseRunningEvents(game, team).forEach((event) => {
-      if (event.result !== "SB") return;
+      if (!["SB", "CS"].includes(event.result)) return;
       const id = team.key === "lions" ? event.playerId : event.playerId || `opp:${event.opponentBatter || "Opponent runner"}`;
       const fallbackName = team.key === "lions"
         ? state.roster.find((player) => player.id === event.playerId)?.name || "Unknown Lion"
         : event.opponentBatter || String(event.playerId || "Opponent runner").replace(/^opp:/, "");
       const row = ensureRow(id, fallbackName, "");
-      row.sb += 1;
+      if (event.result === "SB") row.sb += 1;
+      if (event.result === "CS") row.cs += 1;
     });
   }
   if (team.key === "lions") {
@@ -16244,7 +16269,9 @@ function boxScoreBattingRows(game, team, options = {}) {
       const player = state.roster.find((item) => item.id === playerId);
       const lineupEntry = gameLineupEntries(game).find((entry) => entry.playerId === playerId);
       const name = player ? `#${player.number} ${player.name}` : "Unknown Lion";
-      const row = ensureRow(playerId, name, lineupEntry?.role || (player ? playerPrimaryPosition(player) : ""));
+      const position = normalized.position || lineupEntry?.role || (player ? playerPrimaryPosition(player) : "");
+      const row = ensureRow(playerId, name, position);
+      row.position = position;
       row.pa = stats.ab + stats.bb + stats.hbp + stats.sac;
       row.ab = stats.ab;
       row.r = stats.runs;
@@ -16254,13 +16281,29 @@ function boxScoreBattingRows(game, team, options = {}) {
       row.hbp = stats.hbp;
       row.so = stats.k;
       row.sb = stats.sb;
+      row.cs = stats.cs;
+      row.sac = stats.sac;
       row.doubles = stats.doubles;
       row.triples = stats.triples;
       row.hr = stats.hr;
       row.manualStatEdit = true;
     });
   }
-  return [...rows.values()].filter((row) => row.pa || row.ab || row.r || row.h || row.rbi || row.bb || row.hbp || row.so || (includeBaseRunning && row.sb));
+  return [...rows.values()].filter((row) =>
+    row.pa
+      || row.ab
+      || row.r
+      || row.h
+      || row.rbi
+      || row.bb
+      || row.hbp
+      || row.so
+      || row.sac
+      || row.doubles
+      || row.triples
+      || row.hr
+      || (includeBaseRunning && (row.sb || row.cs))
+  );
 }
 
 function boxScoreRunsScoredByBatter(event, batterId) {
@@ -16272,15 +16315,105 @@ function boxScoreRunsScoredByBatter(event, batterId) {
   return event.result === "HR" ? 1 : 0;
 }
 
-function renderBoxScoreBattingRow(row) {
+function boxScoreBattingTotalBases(row = {}) {
+  const doubles = Number(row.doubles || 0);
+  const triples = Number(row.triples || 0);
+  const homers = Number(row.hr || 0);
+  const singles = Math.max(0, Number(row.h || 0) - doubles - triples - homers);
+  return singles + (doubles * 2) + (triples * 3) + (homers * 4);
+}
+
+function boxScoreBattingRates(row = {}) {
+  const avg = divide(row.h || 0, row.ab || 0);
+  const obp = divide((row.h || 0) + (row.bb || 0) + (row.hbp || 0), (row.ab || 0) + (row.bb || 0) + (row.hbp || 0) + (row.sac || 0));
+  const slg = divide(boxScoreBattingTotalBases(row), row.ab || 0);
+  return {
+    avg,
+    obp,
+    slg,
+    ops: obp + slg
+  };
+}
+
+function boxScoreBattingTotals(rows = []) {
+  return rows.reduce((total, row) => {
+    ["pa", "ab", "r", "h", "rbi", "bb", "hbp", "so", "sb", "cs", "sac", "doubles", "triples", "hr"].forEach((key) => {
+      total[key] += Number(row[key] || 0);
+    });
+    return total;
+  }, {
+    name: "Totals",
+    position: "",
+    pa: 0,
+    ab: 0,
+    r: 0,
+    h: 0,
+    rbi: 0,
+    bb: 0,
+    hbp: 0,
+    so: 0,
+    sb: 0,
+    cs: 0,
+    sac: 0,
+    doubles: 0,
+    triples: 0,
+    hr: 0
+  });
+}
+
+function boxScoreBattingColumns(rows = []) {
+  const hasStat = (key) => rows.some((row) => Number(row[key] || 0) > 0);
+  return [
+    { key: "player", label: "Player", align: "left" },
+    { key: "pa", label: "PA" },
+    { key: "ab", label: "AB" },
+    { key: "r", label: "R" },
+    { key: "h", label: "H" },
+    ...(hasStat("doubles") ? [{ key: "doubles", label: "2B" }] : []),
+    ...(hasStat("triples") ? [{ key: "triples", label: "3B" }] : []),
+    ...(hasStat("hr") ? [{ key: "hr", label: "HR" }] : []),
+    { key: "rbi", label: "RBI" },
+    { key: "bb", label: "BB" },
+    { key: "so", label: "SO" },
+    ...(hasStat("sac") ? [{ key: "sac", label: "SACF" }] : []),
+    ...(hasStat("sb") ? [{ key: "sb", label: "SB" }] : []),
+    ...(hasStat("cs") ? [{ key: "cs", label: "CS" }] : []),
+    { key: "avg", label: "AVG", rate: true },
+    { key: "obp", label: "OBP", rate: true },
+    { key: "slg", label: "SLG", rate: true },
+    { key: "ops", label: "OPS", rate: true }
+  ];
+}
+
+function renderBoxScoreBattingHeader(columns = boxScoreBattingColumns([])) {
   return `<tr>
-    <td data-label="Player">${escapeHtml(row.name)}${row.position ? ` <span>${escapeHtml(row.position)}</span>` : ""}</td>
-    <td data-label="AB">${row.ab}</td>
-    <td data-label="R">${row.r}</td>
-    <td data-label="H">${row.h}</td>
-    <td data-label="RBI">${row.rbi}</td>
-    <td data-label="BB">${row.bb}</td>
-    <td data-label="SO">${row.so}</td>
+    ${columns.map((column) =>
+      `<th scope="col" class="${column.align === "left" ? "box-score-player-col" : column.rate ? "box-score-rate-col" : ""}">${escapeHtml(column.label)}</th>`
+    ).join("")}
+  </tr>`;
+}
+
+function boxScoreBattingCellValue(row, column) {
+  if (column.key === "player") {
+    return `${escapeHtml(row.name)}${row.position ? ` <span>${escapeHtml(row.position)}</span>` : ""}`;
+  }
+  if (column.rate) return formatRate(boxScoreBattingRates(row)[column.key]);
+  return String(Number(row[column.key] || 0));
+}
+
+function renderBoxScoreBattingRow(row, columns = boxScoreBattingColumns([row])) {
+  return `<tr>
+    ${columns.map((column) => `<td data-label="${escapeHtml(column.label)}" class="${column.rate ? "box-score-rate-cell" : ""}">${boxScoreBattingCellValue(row, column)}</td>`).join("")}
+  </tr>`;
+}
+
+function renderBoxScoreBattingTotalsRow(rows = [], columns = boxScoreBattingColumns(rows)) {
+  const totals = boxScoreBattingTotals(rows);
+  return `<tr class="box-score-total-row">
+    ${columns.map((column) => {
+      if (column.key === "player") return `<th scope="row">${escapeHtml(totals.name)}</th>`;
+      return `<td class="${column.rate ? "box-score-rate-cell" : ""}">${boxScoreBattingCellValue(totals, column)}</td>`;
+    }).join("")}
   </tr>`;
 }
 
@@ -17541,6 +17674,33 @@ function bulkHittingStatDraft(playerId, game) {
   return normalizeHittingStatEdit(existing || { playerId, gameId: game?.id || "", stats: {}, sprays: [] }, playerId, game);
 }
 
+function gameStatPositionFallback(player, game) {
+  const lineupEntry = gameLineupEntries(game).find((entry) => entry.playerId === player?.id);
+  return normalizeGameStatPosition(lineupEntry?.role || playerPrimaryPosition(player));
+}
+
+function gameStatPositionOptions(value = "", fallback = "") {
+  const selected = normalizeGameStatPosition(value);
+  const defaultLabel = fallback ? `Default (${fallback})` : "Default";
+  return [
+    `<option value=""${selected ? "" : " selected"}>${escapeHtml(defaultLabel)}</option>`,
+    ...gameStatPositions.map((position) =>
+      `<option value="${escapeHtml(position)}"${selected === position ? " selected" : ""}>${escapeHtml(position)}</option>`
+    )
+  ].join("");
+}
+
+function renderBulkHittingPositionSelect(player, game, position = "") {
+  const fallback = gameStatPositionFallback(player, game);
+  return `<select
+    class="bulk-stat-position-select"
+    aria-label="${escapeHtml(`Game position for #${player.number || "--"} ${player.name}`)}"
+    data-bulk-stat-player="${escapeHtml(player.id)}"
+    data-bulk-stat-key="position">
+      ${gameStatPositionOptions(position, fallback)}
+  </select>`;
+}
+
 function bulkPitchingStatDraft(playerId, game) {
   const existing = pitchingStatEditMap(game)[playerId];
   return normalizePitchingStatEdit(existing || { playerId, gameId: game?.id || "", stats: {} }, playerId, game);
@@ -17805,6 +17965,7 @@ function renderBulkHittingStatTable(game) {
       <thead>
         <tr>
           <th scope="col">Player</th>
+          <th scope="col" class="bulk-stat-position-col">POS</th>
           ${bulkHittingStatFields.map((field) => `<th scope="col">${escapeHtml(field.label)}</th>`).join("")}
         </tr>
       </thead>
@@ -17813,6 +17974,7 @@ function renderBulkHittingStatTable(game) {
           const draft = bulkHittingStatDraft(player.id, game);
           return `<tr>
             ${renderBulkStatPlayerCell(player, { sprayAction: true })}
+            <td class="bulk-stat-position-cell">${renderBulkHittingPositionSelect(player, game, draft.position)}</td>
             ${bulkHittingStatFields.map((field) => `<td>
               <input
                 type="number"
@@ -17931,9 +18093,12 @@ function applyBulkHittingStatRows(game, rows) {
     const stats = normalizeManualHittingStats(raw);
     const hasStats = manualHittingStatLineHasValues(stats);
     const sprays = existing?.sprays || [];
-    if (!bulkRowHasInput(raw) || !hasStats) {
+    const rawPosition = Object.prototype.hasOwnProperty.call(raw, "position") ? raw.position : existing?.position || "";
+    const position = normalizeGameStatPosition(rawPosition);
+    const hasPosition = Boolean(position);
+    if (!bulkRowHasInput(raw) || (!hasStats && !hasPosition)) {
       if (existing && sprays.length) {
-        edits[player.id] = normalizeHittingStatEdit({ playerId: player.id, gameId: game.id, stats: {}, sprays, updatedAt }, player.id, game);
+        edits[player.id] = normalizeHittingStatEdit({ playerId: player.id, gameId: game.id, position, stats: {}, sprays, updatedAt }, player.id, game);
       } else if (existing) {
         delete edits[player.id];
       }
@@ -17942,6 +18107,7 @@ function applyBulkHittingStatRows(game, rows) {
     edits[player.id] = normalizeHittingStatEdit({
       playerId: player.id,
       gameId: game.id,
+      position,
       stats,
       sprays,
       updatedAt
@@ -18154,6 +18320,7 @@ function openStatEditGameModal(playerId, gameId) {
   statEditGameId = gameId;
   const draft = hittingStatEditDraft(playerId, game);
   setStatEditInputs(draft.stats);
+  setStatEditPosition(draft.position, player, game);
   statEditSprays = normalizeStatEditSprays(draft.sprays);
   setStatEditSprayMode("1B");
   renderStatEditSprayEditor();
@@ -18189,6 +18356,18 @@ function setStatEditInputs(stats = {}) {
     const value = Number(stats[key] || 0);
     input.value = value > 0 ? String(value) : "";
   });
+}
+
+function setStatEditPosition(position = "", player = null, game = null) {
+  if (!els.statEditPosition) return;
+  const selected = normalizeGameStatPosition(position);
+  const fallback = gameStatPositionFallback(player, game);
+  els.statEditPosition.innerHTML = gameStatPositionOptions(selected, fallback);
+  els.statEditPosition.value = selected;
+}
+
+function collectStatEditPosition() {
+  return normalizeGameStatPosition(els.statEditPosition?.value || "");
 }
 
 function collectStatEditInputs() {
@@ -18276,6 +18455,7 @@ function saveStatEditGameStats(event) {
   const edit = normalizeHittingStatEdit({
     playerId: player.id,
     gameId: game.id,
+    position: collectStatEditPosition(),
     stats: collectStatEditInputs(),
     sprays: statEditSprays,
     updatedAt: new Date().toISOString()
@@ -19128,6 +19308,7 @@ function normalizeHittingStatEdit(edit = {}, playerId = "", game = null) {
   return {
     playerId: edit.playerId || playerId,
     gameId: edit.gameId || game?.id || "",
+    position: normalizeGameStatPosition(edit.position || edit.gamePosition || edit.role || ""),
     stats: normalizeManualHittingStats(edit.stats || edit),
     sprays: normalizeStatEditSprays(edit.sprays || []),
     updatedAt: edit.updatedAt || new Date().toISOString()
