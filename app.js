@@ -306,7 +306,7 @@ const gameStatPositions = ["P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF", "
 const battedBallResults = new Set(["1B", "2B", "3B", "HR", "ROE", "FC", "DP", "GO", "FO", "LO", "SAC"]);
 const scorebookFielderResults = new Set(["GO", "FO", "LO", "DP", "FC", "SAC", "ROE"]);
 const scorebookBaseRunningResults = new Set(["SB", "CS", "PO", "BK"]);
-const statEditSprayResults = ["1B", "2B", "3B", "HR", "GO", "LO", "FO"];
+const statEditSprayResults = ["1B", "2B", "3B", "HR", "SAC", "GO", "LO", "FO"];
 const statEditSprayResultSet = new Set(statEditSprayResults);
 const statEditSprayHitResults = new Set(["1B", "2B", "3B", "HR"]);
 const bulkHittingStatFields = [
@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.101";
+const APP_VERSION = "v.1.1.102";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -1224,6 +1224,10 @@ const els = {
   boxScoreMobileMetaSecondary: document.getElementById("boxScoreMobileMetaSecondary"),
   boxScoreGameSelect: document.getElementById("boxScoreGameSelect"),
   boxScoreMobileGameSelect: document.getElementById("boxScoreMobileGameSelect"),
+  boxScorePrevGameBtn: document.getElementById("boxScorePrevGameBtn"),
+  boxScoreNextGameBtn: document.getElementById("boxScoreNextGameBtn"),
+  boxScoreMobilePrevGameBtn: document.getElementById("boxScoreMobilePrevGameBtn"),
+  boxScoreMobileNextGameBtn: document.getElementById("boxScoreMobileNextGameBtn"),
   boxScoreEditBtn: document.getElementById("boxScoreEditBtn"),
   boxScoreMobileEditBtn: document.getElementById("boxScoreMobileEditBtn"),
   boxScoreBackBtn: document.getElementById("boxScoreBackBtn"),
@@ -4513,6 +4517,10 @@ function bindEvents() {
     boxScoreGameId = els.boxScoreMobileGameSelect.value;
     renderBoxScore();
   });
+  els.boxScorePrevGameBtn?.addEventListener("click", () => navigateBoxScoreGame("previous"));
+  els.boxScoreNextGameBtn?.addEventListener("click", () => navigateBoxScoreGame("next"));
+  els.boxScoreMobilePrevGameBtn?.addEventListener("click", () => navigateBoxScoreGame("previous"));
+  els.boxScoreMobileNextGameBtn?.addEventListener("click", () => navigateBoxScoreGame("next"));
   els.boxScoreBackBtn?.addEventListener("click", () => switchView(boxScoreReturnView || (isAdminMode() ? "analysis" : "games")));
   els.boxScoreMobileBackBtn?.addEventListener("click", () => switchView(boxScoreReturnView || (isAdminMode() ? "analysis" : "games")));
   els.boxScoreMobileReturnBtn?.addEventListener("click", () => switchView(boxScoreReturnView || (isAdminMode() ? "analysis" : "games")));
@@ -15813,14 +15821,48 @@ function saveBoxScoreEdit(event) {
   requestCompletedGameSyncRetry("box-score-edit");
 }
 
+function boxScoreGames() {
+  return [...state.games].sort(sortGamesNewestFirst);
+}
+
+function updateBoxScoreGameNav(games = boxScoreGames(), gameId = boxScoreGameId) {
+  const index = games.findIndex((game) => game.id === gameId);
+  const hasOlderGame = index >= 0 && index < games.length - 1;
+  const hasNewerGame = index > 0;
+  [els.boxScorePrevGameBtn, els.boxScoreMobilePrevGameBtn].filter(Boolean).forEach((button) => {
+    button.disabled = !hasOlderGame;
+    button.setAttribute("aria-disabled", String(!hasOlderGame));
+  });
+  [els.boxScoreNextGameBtn, els.boxScoreMobileNextGameBtn].filter(Boolean).forEach((button) => {
+    button.disabled = !hasNewerGame;
+    button.setAttribute("aria-disabled", String(!hasNewerGame));
+  });
+}
+
+function navigateBoxScoreGame(direction = "next") {
+  const games = boxScoreGames();
+  if (!games.length) return;
+  const currentIndex = games.findIndex((game) => game.id === boxScoreGameId);
+  const index = currentIndex >= 0 ? currentIndex : 0;
+  const nextIndex = direction === "previous"
+    ? Math.min(games.length - 1, index + 1)
+    : Math.max(0, index - 1);
+  const nextGame = games[nextIndex];
+  if (!nextGame || nextGame.id === boxScoreGameId) return;
+  boxScoreGameId = nextGame.id;
+  renderBoxScore();
+}
+
 function renderBoxScore() {
   if (!els.boxScoreSummary) return;
-  const active = activeScoreGame() || [...state.games].sort((a, b) => (b.date || "").localeCompare(a.date || ""))[0] || null;
+  const games = boxScoreGames();
+  const active = activeScoreGame() || games[0] || null;
   if (!active) {
     boxScoreGameId = "";
     setBoxScoreEditButtonsVisible(false);
     els.boxScoreGameSelect.innerHTML = "";
     if (els.boxScoreMobileGameSelect) els.boxScoreMobileGameSelect.innerHTML = "";
+    updateBoxScoreGameNav([], "");
     els.boxScoreTitle.textContent = "Game box score";
     if (els.boxScoreMobileTitle) els.boxScoreMobileTitle.textContent = "Game box score";
     els.boxScoreMeta.textContent = "No games saved yet.";
@@ -15846,12 +15888,12 @@ function renderBoxScore() {
   const innings = boxScoreInnings(game);
   const lineScores = teams.map((team) => boxScoreLineForTeam(game, team, innings));
 
-  const boxScoreOptions = [...state.games]
-    .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+  const boxScoreOptions = games
     .map((item) => `<option value="${item.id}" ${item.id === game.id ? "selected" : ""}>${escapeHtml(item.date || "No date")} ${escapeHtml(gameMatchupLabel(item))}</option>`)
     .join("");
   els.boxScoreGameSelect.innerHTML = boxScoreOptions;
   if (els.boxScoreMobileGameSelect) els.boxScoreMobileGameSelect.innerHTML = boxScoreOptions;
+  updateBoxScoreGameNav(games, game.id);
   els.boxScoreTitle.textContent = gameMatchupLabel(game);
   if (els.boxScoreMobileTitle) els.boxScoreMobileTitle.textContent = gameMatchupLabel(game);
   els.boxScoreMeta.textContent = `${game.date || "No date"} | ${gameTeamMeta(game)} | ${gameStatusLabel(game)}`;

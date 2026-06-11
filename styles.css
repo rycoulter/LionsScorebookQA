@@ -9113,6 +9113,22 @@ button:focus-visible {
   display: none;
 }
 
+.box-score-game-nav {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.box-score-game-nav .secondary-action {
+  min-height: 42px;
+  white-space: nowrap;
+}
+
+.box-score-game-nav .secondary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.46;
+}
+
 .box-score-mobile-stats-btn {
   display: none;
 }
@@ -16710,10 +16726,22 @@ select option:checked {
   }
 
   .box-score-mobile-toolbar {
-    display: none;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .box-score-mobile-game-nav {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
   }
 
   .box-score-mobile-picker {
+    grid-column: 1 / -1;
     min-width: 0;
     gap: 4px;
   }
@@ -16730,9 +16758,16 @@ select option:checked {
   }
 
   .box-score-mobile-share {
-    min-width: 96px;
+    grid-column: 1 / -1;
+    min-width: 0;
     justify-content: center;
     padding-inline: 14px;
+  }
+
+  .box-score-mobile-edit {
+    grid-column: 1 / -1;
+    min-width: 0;
+    justify-content: center;
   }
 
   .box-score-tabs {

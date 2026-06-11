@@ -40,9 +40,11 @@ mustMatch(indexHtml, /id="statEditPosition"/, "Game-level hitting editor should 
 });
 assert.equal(/id="statEdit(?:Avg|Obp|Slg|Ops|Total|Pa)"/i.test(indexHtml), false, "Derived or aggregate stats should not be directly editable");
 assert.equal(/id="pitchingStatEdit(?:Era|Whip|K9|R9|StrikeRate|KRate|BbRate|Kbb|PitchesPerInning)"/i.test(indexHtml), false, "Derived pitching rates should not be directly editable");
-["1B", "2B", "3B", "HR", "GO", "LO", "FO"].forEach((result) => {
+["1B", "2B", "3B", "HR", "SAC", "GO", "LO", "FO"].forEach((result) => {
   mustMatch(indexHtml, new RegExp(`data-stat-edit-spray-mode="${result}"`), `${result} spray result option should exist`);
 });
+mustMatch(appJs, /const statEditSprayResults = \["1B", "2B", "3B", "HR", "SAC", "GO", "LO", "FO"\]/, "SAC should be a supported manual spray result");
+assert.doesNotMatch(appJs, /const statEditSprayHitResults = new Set\(\[[^\]]*"SAC"/, "SAC spray dots should remain out-type markers, not hits");
 assert.equal(/data-stat-edit-spray-mode="(?:hit|out)"/i.test(indexHtml), false, "Stats edit spray mode should use result types instead of generic hit/out");
 
 mustMatch(appJs, /hittingStatEditMap\(game\)/, "Game-level hitting edit storage should exist");
