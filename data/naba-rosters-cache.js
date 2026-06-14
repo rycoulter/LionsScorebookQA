@@ -1,7 +1,7 @@
 window.ScorebookNabaRostersCache = {
   "season": 2026,
   "sourceLabel": "Pittsburgh NABA rosters",
-  "syncedAt": "2026-06-12T12:42:11.294Z",
+  "syncedAt": "2026-06-14T11:39:55.967Z",
   "teams": [
     {
       "teamName": "Oakmont Lions",
@@ -171,7 +171,7 @@ window.ScorebookNabaRostersCache = {
           "positions": "SS, CF, P, 2B"
         }
       ],
-      "syncedAt": "2026-06-12T12:42:11.294Z"
+      "syncedAt": "2026-06-14T11:39:55.967Z"
     },
     {
       "teamName": "Pittsburgh D2",
@@ -305,7 +305,7 @@ window.ScorebookNabaRostersCache = {
           "firstName": "Andrew",
           "lastName": "Sharek",
           "name": "Andrew Sharek",
-          "number": "9",
+          "number": "21",
           "positions": "2B, SS"
         },
         {
@@ -325,7 +325,7 @@ window.ScorebookNabaRostersCache = {
           "positions": "C, P, UTIL."
         }
       ],
-      "syncedAt": "2026-06-12T12:42:11.294Z"
+      "syncedAt": "2026-06-14T11:39:55.967Z"
     },
     {
       "teamName": "BiscuitvilleTownSquare Bandidos",
@@ -503,7 +503,7 @@ window.ScorebookNabaRostersCache = {
           "positions": "SS, CF, UTIL."
         }
       ],
-      "syncedAt": "2026-06-12T12:42:11.294Z"
+      "syncedAt": "2026-06-14T11:39:55.967Z"
     },
     {
       "teamName": "South Hills Devils",
@@ -689,7 +689,7 @@ window.ScorebookNabaRostersCache = {
           "positions": "1B, P"
         }
       ],
-      "syncedAt": "2026-06-12T12:42:11.294Z"
+      "syncedAt": "2026-06-14T11:39:55.967Z"
     },
     {
       "teamName": "South Oakland Ducks",
@@ -875,7 +875,7 @@ window.ScorebookNabaRostersCache = {
           "positions": "RF, LF, OF"
         }
       ],
-      "syncedAt": "2026-06-12T12:42:11.294Z"
+      "syncedAt": "2026-06-14T11:39:55.967Z"
     },
     {
       "teamName": "South Side Eagles",
@@ -1029,7 +1029,7 @@ window.ScorebookNabaRostersCache = {
           "positions": "P"
         }
       ],
-      "syncedAt": "2026-06-12T12:42:11.294Z"
+      "syncedAt": "2026-06-14T11:39:55.967Z"
     },
     {
       "teamName": "Bauerstown Turtles",
@@ -1183,7 +1183,7 @@ window.ScorebookNabaRostersCache = {
           "positions": "SS, P, LF"
         }
       ],
-      "syncedAt": "2026-06-12T12:42:11.294Z"
+      "syncedAt": "2026-06-14T11:39:55.967Z"
     },
     {
       "teamName": "Keystone Oaks",
@@ -1361,7 +1361,7 @@ window.ScorebookNabaRostersCache = {
           "positions": "3B, SS"
         }
       ],
-      "syncedAt": "2026-06-12T12:42:11.294Z"
+      "syncedAt": "2026-06-14T11:39:55.967Z"
     },
     {
       "teamName": "Butler Buccos",
@@ -1571,7 +1571,7 @@ window.ScorebookNabaRostersCache = {
           "positions": "LF, P"
         }
       ],
-      "syncedAt": "2026-06-12T12:42:11.294Z"
+      "syncedAt": "2026-06-14T11:39:55.967Z"
     },
     {
       "teamName": "Ross Raiders",
@@ -1580,7 +1580,7 @@ window.ScorebookNabaRostersCache = {
       "nabaKey": "PITTSBUR-ROSSRAIDERS",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=roster&s=baseball&u=PITTSBUR-ROSSRAIDERS",
       "players": [],
-      "syncedAt": "2026-06-12T12:42:11.294Z"
+      "syncedAt": "2026-06-14T11:39:55.967Z"
     }
   ]
 };
