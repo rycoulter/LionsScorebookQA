@@ -92,6 +92,12 @@ assert.match(spotlightSelectionBody, /limitedSample: Boolean\(fallbackRow\)/, "P
 const sprayDashboardBody = functionBody(appJs, "renderStatsSprayDashboard");
 assert.match(sprayDashboardBody, /Spray chart data will appear after balls in play are recorded\./, "Spray preview should have the requested empty state");
 assert.match(sprayDashboardBody, /Pull[\s\S]*Center[\s\S]*Oppo[\s\S]*Hits[\s\S]*Outs/, "Tendencies panel should render Pull, Center, Oppo, Hits, and Outs");
+const renderStatsSprayChartBody = functionBody(appJs, "renderStatsSprayChart");
+assert.match(indexHtml, /id="statsSprayResultFilter"[\s\S]*All results[\s\S]*Hits only[\s\S]*Outs only/, "Stats spray modal should include a result filter");
+assert.match(appJs, /statsSprayResultFilter: document\.getElementById\("statsSprayResultFilter"\)/, "Stats spray result filter should be registered in the element map");
+assert.match(appJs, /els\.statsSprayResultFilter\?\.addEventListener\("change", renderStatsSprayChart\)/, "Stats spray result filter should rerender the chart on change");
+assert.match(renderStatsSprayChartBody, /resultFilter === "hits"[\s\S]*Boolean\(rule\.hit\)/, "Stats spray result filter should show only hits when selected");
+assert.match(renderStatsSprayChartBody, /resultFilter === "outs"[\s\S]*Boolean\(rule\.out\)/, "Stats spray result filter should show only outs when selected");
 
 assert.match(stylesCss, /#statsView \.stats-spotlight-card[\s\S]*border-color: rgba\(245, 189, 33, 0\.38\)/, "Spotlight card should use a gold accent border");
 assert.match(stylesCss, /#statsView \.stats-spotlight-card[\s\S]*grid-column: 1 \/ -1/, "Spotlight card should span the dashboard width");

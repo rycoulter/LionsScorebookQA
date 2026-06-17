@@ -7912,7 +7912,7 @@ button:focus-visible {
 
 .stats-spray-controls {
   display: grid;
-  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1.15fr) minmax(140px, 0.72fr);
   gap: 12px;
   padding: 0 0 14px;
 }

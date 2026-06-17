@@ -65,5 +65,10 @@ mustMatch(
   /id="statsSprayChart"[\s\S]*src="assets\/updated-field\.png\?v=[^"]+"/,
   "Stats spray chart should render the shared field image."
 );
+mustMatch(
+  indexHtml,
+  /id="statsSprayResultFilter"[\s\S]*value="hits"[\s\S]*Hits only[\s\S]*value="outs"[\s\S]*Outs only/,
+  "Stats spray chart should include a hits/outs result filter."
+);
 
 console.log("Stats spray chart geometry checks passed.");

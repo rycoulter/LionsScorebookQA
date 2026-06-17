@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.104";
+const APP_VERSION = "v.1.1.105";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -1306,6 +1306,7 @@ const els = {
   statsSprayPanel: document.getElementById("statsSprayPanel"),
   statsSprayPlayerSelect: document.getElementById("statsSprayPlayerSelect"),
   statsSprayGameSelect: document.getElementById("statsSprayGameSelect"),
+  statsSprayResultFilter: document.getElementById("statsSprayResultFilter"),
   statsSprayMarkers: document.getElementById("statsSprayMarkers"),
   bulkStatEditModal: document.getElementById("bulkStatEditModal"),
   bulkStatEditGameSelect: document.getElementById("bulkStatEditGameSelect"),
@@ -5137,6 +5138,7 @@ window.addEventListener("pageshow", () => {
   els.subPlayerSelect?.addEventListener("change", renderSubControls);
   els.statsSprayPlayerSelect.addEventListener("change", renderStatsSprayChart);
   els.statsSprayGameSelect.addEventListener("change", renderStatsSprayChart);
+  els.statsSprayResultFilter?.addEventListener("change", renderStatsSprayChart);
   els.toggleStatsSprayBtn.addEventListener("click", () => {
     statsSprayExpanded = !statsSprayExpanded;
     renderStatsSprayControls();
@@ -17603,12 +17605,19 @@ function renderStatsSprayControls() {
 function renderStatsSprayChart() {
   const playerId = statsFocusedPlayerId() || els.statsSprayPlayerSelect.value || state.roster[0]?.id;
   const gameId = els.statsSprayGameSelect.value || "all";
+  const resultFilter = els.statsSprayResultFilter?.value || "all";
   const events = statsGamesForSeason(statsSeasonFilter)
     .flatMap((game) => sprayEventsForGame(game))
-    .filter(({ event, game }) => event.spray && event.playerId === playerId && (gameId === "all" || game.id === gameId));
+    .filter(({ event, game }) => {
+      if (!event.spray || event.playerId !== playerId || (gameId !== "all" && game.id !== gameId)) return false;
+      const rule = eventRules[event.result] || {};
+      if (resultFilter === "hits") return Boolean(rule.hit);
+      if (resultFilter === "outs") return Boolean(rule.out);
+      return true;
+    });
   els.statsSprayMarkers.innerHTML = events.length
     ? events.map((item) => renderSprayDot(item, { resultLabel: true })).join("")
-    : `<span class="spray-empty">No tracked batted balls</span>`;
+    : `<span class="spray-empty">${resultFilter === "hits" ? "No tracked hits" : resultFilter === "outs" ? "No tracked outs" : "No tracked batted balls"}</span>`;
 }
 
 function bulkStatEditGames() {
