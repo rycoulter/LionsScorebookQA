@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.102";
+const APP_VERSION = "v.1.1.103";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -8495,7 +8495,7 @@ function renderHome() {
   els.homeRecord.textContent = `${record.wins}-${record.losses}${record.ties ? `-${record.ties}` : ""}`;
   if (els.homeWinPct) els.homeWinPct.textContent = winPct;
   if (els.homeLeagueStanding) els.homeLeagueStanding.textContent = overview.standing;
-  if (els.homeCurrentStreak) els.homeCurrentStreak.textContent = overview.streak;
+  if (els.homeCurrentStreak) els.homeCurrentStreak.textContent = localCurrentStreakLabel();
   renderSiteVisitCounter();
   if (isAdminMode()) requestSiteVisitSummaryRefresh("home");
   if (els.homeStartGameBtn) els.homeStartGameBtn.hidden = true;
@@ -8740,14 +8740,12 @@ function homeOverviewLeagueSummary(record = seasonRecord()) {
     const row = rows[lionsIndex];
     const rank = Number(row.rank) || lionsIndex + 1;
     return {
-      standing: `${rank}${ordinalSuffix(rank)}`,
-      streak: shortStreakLabel(row.streak)
+      standing: `${rank}${ordinalSuffix(rank)}`
     };
   }
   const totalGames = Number(record.wins || 0) + Number(record.losses || 0) + Number(record.ties || 0);
   return {
-    standing: totalGames ? "--" : "Preseason",
-    streak: localCurrentStreakLabel()
+    standing: totalGames ? "--" : "Preseason"
   };
 }
 

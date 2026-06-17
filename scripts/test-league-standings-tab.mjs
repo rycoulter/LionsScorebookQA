@@ -29,7 +29,12 @@ assert.doesNotMatch(indexHtml, /id="homeRunsAllowed"/, "Home overview should no 
 assert.doesNotMatch(indexHtml, /home-standings-panel/, "Home should not own the standings card");
 assert.match(appJs, /PUBLIC_TAB_VIEWS = new Set\(\["home", "news", "standings"/, "Standings should be public");
 assert.match(appJs, /LEAGUE_STANDINGS_CACHE_URL = "data\/league-standings\.json"/, "App should load the static standings cache");
-assert.match(functionBody(appJs, "homeOverviewLeagueSummary"), /leagueStandingRowsForOverview[\s\S]*ordinalSuffix[\s\S]*shortStreakLabel/, "Home overview should derive standing and streak from standings data");
+const renderHomeBody = functionBody(appJs, "renderHome");
+assert.match(renderHomeBody, /seasonRecord\(\)[\s\S]*formatWinPctDisplay/, "Home overview win percentage should be calculated from local completed games");
+assert.match(renderHomeBody, /homeCurrentStreak\)[\s\S]*localCurrentStreakLabel\(\)/, "Home overview streak should be calculated from local completed games");
+const homeOverviewBody = functionBody(appJs, "homeOverviewLeagueSummary");
+assert.match(homeOverviewBody, /leagueStandingRowsForOverview[\s\S]*ordinalSuffix/, "Home overview league standing should come from standings data");
+assert.doesNotMatch(homeOverviewBody, /shortStreakLabel|row\.streak|localCurrentStreakLabel/, "Home overview standing summary should not source streak from league standings");
 assert.match(functionBody(appJs, "shortStreakLabel"), /Won[\s\S]*Lost[\s\S]*formatCurrentStreakLabel\(prefix, match\[2\]\)/, "Home overview streak should abbreviate Won/Lost labels");
 assert.match(functionBody(appJs, "formatCurrentStreakLabel"), /safeCount >= 3[\s\S]*🔥[\s\S]*safeCount >= 3[\s\S]*🧊/u, "Home overview should add fire/ice emoji for 3+ win/loss streaks");
 assert.match(functionBody(appJs, "fetchStaticLeagueStandingsCache"), /ScorebookLeagueStandingsCache[\s\S]*fetch/, "App should use the script cache before fetch for local file opens");
