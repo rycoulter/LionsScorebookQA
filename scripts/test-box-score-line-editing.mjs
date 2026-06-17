@@ -101,8 +101,13 @@ mustMatch(starsBody, /\.slice\(0, 3\)/, "Three Stars should select the top three
 mustMatch(appJs, /Three Stars will be generated when game statistics are available\./, "Three Stars should include the requested empty state");
 mustMatch(appJs, /function boxScoreBaseRunningEvents/, "Three Stars should account for non-PA base-running events");
 mustMatch(appJs, /typeLabel: star\.types\.size > 1 \? "Two-Way"/, "Two-way players should get a Two-Way badge");
+mustMatch(appJs, /function boxScoreLionsPlayerLabel/, "Box score should centralize Lions player labels with roster numbers");
+mustMatch(appJs, /function hasBoxScorePlayerNumber/, "Box score should detect player labels that already include jersey numbers");
 
 const battingRowsBody = functionBody(appJs, "boxScoreBattingRows");
+mustMatch(battingRowsBody, /boxScoreLionsPlayerLabel\(entry\.playerId\)/, "Lineup batting rows should use roster-number-aware player labels");
+mustMatch(battingRowsBody, /boxScoreLionsPlayerLabel\(event\.playerId\)/, "Scored batting events should use roster-number-aware player labels");
+mustMatch(battingRowsBody, /!hasBoxScorePlayerNumber\(row\.name\) && hasBoxScorePlayerNumber\(nextName\)[\s\S]*row\.name = nextName/, "Manual stat rows should upgrade earlier no-number labels when a numbered roster label is available");
 mustMatch(battingRowsBody, /row\.sac \+= 1/, "Batting rows should track sacrifice columns");
 mustMatch(battingRowsBody, /event\.result === "CS"[\s\S]*row\.cs \+= 1/, "Batting rows should track caught stealing from base-running events");
 

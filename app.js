@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.103";
+const APP_VERSION = "v.1.1.104";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -16006,13 +16006,13 @@ function parseBoxScoreDisplayName(value = "") {
 }
 
 function boxScoreStarIdentity(team, row = {}) {
-  const player = team?.key === "lions" ? state.roster.find((item) => item.id === row.id) : null;
+  const player = team?.key === "lions" ? boxScoreLionsPlayer(row.id) : null;
   const parsed = parseBoxScoreDisplayName(row.name);
   return {
     key: `${team?.key || "team"}:${row.id || parsed.name}`,
     teamName: team?.name || "",
     name: player?.name || parsed.name || "Player",
-    number: player?.number || parsed.number || "",
+    number: boxScorePlayerNumber(player) || parsed.number || "",
     position: row.position || (player ? playerPrimaryPosition(player) : "")
   };
 }
@@ -16184,15 +16184,37 @@ function renderBoxScoreLineRow(line, innings) {
   </tr>`;
 }
 
+function boxScoreLionsPlayer(playerId = "") {
+  return state.roster.find((player) => player.id === playerId) || null;
+}
+
+function boxScorePlayerNumber(player = {}) {
+  const number = String(player?.number || "").trim();
+  return number && number !== "--" ? number : "";
+}
+
+function hasBoxScorePlayerNumber(value = "") {
+  return /^#[^\s]+\s+/.test(String(value || "").trim());
+}
+
+function boxScoreLionsPlayerLabel(playerId = "", fallback = "Unknown Lion") {
+  const player = boxScoreLionsPlayer(playerId);
+  const name = String(player?.name || fallback || "Unknown Lion").trim();
+  const number = boxScorePlayerNumber(player);
+  return number ? `#${number} ${name}` : name;
+}
+
 function boxScoreBattingRows(game, team, options = {}) {
   const includeBaseRunning = Boolean(options.includeBaseRunning);
   const rows = new Map();
   const ensureRow = (id, name, position = "") => {
+    const nextName = String(name || "").trim();
+    const nextPosition = String(position || "").trim();
     if (!rows.has(id)) {
       rows.set(id, {
         id,
-        name,
-        position,
+        name: nextName,
+        position: nextPosition,
         pa: 0,
         ab: 0,
         r: 0,
@@ -16209,12 +16231,21 @@ function boxScoreBattingRows(game, team, options = {}) {
         hr: 0
       });
     }
-    return rows.get(id);
+    const row = rows.get(id);
+    if (nextName && (
+      !row.name
+      || /^unknown/i.test(row.name)
+      || (!hasBoxScorePlayerNumber(row.name) && hasBoxScorePlayerNumber(nextName))
+    )) {
+      row.name = nextName;
+    }
+    if (!row.position && nextPosition) row.position = nextPosition;
+    return row;
   };
   if (team.key === "lions") {
     gameLineupEntries(game).forEach((entry) => {
-      const player = state.roster.find((item) => item.id === entry.playerId);
-      if (player) ensureRow(player.id, `#${player.number} ${player.name}`, entry.role || "");
+      const player = boxScoreLionsPlayer(entry.playerId);
+      if (player) ensureRow(player.id, boxScoreLionsPlayerLabel(entry.playerId), entry.role || "");
     });
   } else {
     opponentLineupEntriesForGame(game).forEach((entry, index) => {
@@ -16226,7 +16257,7 @@ function boxScoreBattingRows(game, team, options = {}) {
     const rule = eventRules[event.result] || {};
     const id = team.key === "lions" ? event.playerId : event.playerId || `opp:${event.opponentBatter || "Opponent batter"}`;
     const fallbackName = team.key === "lions"
-      ? state.roster.find((player) => player.id === event.playerId)?.name || "Unknown Lion"
+      ? boxScoreLionsPlayerLabel(event.playerId)
       : event.opponentBatter || String(event.playerId || "Opponent batter").replace(/^opp:/, "");
     const row = ensureRow(id, fallbackName, "");
     row.pa += rule.pa ? 1 : 0;
@@ -16248,7 +16279,7 @@ function boxScoreBattingRows(game, team, options = {}) {
       if (!["SB", "CS"].includes(event.result)) return;
       const id = team.key === "lions" ? event.playerId : event.playerId || `opp:${event.opponentBatter || "Opponent runner"}`;
       const fallbackName = team.key === "lions"
-        ? state.roster.find((player) => player.id === event.playerId)?.name || "Unknown Lion"
+        ? boxScoreLionsPlayerLabel(event.playerId)
         : event.opponentBatter || String(event.playerId || "Opponent runner").replace(/^opp:/, "");
       const row = ensureRow(id, fallbackName, "");
       if (event.result === "SB") row.sb += 1;
@@ -16259,9 +16290,9 @@ function boxScoreBattingRows(game, team, options = {}) {
     Object.entries(hittingStatEditMap(game)).forEach(([playerId, edit]) => {
       const normalized = normalizeHittingStatEdit(edit, playerId, game);
       const stats = normalized.stats;
-      const player = state.roster.find((item) => item.id === playerId);
+      const player = boxScoreLionsPlayer(playerId);
       const lineupEntry = gameLineupEntries(game).find((entry) => entry.playerId === playerId);
-      const name = player ? `#${player.number} ${player.name}` : "Unknown Lion";
+      const name = boxScoreLionsPlayerLabel(playerId);
       const position = normalized.position || lineupEntry?.role || (player ? playerPrimaryPosition(player) : "");
       const row = ensureRow(playerId, name, position);
       row.position = position;
@@ -16422,8 +16453,7 @@ function boxScorePitchingRows(game, team) {
   };
   events.forEach((event) => {
     const id = team.key === "lions" ? event.pitcherId || "lions-pitching" : "opponent-pitching";
-    const player = team.key === "lions" ? state.roster.find((item) => item.id === id) : null;
-    const row = ensureRow(id, player ? `#${player.number} ${player.name}` : `${team.name} pitching`);
+    const row = ensureRow(id, team.key === "lions" ? boxScoreLionsPlayerLabel(id, `${team.name} pitching`) : `${team.name} pitching`);
     const rule = eventRules[event.result] || {};
     row.pa += rule.pa ? 1 : 0;
     row.outs += boxScoreOutsRecorded(event, rule);
@@ -16444,8 +16474,7 @@ function boxScorePitchingRows(game, team) {
     Object.entries(pitchingStatEditMap(game)).forEach(([playerId, edit]) => {
       const normalized = normalizePitchingStatEdit(edit, playerId, game);
       const stats = normalized.stats;
-      const player = state.roster.find((item) => item.id === playerId);
-      const row = ensureRow(playerId, player ? `#${player.number} ${player.name}` : "Lions pitching");
+      const row = ensureRow(playerId, boxScoreLionsPlayerLabel(playerId, "Lions pitching"));
       row.pa = stats.batters;
       row.outs = stats.outs;
       row.h = stats.h;
