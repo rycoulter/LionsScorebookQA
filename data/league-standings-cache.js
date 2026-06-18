@@ -3,7 +3,7 @@ window.ScorebookLeagueStandingsCache = {
   "division": "AA",
   "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
   "sourceLabel": "Pittsburgh NABA AA standings",
-  "syncedAt": "2026-06-17T05:16:42.198Z",
+  "syncedAt": "2026-06-18T05:02:20.797Z",
   "rows": [
     {
       "id": "2026-aa-pittsburgh-d2",
@@ -21,7 +21,7 @@ window.ScorebookLeagueStandingsCache = {
       "streak": "Won 1",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-06-17T05:16:42.198Z"
+      "syncedAt": "2026-06-18T05:02:20.797Z"
     },
     {
       "id": "2026-aa-oakmont-lions",
@@ -39,7 +39,7 @@ window.ScorebookLeagueStandingsCache = {
       "streak": "Lost 2",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-06-17T05:16:42.198Z"
+      "syncedAt": "2026-06-18T05:02:20.797Z"
     },
     {
       "id": "2026-aa-biscuitvilletownsquare-bandidos",
@@ -57,7 +57,7 @@ window.ScorebookLeagueStandingsCache = {
       "streak": "Won 1",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-06-17T05:16:42.198Z"
+      "syncedAt": "2026-06-18T05:02:20.797Z"
     },
     {
       "id": "2026-aa-south-oakland-ducks",
@@ -75,7 +75,7 @@ window.ScorebookLeagueStandingsCache = {
       "streak": "Won 2",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-06-17T05:16:42.198Z"
+      "syncedAt": "2026-06-18T05:02:20.797Z"
     },
     {
       "id": "2026-aa-south-hills-devils",
@@ -93,43 +93,43 @@ window.ScorebookLeagueStandingsCache = {
       "streak": "Lost 2",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-06-17T05:16:42.198Z"
+      "syncedAt": "2026-06-18T05:02:20.797Z"
     },
     {
       "id": "2026-aa-south-side-eagles",
       "rank": 6,
       "teamName": "South Side Eagles",
       "teamCode": "SSE",
-      "record": "5-8",
-      "points": 23,
-      "pointsLabel": "23",
-      "winPct": ".385",
-      "gb": "4.5",
-      "rf": 95,
-      "ra": 85,
+      "record": "6-8",
+      "points": 26,
+      "pointsLabel": "26",
+      "winPct": ".429",
+      "gb": "4",
+      "rf": 100,
+      "ra": 87,
       "last10": "4-6",
-      "streak": "Won 1",
+      "streak": "Won 2",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-06-17T05:16:42.198Z"
+      "syncedAt": "2026-06-18T05:02:20.797Z"
     },
     {
       "id": "2026-aa-bauerstown-turtles",
       "rank": 7,
       "teamName": "Bauerstown Turtles",
       "teamCode": "BT",
-      "record": "1-9",
-      "points": 12,
-      "pointsLabel": "12",
-      "winPct": ".100",
-      "gb": "7",
-      "rf": 35,
-      "ra": 93,
+      "record": "1-10",
+      "points": 13,
+      "pointsLabel": "13",
+      "winPct": ".091",
+      "gb": "7.5",
+      "rf": 37,
+      "ra": 98,
       "last10": "1-9",
-      "streak": "Won 1",
+      "streak": "Lost 1",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-06-17T05:16:42.198Z"
+      "syncedAt": "2026-06-18T05:02:20.797Z"
     }
   ]
 };
