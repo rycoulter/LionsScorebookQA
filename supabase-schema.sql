@@ -793,3 +793,5 @@ revoke all on function public.record_site_visit(text, text, text, text, text, bo
 revoke all on function public.get_site_visit_summary() from public;
 grant execute on function public.record_site_visit(text, text, text, text, text, boolean, jsonb) to anon, authenticated;
 grant execute on function public.get_site_visit_summary() to authenticated;
+
+notify pgrst, 'reload schema';
