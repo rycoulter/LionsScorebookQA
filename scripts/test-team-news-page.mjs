@@ -17,7 +17,7 @@ function mustMatch(source, pattern, label) {
 function functionBody(source, functionName) {
   const start = source.indexOf(`function ${functionName}`);
   assert.notEqual(start, -1, `${functionName} should exist`);
-  const nextFunction = ["\nfunction ", "\n  function "]
+  const nextFunction = ["\nfunction ", "\n  function ", "\nasync function ", "\n  async function "]
     .map((needle) => source.indexOf(needle, start + 1))
     .filter((index) => index !== -1)
     .sort((a, b) => a - b)[0];
@@ -43,6 +43,7 @@ mustMatch(indexHtml, /id="newsFeaturedStory"/, "Team News page should include a 
 mustMatch(indexHtml, /id="newsCategoryFilters"[\s\S]*Game Recap[\s\S]*Player News[\s\S]*Team News/, "Team News page should include category filters");
 mustMatch(indexHtml, /id="newsArticleList"/, "Team News page should include a full article list");
 mustMatch(indexHtml, /id="newsEditorView"[\s\S]*data-panel="newsEditor"/, "Admin News Editor page should be present");
+mustMatch(indexHtml, /id="newsMigrateImagesBtn"[\s\S]*Migrate News Images/, "News Editor should include an admin image migration helper");
 mustMatch(indexHtml, /id="newsEditorTitleInput"[\s\S]*id="newsEditorSummaryInput"[\s\S]*id="newsEditorBodyInput"/, "News Editor should collect title, summary, and rich body");
 mustMatch(indexHtml, /id="newsEditorImageInput"[\s\S]*type="file"[\s\S]*accept="image\/\*"/, "News Editor should include an image upload field");
 mustMatch(indexHtml, /id="newsEditorImagePreview"/, "News Editor should include an image preview");
@@ -69,9 +70,15 @@ assert.doesNotMatch(functionBody(appJs, "renderNewsArticleCard"), /news-article-
 mustMatch(functionBody(appJs, "newsArticleDraftFromGame"), /category: "Game Recap"/, "Generate from Game should produce editable recap copy");
 mustMatch(functionBody(appJs, "newsArticleDraftFromGame"), /category: "Game Preview"/, "Generate from Game should produce editable preview copy");
 mustMatch(functionBody(appJs, "generateNewsFromSelectedGame"), /newsArticleDraftFromGame\(game\)/, "Generate from Game should prefill the editor");
-mustMatch(functionBody(appJs, "saveNewsArticle"), /normalizeNewsArticle[\s\S]*persistNewsArticles\("news-save", \{ article \}\)/, "News Editor should save normalized manual articles");
-mustMatch(functionBody(appJs, "deleteNewsArticle"), /persistNewsArticles\("news-delete", \{ deleteArticleId: article\.id \}\)/, "News Editor should delete one article row at a time");
+mustMatch(functionBody(appJs, "saveNewsArticle"), /requireSharedAdminSession\("Sign in as an approved admin before saving news\."\)[\s\S]*prepareNewsArticleImageFields[\s\S]*normalizeNewsArticle[\s\S]*persistNewsArticles\("news-save", \{ article \}\)/, "News Editor should require verified admin sync access and save normalized manual articles");
+mustMatch(functionBody(appJs, "deleteNewsArticle"), /requireSharedAdminSession\("Sign in as an approved admin before deleting news\."\)[\s\S]*persistNewsArticles\("news-delete", \{ deleteArticleId: article\.id \}\)/, "News Editor should require verified admin sync access and delete one article row at a time");
+mustMatch(functionBody(appJs, "bindEvents"), /newsMigrateImagesBtn[\s\S]*migrateLegacyNewsImages/, "News Editor migration button should run the legacy image migration helper");
 mustMatch(functionBody(appJs, "handleNewsImageUpload"), /resizeNewsImageFile\(file\)/, "News Editor should preview uploaded images through the safe helper");
+mustMatch(functionBody(appJs, "prepareNewsArticleImageFields"), /supabaseStorage\.uploadNewsImageAsset\(articleId, imageDataUrl[\s\S]*supabaseStorage\.uploadNewsImageAsset\(articleId, thumbnailDataUrl/, "News Editor should upload full image and thumbnail to Supabase Storage");
+mustMatch(functionBody(appJs, "prepareNewsArticleImageFields"), /imageDataUrl: ""/, "News Editor should clear base64 data after uploading news images");
+mustMatch(functionBody(appJs, "migrateLegacyNewsImages"), /fetchNewsArticles\(\{ includeLegacyImageData: true \}\)[\s\S]*validNewsImageDataUrl\(article\.imageDataUrl\)[\s\S]*!existingImageUrl[\s\S]*prepareNewsArticleImageFields\(article\.id, article\.imageDataUrl, article, \{ forceUpload: true \}\)[\s\S]*upsertNewsArticle\(migratedArticle\)/, "Migration helper should fetch legacy image data, upload only missing URL images, and update rows after upload");
+mustMatch(functionBody(appJs, "migrateLegacyNewsImages"), /catch \(error\)[\s\S]*failed \+= 1/, "Migration helper should leave failed article rows untouched and report failures");
+mustMatch(functionBody(appJs, "newsArticleImage"), /thumbnailUrl[\s\S]*imageUrl[\s\S]*legacyImageDataUrl/, "News rendering should prefer thumbnail URLs, then image URLs, then legacy data URLs");
 mustMatch(functionBody(appJs, "sanitizeNewsBodyHtml"), /allowedTags[\s\S]*script, style, iframe, object, embed/, "Rich text body should be sanitized before display/save");
 mustMatch(functionBody(appJs, "renderTeamNews"), /newsCategoryFilter/, "Team News page should honor category filtering");
 mustMatch(functionBody(appJs, "hasMeaningfulSupabaseSnapshot"), /Array\.isArray\(snapshot\.newsArticles\) && snapshot\.newsArticles\.length/, "Supabase snapshot detection should include news article table rows");
@@ -93,12 +100,22 @@ mustMatch(supabaseStorageJs, /function newsArticleFromRow/, "Supabase storage sh
 mustMatch(supabaseStorageJs, /function buildNewsArticleRow/, "Supabase storage should map app articles into news_articles rows");
 mustMatch(supabaseStorageJs, /function fetchNewsArticles/, "Supabase storage should fetch news_articles");
 mustMatch(supabaseStorageJs, /\.from\("news_articles"\)/, "Supabase storage should target news_articles");
+mustMatch(supabaseStorageJs, /const NEWS_ARTICLE_COLUMNS = \[[\s\S]*"thumbnail_url"[\s\S]*\]\.join\(","\)/, "News article fetches should use a slim column list with image URLs");
+mustMatch(functionBody(supabaseStorageJs, "fetchNewsArticles"), /\.select\(columns\)/, "Public news fetches should select the requested slim column set");
+mustMatch(functionBody(supabaseStorageJs, "fetchNewsArticles"), /NEWS_ARTICLE_LEGACY_COLUMNS/, "News fetches should tolerate rollout before the new image URL columns exist");
+assert.doesNotMatch(functionBody(supabaseStorageJs, "fetchNewsArticles"), /\.select\("\*"\)/, "Public news fetches should not pull every column");
 mustMatch(supabaseStorageJs, /function upsertNewsArticle/, "Supabase storage should upsert one news article");
 mustMatch(supabaseStorageJs, /function deleteNewsArticle/, "Supabase storage should delete one news article");
+mustMatch(supabaseStorageJs, /function uploadNewsImageAsset/, "Supabase storage should upload news article images to Storage");
+mustMatch(functionBody(supabaseStorageJs, "buildNewsArticleRow"), /image_url:[\s\S]*thumbnail_url:[\s\S]*image_data_url: ""/, "News article rows should store image URLs and stop writing base64 image data");
 mustMatch(functionBody(supabaseStorageJs, "fetchBootstrap"), /newsArticles: newsArticlesResponse\.data \|\| \[\]/, "Bootstrap should include news table rows");
 mustMatch(functionBody(supabaseStorageJs, "mergeRemoteSnapshot"), /newsRows = undefined[\s\S]*newsRows\.map\(newsArticleFromRow\)/, "Remote merge should prefer dedicated news table rows");
 assert.doesNotMatch(functionBody(supabaseStorageJs, "buildAppStateRow"), /news_articles/, "App-state sync should not write manual news articles into metadata");
 mustMatch(supabaseSchemaSql, /create table if not exists public\.news_articles/i, "Schema should create news_articles");
+mustMatch(supabaseSchemaSql, /image_url text not null default ''[\s\S]*thumbnail_url text not null default ''/i, "Schema should store news image URLs separately from legacy image data");
+mustMatch(supabaseSchemaSql, /insert into storage\.buckets[\s\S]*'news-images'/i, "Schema should create a public news-images bucket");
+mustMatch(supabaseSchemaSql, /Public read news images/i, "News images should be publicly readable");
+mustMatch(supabaseSchemaSql, /Authenticated admin insert news images[\s\S]*public\.app_admins/i, "News image uploads should be restricted to app admins");
 mustMatch(supabaseSchemaSql, /jsonb_array_elements\([\s\S]*app_state\.metadata -> 'news_articles'[\s\S]*'\[\]'::jsonb[\s\S]*\)/i, "Schema should safely migrate old app_state metadata articles into news_articles");
 mustMatch(supabaseSchemaSql, /Public read news_articles/i, "news_articles should have public read RLS");
 mustMatch(supabaseSchemaSql, /Authenticated write news_articles[\s\S]*public\.app_admins/i, "news_articles writes should be restricted to app admins");

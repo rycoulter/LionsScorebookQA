@@ -144,6 +144,10 @@ create table if not exists public.news_articles (
   category text not null default 'Team News',
   game_id text not null default '',
   article_date date,
+  image_url text not null default '',
+  thumbnail_url text not null default '',
+  image_path text not null default '',
+  thumbnail_path text not null default '',
   image_data_url text not null default '',
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default timezone('utc', now()),
@@ -209,6 +213,10 @@ add column if not exists body_html text not null default '',
 add column if not exists category text not null default 'Team News',
 add column if not exists game_id text not null default '',
 add column if not exists article_date date,
+add column if not exists image_url text not null default '',
+add column if not exists thumbnail_url text not null default '',
+add column if not exists image_path text not null default '',
+add column if not exists thumbnail_path text not null default '',
 add column if not exists image_data_url text not null default '',
 add column if not exists metadata jsonb not null default '{}'::jsonb,
 add column if not exists created_at timestamptz not null default timezone('utc', now()),
@@ -219,10 +227,28 @@ alter column summary set default '',
 alter column body_html set default '',
 alter column category set default 'Team News',
 alter column game_id set default '',
+alter column image_url set default '',
+alter column thumbnail_url set default '',
+alter column image_path set default '',
+alter column thumbnail_path set default '',
 alter column image_data_url set default '',
 alter column metadata set default '{}'::jsonb,
 alter column created_at set default timezone('utc', now()),
 alter column updated_at set default timezone('utc', now());
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'news-images',
+  'news-images',
+  true,
+  5242880,
+  array['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+)
+on conflict (id) do update
+set
+  public = true,
+  file_size_limit = 5242880,
+  allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
 alter table public.site_visits
 add column if not exists visitor_id text not null default '',
@@ -453,6 +479,10 @@ insert into public.news_articles (
   category,
   game_id,
   article_date,
+  image_url,
+  thumbnail_url,
+  image_path,
+  thumbnail_path,
   image_data_url,
   created_at,
   updated_at,
@@ -470,6 +500,10 @@ select
       then coalesce(article.value ->> 'date', article.value ->> 'gameDate', article.value ->> 'game_date')::date
     else null
   end as article_date,
+  coalesce(article.value ->> 'imageUrl', article.value ->> 'image_url', '') as image_url,
+  coalesce(article.value ->> 'thumbnailUrl', article.value ->> 'thumbnail_url', article.value ->> 'imageUrl', article.value ->> 'image_url', '') as thumbnail_url,
+  coalesce(article.value ->> 'imagePath', article.value ->> 'image_path', '') as image_path,
+  coalesce(article.value ->> 'thumbnailPath', article.value ->> 'thumbnail_path', '') as thumbnail_path,
   coalesce(article.value ->> 'imageDataUrl', article.value ->> 'image_data_url', article.value ->> 'image', '') as image_data_url,
   case
     when coalesce(article.value ->> 'createdAt', article.value ->> 'created_at', '') ~ '^\d{4}-\d{2}-\d{2}T'
@@ -500,6 +534,10 @@ set
   category = excluded.category,
   game_id = excluded.game_id,
   article_date = excluded.article_date,
+  image_url = excluded.image_url,
+  thumbnail_url = excluded.thumbnail_url,
+  image_path = excluded.image_path,
+  thumbnail_path = excluded.thumbnail_path,
   image_data_url = excluded.image_data_url,
   metadata = public.news_articles.metadata || excluded.metadata;
 
@@ -553,6 +591,63 @@ on public.news_articles
 for select
 to anon, authenticated
 using (true);
+
+drop policy if exists "Public read news images" on storage.objects;
+create policy "Public read news images"
+on storage.objects
+for select
+to anon, authenticated
+using (bucket_id = 'news-images');
+
+drop policy if exists "Authenticated admin insert news images" on storage.objects;
+create policy "Authenticated admin insert news images"
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'news-images'
+  and exists (
+    select 1
+    from public.app_admins admins
+    where admins.email = lower((select auth.jwt() ->> 'email'))
+  )
+);
+
+drop policy if exists "Authenticated admin update news images" on storage.objects;
+create policy "Authenticated admin update news images"
+on storage.objects
+for update
+to authenticated
+using (
+  bucket_id = 'news-images'
+  and exists (
+    select 1
+    from public.app_admins admins
+    where admins.email = lower((select auth.jwt() ->> 'email'))
+  )
+)
+with check (
+  bucket_id = 'news-images'
+  and exists (
+    select 1
+    from public.app_admins admins
+    where admins.email = lower((select auth.jwt() ->> 'email'))
+  )
+);
+
+drop policy if exists "Authenticated admin delete news images" on storage.objects;
+create policy "Authenticated admin delete news images"
+on storage.objects
+for delete
+to authenticated
+using (
+  bucket_id = 'news-images'
+  and exists (
+    select 1
+    from public.app_admins admins
+    where admins.email = lower((select auth.jwt() ->> 'email'))
+  )
+);
 
 drop policy if exists "Authenticated admin read site_visits" on public.site_visits;
 create policy "Authenticated admin read site_visits"

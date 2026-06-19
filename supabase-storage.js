@@ -1,4 +1,34 @@
 (function initScorebookSupabaseStorage(global) {
+  const NEWS_IMAGE_BUCKET = "news-images";
+  const NEWS_ARTICLE_COLUMNS = [
+    "id",
+    "title",
+    "summary",
+    "body_html",
+    "category",
+    "game_id",
+    "article_date",
+    "image_url",
+    "thumbnail_url",
+    "image_path",
+    "thumbnail_path",
+    "created_at",
+    "updated_at"
+  ].join(",");
+  const NEWS_ARTICLE_FULL_COLUMNS = `${NEWS_ARTICLE_COLUMNS},image_data_url,metadata`;
+  const NEWS_ARTICLE_LEGACY_COLUMNS = [
+    "id",
+    "title",
+    "summary",
+    "body_html",
+    "category",
+    "game_id",
+    "article_date",
+    "created_at",
+    "updated_at"
+  ].join(",");
+  const NEWS_ARTICLE_LEGACY_FULL_COLUMNS = `${NEWS_ARTICLE_LEGACY_COLUMNS},image_data_url,metadata`;
+
   function deepClone(value) {
     if (value === undefined || value === null) return value;
     if (typeof structuredClone === "function") return structuredClone(value);
@@ -256,6 +286,10 @@
       category: String(row.category || "Team News").trim(),
       gameId: String(row.game_id || "").trim(),
       date: row.article_date || "",
+      imageUrl: String(row.image_url || "").trim(),
+      thumbnailUrl: String(row.thumbnail_url || "").trim(),
+      imagePath: String(row.image_path || "").trim(),
+      thumbnailPath: String(row.thumbnail_path || "").trim(),
       imageDataUrl: String(row.image_data_url || "").trim(),
       createdAt: row.created_at || "",
       updatedAt: row.updated_at || ""
@@ -264,6 +298,8 @@
 
   function buildNewsArticleRow(article) {
     const articleDate = String(article?.date || article?.article_date || "").trim();
+    const imageUrl = String(article?.imageUrl || article?.image_url || "").trim();
+    const thumbnailUrl = String(article?.thumbnailUrl || article?.thumbnail_url || imageUrl).trim();
     return {
       id: String(article?.id || "").trim(),
       title: String(article?.title || "").trim(),
@@ -272,7 +308,11 @@
       category: String(article?.category || "Team News").trim(),
       game_id: String(article?.gameId || article?.game_id || "").trim(),
       article_date: articleDate || null,
-      image_data_url: String(article?.imageDataUrl || article?.image_data_url || "").trim(),
+      image_url: imageUrl,
+      thumbnail_url: thumbnailUrl,
+      image_path: String(article?.imagePath || article?.image_path || "").trim(),
+      thumbnail_path: String(article?.thumbnailPath || article?.thumbnail_path || "").trim(),
+      image_data_url: "",
       metadata: {
         updated_from: "scorebook-app"
       }
@@ -412,14 +452,28 @@
     return response;
   }
 
-  async function fetchNewsArticles() {
+  async function fetchNewsArticles(options = {}) {
     const client = getClient();
     if (!client) return { data: [], error: new Error("Supabase client not ready.") };
-    const response = await client
+    const columns = options.includeLegacyImageData ? NEWS_ARTICLE_FULL_COLUMNS : NEWS_ARTICLE_COLUMNS;
+    let response = await client
       .from("news_articles")
-      .select("*")
+      .select(columns)
       .order("article_date", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false });
+    if (
+      isMissingColumnError(response.error, "image_url")
+      || isMissingColumnError(response.error, "thumbnail_url")
+      || isMissingColumnError(response.error, "image_path")
+      || isMissingColumnError(response.error, "thumbnail_path")
+    ) {
+      const legacyColumns = options.includeLegacyImageData ? NEWS_ARTICLE_LEGACY_FULL_COLUMNS : NEWS_ARTICLE_LEGACY_COLUMNS;
+      response = await client
+        .from("news_articles")
+        .select(legacyColumns)
+        .order("article_date", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false });
+    }
     if (isMissingTableError(response.error, "news_articles")) {
       return { data: [], error: null, missingTable: true };
     }
@@ -694,7 +748,7 @@
     const response = await client
       .from("news_articles")
       .upsert(row, { onConflict: "id" })
-      .select("*")
+      .select(NEWS_ARTICLE_FULL_COLUMNS)
       .single();
     if (isMissingTableError(response.error, "news_articles")) {
       return {
@@ -727,6 +781,69 @@
       };
     }
     return response;
+  }
+
+  function parseImageDataUrl(dataUrl = "") {
+    const match = String(dataUrl || "").match(/^data:(image\/(?:png|jpe?g|webp|gif));base64,([\s\S]+)$/i);
+    if (!match) return null;
+    const mimeType = match[1].toLowerCase();
+    const extension = mimeType.includes("png")
+      ? "png"
+      : mimeType.includes("webp")
+        ? "webp"
+        : mimeType.includes("gif")
+          ? "gif"
+          : "jpg";
+    const binary = global.atob(match[2]);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    return {
+      blob: new Blob([bytes], { type: mimeType }),
+      extension,
+      mimeType
+    };
+  }
+
+  function safeStoragePathSegment(value = "") {
+    return String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80) || "article";
+  }
+
+  async function uploadNewsImageAsset(articleId, dataUrl, options = {}) {
+    const client = getClient();
+    if (!client) return { data: null, error: new Error("Supabase client not ready.") };
+    const parsed = parseImageDataUrl(dataUrl);
+    if (!parsed) return { data: null, error: new Error("News image is not a supported image data URL.") };
+    const kind = safeStoragePathSegment(options.kind || "image");
+    const articleKey = safeStoragePathSegment(articleId || "article");
+    const path = `articles/${articleKey}/${kind}-${Date.now()}.${parsed.extension}`;
+    const bucket = client.storage.from(NEWS_IMAGE_BUCKET);
+    const uploadResponse = await bucket.upload(path, parsed.blob, {
+      cacheControl: "31536000",
+      contentType: parsed.mimeType,
+      upsert: true
+    });
+    if (uploadResponse.error) {
+      return {
+        data: null,
+        error: uploadResponse.error
+      };
+    }
+    const publicResponse = bucket.getPublicUrl(path);
+    return {
+      data: {
+        bucket: NEWS_IMAGE_BUCKET,
+        path,
+        publicUrl: publicResponse?.data?.publicUrl || ""
+      },
+      error: null
+    };
   }
 
   async function isAdminEmail(email) {
@@ -776,6 +893,7 @@
     deleteHighlight,
     upsertNewsArticle,
     deleteNewsArticle,
+    uploadNewsImageAsset,
     isAdminEmail
   };
 })(window);

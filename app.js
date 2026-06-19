@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.105";
+const APP_VERSION = "v.1.1.106";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -1364,6 +1364,7 @@ const els = {
   newsArticleCount: document.getElementById("newsArticleCount"),
   newsEditorForm: document.getElementById("newsEditorForm"),
   newsEditorTitle: document.getElementById("newsEditorTitle"),
+  newsMigrateImagesBtn: document.getElementById("newsMigrateImagesBtn"),
   newsEditorResetBtn: document.getElementById("newsEditorResetBtn"),
   newsEditorGameSelect: document.getElementById("newsEditorGameSelect"),
   newsGenerateFromGameBtn: document.getElementById("newsGenerateFromGameBtn"),
@@ -2371,6 +2372,10 @@ function normalizeNewsArticle(article = {}, games = state?.games || []) {
     category: normalizeNewsCategory(article.category),
     gameId,
     date: String(article.date || article.gameDate || article.game_date || linkedGame?.date || createdAt.slice(0, 10) || todayValue()).trim(),
+    imageUrl: safeNewsImageReference(article.imageUrl || article.image_url || ""),
+    thumbnailUrl: safeNewsImageReference(article.thumbnailUrl || article.thumbnail_url || article.imageUrl || article.image_url || ""),
+    imagePath: String(article.imagePath || article.image_path || "").trim(),
+    thumbnailPath: String(article.thumbnailPath || article.thumbnail_path || "").trim(),
     imageDataUrl: validNewsImageDataUrl(article.imageDataUrl || article.image_data_url || article.image || ""),
     createdAt,
     updatedAt: article.updatedAt || article.updated_at || createdAt || new Date().toISOString()
@@ -3887,6 +3892,7 @@ function renderLiveSyncStatus(game = activeScoreGame()) {
 
 function loadAccessMode() {
   if (indexAdminAccessEnabled()) return "admin";
+  if (isProductionSiteHost()) return "public";
   try {
     return window.localStorage?.getItem(ACCESS_MODE_STORAGE_KEY) === "admin" ? "admin" : "public";
   } catch (error) {
@@ -4099,6 +4105,17 @@ function requireAdminAccess(message = "Admin sign-in required.") {
   return false;
 }
 
+function productionSharedAdminSessionRequired() {
+  return !indexAdminAccessEnabled() && supabaseStorage?.isReady?.();
+}
+
+function requireSharedAdminSession(message = "Sign in as an approved admin before syncing changes.") {
+  if (!requireAdminAccess(message)) return false;
+  if (supabaseAdminEmail || !productionSharedAdminSessionRequired()) return true;
+  openAdminAuthModal(message);
+  return false;
+}
+
 function setAccessMode(nextMode) {
   accessMode = normalizeAccessMode(nextMode);
   saveAccessMode();
@@ -4271,6 +4288,12 @@ async function submitAdminCredentials() {
 async function signOutAdmin() {
   const client = supabaseStorage?.getClient?.();
   pendingAdminView = "";
+  supabaseAdminEmail = "";
+  siteVisitSummary = null;
+  siteVisitSummaryState = "idle";
+  siteVisitSummaryLoadedAt = 0;
+  saveStoredAdminEmail("");
+  setAccessMode("public");
   try {
     if (client) {
       const { error } = await client.auth.signOut({ scope: "local" });
@@ -4278,13 +4301,6 @@ async function signOutAdmin() {
     }
   } catch (error) {
     console.warn("Supabase sign-out failed.", error);
-  } finally {
-    supabaseAdminEmail = "";
-    siteVisitSummary = null;
-    siteVisitSummaryState = "idle";
-    siteVisitSummaryLoadedAt = 0;
-    saveStoredAdminEmail("");
-    setAccessMode("public");
   }
 }
 
@@ -4314,6 +4330,9 @@ async function initializeSupabaseAuth() {
     const { data, error } = await client.auth.getSession();
     if (error) {
       console.warn("Unable to fetch the current Supabase session.", error);
+      if (!indexAdminAccessEnabled() && accessMode === "admin") {
+        setAccessMode("public");
+      }
       return;
     }
     const sessionUser = data?.session?.user || null;
@@ -4482,6 +4501,7 @@ function bindEvents() {
   });
   els.newsEditorForm?.addEventListener("submit", saveNewsArticle);
   els.newsEditorResetBtn?.addEventListener("click", resetNewsEditorForm);
+  els.newsMigrateImagesBtn?.addEventListener("click", migrateLegacyNewsImages);
   els.newsGenerateFromGameBtn?.addEventListener("click", generateNewsFromSelectedGame);
   els.newsEditorImageInput?.addEventListener("change", handleNewsImageUpload);
   els.newsEditorForm?.addEventListener("click", (event) => {
@@ -9217,14 +9237,27 @@ function renderNewsArticleCard(article, active = false) {
 }
 
 function newsArticleImage(article) {
-  if (validNewsImageDataUrl(article?.imageDataUrl)) return article.imageDataUrl;
+  const thumbnailUrl = safeNewsImageReference(article?.thumbnailUrl);
+  if (thumbnailUrl) return thumbnailUrl;
+  const imageUrl = safeNewsImageReference(article?.imageUrl);
+  if (imageUrl) return imageUrl;
+  const legacyImageDataUrl = validNewsImageDataUrl(article?.imageDataUrl);
+  if (legacyImageDataUrl) return legacyImageDataUrl;
   const game = article?.gameId ? state.games.find((item) => item.id === article.gameId) : null;
   if (game) return getMatchupImage(game.opponent, lionsSide(game));
   return "new-lion.png";
 }
 
+function safeNewsImageReference(value = "") {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (/^https?:\/\//i.test(text)) return text;
+  if (/^(?:assets\/|new-lion\.png|lions-logo\.png|lions-watermark\.png|icon-\d+\.png|favicon\.ico)/i.test(text)) return text;
+  return "";
+}
+
 function validNewsImageDataUrl(value = "") {
-  const text = String(value || "");
+  const text = String(value || "").trim();
   return /^data:image\/(?:png|jpe?g|webp|gif);base64,/i.test(text) ? text : "";
 }
 
@@ -9303,7 +9336,7 @@ function editNewsArticle(articleId) {
   const article = teamNewsArticles().find((item) => item.id === articleId);
   if (!article) return;
   newsEditId = article.id;
-  newsEditorImageDataUrl = article.imageDataUrl || "";
+  newsEditorImageDataUrl = article.imageUrl || article.thumbnailUrl || article.imageDataUrl || "";
   if (els.newsEditorTitle) els.newsEditorTitle.textContent = "Edit Article";
   if (els.newsEditorGameSelect) els.newsEditorGameSelect.value = article.gameId || "";
   if (els.newsEditorCategory) els.newsEditorCategory.value = article.category || "Team News";
@@ -9315,7 +9348,7 @@ function editNewsArticle(articleId) {
 }
 
 async function deleteNewsArticle(articleId) {
-  if (!requireAdminAccess("Admin sign-in required to delete news.")) return;
+  if (!requireSharedAdminSession("Sign in as an approved admin before deleting news.")) return;
   const article = teamNewsArticles().find((item) => item.id === articleId);
   if (!article) return;
   if (!window.confirm(`Delete "${article.title || "this article"}"?`)) return;
@@ -9326,7 +9359,7 @@ async function deleteNewsArticle(articleId) {
 
 async function saveNewsArticle(event) {
   event?.preventDefault?.();
-  if (!requireAdminAccess("Admin sign-in required to save news.")) return;
+  if (!requireSharedAdminSession("Sign in as an approved admin before saving news.")) return;
   const title = String(els.newsEditorTitleInput?.value || "").trim();
   const summary = String(els.newsEditorSummaryInput?.value || "").trim();
   const bodyHtml = sanitizeNewsBodyHtml(els.newsEditorBodyInput?.innerHTML || "");
@@ -9341,14 +9374,23 @@ async function saveNewsArticle(event) {
     return;
   }
   const previous = (state.newsArticles || []).find((item) => item.id === newsEditId);
+  const articleId = newsEditId || createId("news");
+  let imageFields;
+  try {
+    imageFields = await prepareNewsArticleImageFields(articleId, newsEditorImageDataUrl, previous);
+  } catch (error) {
+    console.warn("Unable to upload news image.", error);
+    window.alert(error?.message || "Unable to upload that news image. Try again before saving this article.");
+    return;
+  }
   const article = normalizeNewsArticle({
-    id: newsEditId || createId("news"),
+    id: articleId,
     title,
     summary,
     bodyHtml,
     category: els.newsEditorCategory?.value || "Team News",
     gameId: els.newsEditorGameSelect?.value || "",
-    imageDataUrl: newsEditorImageDataUrl,
+    ...imageFields,
     createdAt: previous?.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }, state.games);
@@ -9359,6 +9401,144 @@ async function saveNewsArticle(event) {
   ].sort(sortNewsArticlesNewestFirst);
   resetNewsEditorForm();
   await persistNewsArticles("news-save", { article });
+}
+
+function newsImageFieldsFromArticle(article = {}) {
+  const imageUrl = safeNewsImageReference(article.imageUrl || article.image_url || "");
+  const thumbnailUrl = safeNewsImageReference(article.thumbnailUrl || article.thumbnail_url || imageUrl);
+  return {
+    imageUrl,
+    thumbnailUrl,
+    imagePath: String(article.imagePath || article.image_path || "").trim(),
+    thumbnailPath: String(article.thumbnailPath || article.thumbnail_path || "").trim(),
+    imageDataUrl: validNewsImageDataUrl(article.imageDataUrl || article.image_data_url || "")
+  };
+}
+
+async function prepareNewsArticleImageFields(articleId, imageSource, previous = {}, options = {}) {
+  const existing = newsImageFieldsFromArticle(previous || {});
+  const source = String(imageSource || "").trim();
+  const forceUpload = Boolean(options.forceUpload);
+  if (!source) {
+    return {
+      imageUrl: "",
+      thumbnailUrl: "",
+      imagePath: "",
+      thumbnailPath: "",
+      imageDataUrl: ""
+    };
+  }
+  if (!forceUpload && (source === existing.imageUrl || source === existing.thumbnailUrl || source === existing.imageDataUrl)) {
+    return existing;
+  }
+  const imageUrl = safeNewsImageReference(source);
+  if (imageUrl && !forceUpload) {
+    return {
+      imageUrl,
+      thumbnailUrl: imageUrl,
+      imagePath: "",
+      thumbnailPath: "",
+      imageDataUrl: ""
+    };
+  }
+  const imageDataUrl = validNewsImageDataUrl(source);
+  if (!imageDataUrl) return existing;
+  if (!supabaseStorage?.uploadNewsImageAsset || !supabaseAdminEmail) {
+    throw new Error("Sign in as an approved admin before uploading news images.");
+  }
+  const thumbnailDataUrl = await resizeNewsImageDataUrl(imageDataUrl, {
+    maxWidth: 420,
+    maxHeight: 290,
+    quality: 0.78
+  });
+  const imageResponse = await supabaseStorage.uploadNewsImageAsset(articleId, imageDataUrl, { kind: "image" });
+  if (imageResponse?.error || !imageResponse?.data?.publicUrl) {
+    throw imageResponse?.error || new Error("Unable to upload the news image to Supabase Storage.");
+  }
+  const thumbnailResponse = await supabaseStorage.uploadNewsImageAsset(articleId, thumbnailDataUrl, { kind: "thumb" });
+  if (thumbnailResponse?.error || !thumbnailResponse?.data?.publicUrl) {
+    throw thumbnailResponse?.error || new Error("Unable to upload the news thumbnail to Supabase Storage.");
+  }
+  return {
+    imageUrl: imageResponse.data.publicUrl,
+    thumbnailUrl: thumbnailResponse.data.publicUrl,
+    imagePath: imageResponse.data.path || "",
+    thumbnailPath: thumbnailResponse.data.path || "",
+    imageDataUrl: ""
+  };
+}
+
+async function migrateLegacyNewsImages() {
+  if (!requireSharedAdminSession("Sign in as an approved admin before migrating news images.")) return;
+  if (!supabaseStorage?.fetchNewsArticles || !supabaseStorage?.newsArticleFromRow || !supabaseStorage?.upsertNewsArticle || !supabaseStorage?.uploadNewsImageAsset) {
+    window.alert("Supabase news image migration is not available in this build.");
+    return;
+  }
+  if (!window.confirm("Upload legacy news images to Supabase Storage and convert article rows to image URLs? Existing image data stays untouched if an upload fails.")) {
+    return;
+  }
+  const button = els.newsMigrateImagesBtn;
+  const originalLabel = button?.textContent || "Migrate News Images";
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Migrating...";
+  }
+  let migrated = 0;
+  let skipped = 0;
+  let failed = 0;
+  try {
+    const response = await supabaseStorage.fetchNewsArticles({ includeLegacyImageData: true });
+    if (response?.error) throw response.error;
+    const articles = (Array.isArray(response?.data) ? response.data : [])
+      .map((row) => supabaseStorage.newsArticleFromRow(row))
+      .filter((article) => article?.id);
+    const legacyArticles = articles.filter((article) => {
+      const legacyImageDataUrl = validNewsImageDataUrl(article.imageDataUrl);
+      const existingImageUrl = safeNewsImageReference(article.imageUrl);
+      return legacyImageDataUrl && !existingImageUrl;
+    });
+    skipped = articles.length - legacyArticles.length;
+    for (const article of legacyArticles) {
+      try {
+        const imageFields = await prepareNewsArticleImageFields(article.id, article.imageDataUrl, article, { forceUpload: true });
+        if (!safeNewsImageReference(imageFields.imageUrl)) {
+          throw new Error(`No uploaded URL returned for "${article.title || article.id}".`);
+        }
+        const migratedArticle = normalizeNewsArticle({
+          ...article,
+          ...imageFields,
+          imageDataUrl: "",
+          updatedAt: new Date().toISOString()
+        }, state.games);
+        const upsertResponse = await supabaseStorage.upsertNewsArticle(migratedArticle);
+        if (upsertResponse?.error) throw upsertResponse.error;
+        const normalizedArticle = normalizeNewsArticle(upsertResponse.data || migratedArticle, state.games);
+        if (normalizedArticle) {
+          state.newsArticles = [
+            ...(state.newsArticles || []).filter((item) => item.id !== normalizedArticle.id),
+            normalizedArticle
+          ].sort(sortNewsArticlesNewestFirst);
+        }
+        migrated += 1;
+      } catch (error) {
+        failed += 1;
+        console.warn("Unable to migrate legacy news image.", { articleId: article.id, title: article.title, error });
+      }
+    }
+    if (migrated) {
+      saveState({ markLiveGamesDirty: false, capturePendingScoring: false });
+      render();
+    }
+    window.alert(`News image migration complete.\n\nMigrated: ${migrated}\nSkipped: ${skipped}\nFailed: ${failed}`);
+  } catch (error) {
+    console.warn("News image migration failed.", error);
+    window.alert(error?.message || "Unable to migrate legacy news images.");
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalLabel;
+    }
+  }
 }
 
 function sharedNewsSyncUnavailableError() {
@@ -9495,29 +9675,36 @@ function resizeNewsImageFile(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(reader.error || new Error("Unable to read image."));
-    reader.onload = () => {
-      const image = new Image();
-      image.onerror = () => reject(new Error("Unable to decode image."));
-      image.onload = () => {
-        const maxWidth = 900;
-        const maxHeight = 620;
-        const ratio = Math.min(maxWidth / image.width, maxHeight / image.height, 1);
-        const width = Math.max(1, Math.round(image.width * ratio));
-        const height = Math.max(1, Math.round(image.height * ratio));
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const context = canvas.getContext("2d");
-        if (!context) {
-          resolve(String(reader.result || ""));
-          return;
-        }
-        context.drawImage(image, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", 0.82));
-      };
-      image.src = String(reader.result || "");
-    };
+    reader.onload = () => resizeNewsImageDataUrl(String(reader.result || ""))
+      .then(resolve)
+      .catch(reject);
     reader.readAsDataURL(file);
+  });
+}
+
+function resizeNewsImageDataUrl(source, options = {}) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onerror = () => reject(new Error("Unable to decode image."));
+    image.onload = () => {
+      const maxWidth = Number(options.maxWidth || 900);
+      const maxHeight = Number(options.maxHeight || 620);
+      const quality = Number(options.quality || 0.82);
+      const ratio = Math.min(maxWidth / image.width, maxHeight / image.height, 1);
+      const width = Math.max(1, Math.round(image.width * ratio));
+      const height = Math.max(1, Math.round(image.height * ratio));
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        resolve(String(source || ""));
+        return;
+      }
+      context.drawImage(image, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    image.src = String(source || "");
   });
 }
 

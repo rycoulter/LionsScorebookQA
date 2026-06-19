@@ -29,6 +29,7 @@ mustMatch(fallbackBody, /window\.ScorebookSupabase\?\.environment === "qa"/, "QA
 
 const loadBody = functionBody(appJs, "loadAccessMode");
 mustMatch(loadBody, /if \(indexAdminAccessEnabled\(\)\) return "admin"/, "Fallback should initialize access mode as admin");
+mustMatch(loadBody, /if \(isProductionSiteHost\(\)\) return "public"/, "Production should not hydrate stale cached admin mode before Supabase auth verifies it");
 
 const normalizeBody = functionBody(appJs, "normalizeAccessMode");
 mustMatch(normalizeBody, /nextMode === "admin" \|\| indexAdminAccessEnabled\(\) \? "admin" : "public"/, "Fallback should keep QA/local index in admin mode");
@@ -41,6 +42,14 @@ mustMatch(authBody, /ensureIndexAdminAccess\(\)/, "Auth reset should preserve QA
 
 const initBody = functionBody(appJs, "initializeSupabaseAuth");
 mustMatch(initBody, /ensureIndexAdminAccess\(\)/, "Supabase auth initialization should enable fallback before auth checks");
+mustMatch(initBody, /Unable to fetch the current Supabase session[\s\S]*setAccessMode\("public"\)/, "Production auth initialization errors should clear stale admin mode");
+
+const signOutBody = functionBody(appJs, "signOutAdmin");
+mustMatch(signOutBody, /supabaseAdminEmail = ""[\s\S]*setAccessMode\("public"\)[\s\S]*client\.auth\.signOut/, "Admin sign-out should clear local UI state before waiting on Supabase");
+
+const sharedSessionBody = functionBody(appJs, "requireSharedAdminSession");
+mustMatch(sharedSessionBody, /if \(!requireAdminAccess\(message\)\) return false/, "Shared writes should still require admin UI access first");
+mustMatch(sharedSessionBody, /supabaseAdminEmail \|\| !productionSharedAdminSessionRequired\(\)/, "Shared writes should require verified Supabase admin on production but allow QA/local fallback");
 
 const renderBody = functionBody(appJs, "renderAccessMode");
 mustMatch(renderBody, /QA Admin/, "Access badge should make fallback admin mode visible");
