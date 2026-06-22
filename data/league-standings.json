@@ -3,7 +3,7 @@
   "division": "AA",
   "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
   "sourceLabel": "Pittsburgh NABA AA standings",
-  "syncedAt": "2026-06-22T05:30:47.887Z",
+  "syncedAt": "2026-06-22T17:50:28.157Z",
   "rows": [
     {
       "id": "2026-aa-pittsburgh-d2",
@@ -21,7 +21,7 @@
       "streak": "Won 3",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-06-22T05:30:47.887Z"
+      "syncedAt": "2026-06-22T17:50:28.157Z"
     },
     {
       "id": "2026-aa-oakmont-lions",
@@ -39,11 +39,29 @@
       "streak": "Won 2",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-06-22T05:30:47.887Z"
+      "syncedAt": "2026-06-22T17:50:28.157Z"
+    },
+    {
+      "id": "2026-aa-biscuitvilletownsquare-bandidos",
+      "rank": 3,
+      "teamName": "BiscuitvilleTownSquare Bandidos",
+      "teamCode": "BB",
+      "record": "10-4",
+      "points": 34,
+      "pointsLabel": "34",
+      "winPct": ".714",
+      "gb": "0.5",
+      "rf": 108,
+      "ra": 60,
+      "last10": "7-3",
+      "streak": "Won 1",
+      "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
+      "sourceLabel": "Pittsburgh NABA AA standings",
+      "syncedAt": "2026-06-22T17:50:28.157Z"
     },
     {
       "id": "2026-aa-south-hills-devils",
-      "rank": 3,
+      "rank": 4,
       "teamName": "South Hills Devils",
       "teamCode": "SHD",
       "record": "8-9",
@@ -57,25 +75,7 @@
       "streak": "Won 2",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-06-22T05:30:47.887Z"
-    },
-    {
-      "id": "2026-aa-biscuitvilletownsquare-bandidos",
-      "rank": 4,
-      "teamName": "BiscuitvilleTownSquare Bandidos",
-      "teamCode": "BB",
-      "record": "9-4",
-      "points": 31,
-      "pointsLabel": "31",
-      "winPct": ".692",
-      "gb": "1",
-      "rf": 102,
-      "ra": 56,
-      "last10": "6-4",
-      "streak": "Lost 1",
-      "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
-      "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-06-22T05:30:47.887Z"
+      "syncedAt": "2026-06-22T17:50:28.157Z"
     },
     {
       "id": "2026-aa-south-oakland-ducks",
@@ -93,7 +93,7 @@
       "streak": "Lost 1",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-06-22T05:30:47.887Z"
+      "syncedAt": "2026-06-22T17:50:28.157Z"
     },
     {
       "id": "2026-aa-south-side-eagles",
@@ -111,25 +111,25 @@
       "streak": "Lost 2",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-06-22T05:30:47.887Z"
+      "syncedAt": "2026-06-22T17:50:28.157Z"
     },
     {
       "id": "2026-aa-bauerstown-turtles",
       "rank": 7,
       "teamName": "Bauerstown Turtles",
       "teamCode": "BT",
-      "record": "1-12",
-      "points": 15,
-      "pointsLabel": "15",
-      "winPct": ".077",
-      "gb": "9",
-      "rf": 45,
-      "ra": 113,
+      "record": "1-13",
+      "points": 16,
+      "pointsLabel": "16",
+      "winPct": ".071",
+      "gb": "9.5",
+      "rf": 49,
+      "ra": 119,
       "last10": "1-9",
-      "streak": "Lost 3",
+      "streak": "Lost 4",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-06-22T05:30:47.887Z"
+      "syncedAt": "2026-06-22T17:50:28.157Z"
     }
   ]
 }
