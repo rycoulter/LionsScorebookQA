@@ -31,8 +31,8 @@ assert.match(renderSeasonStatsBody, /renderStatsProfiles\(teamStats\(statsSeason
 assert.match(renderSeasonStatsBody, /renderStatsSprayDashboard\(\)/, "Season stats should refresh spray chart preview and tendencies");
 assert.match(renderSeasonStatsBody, /statsThresholdClass\("avg", hit\.avg, hit\.ab > 0\)/, "AVG table cells should get threshold formatting");
 assert.match(renderSeasonStatsBody, /statsThresholdClass\("ops", hit\.ops, hit\.pa > 0\)/, "OPS table cells should get threshold formatting");
-assert.match(indexHtml, /data-hit-sort="runs">R<\/button>/, "Hitting stats table should show Runs instead of RISP");
-assert.doesNotMatch(indexHtml, /data-hit-sort="risp">RISP<\/button>/, "Hitting stats table should not show RISP as a column");
+assert.match(indexHtml, /data-hit-sort="runs"[^>]*>R<\/button>/, "Hitting stats table should show Runs instead of RISP");
+assert.doesNotMatch(indexHtml, /data-hit-sort="risp"[^>]*>RISP<\/button>/, "Hitting stats table should not show RISP as a column");
 assert.match(renderSeasonStatsBody, /<td>\$\{hit\.runs\}<\/td>/, "Desktop hitting rows should display runs scored");
 assert.match(renderSeasonStatsBody, /mobileStatPill\("R", hit\.runs, mobileStatIsLeader\(mobileHittingLeaders, "runs", player\.id\)\)/, "Mobile hitting cards should display runs scored");
 

@@ -21,8 +21,8 @@ function functionBody(source, functionName) {
 
 mustMatch(indexHtml, /<th id="hittingStatsEditHeader" data-admin-only hidden>Edit<\/th>/, "Hitting Edit header should start hidden and be admin-only");
 mustMatch(indexHtml, /<th id="pitchingStatsEditHeader" data-admin-only hidden>Edit<\/th>/, "Pitching Edit header should start hidden and be admin-only");
-mustMatch(indexHtml, /data-hit-sort="runs">R/, "Runs should be sortable in the hitting stats table");
-assert.doesNotMatch(indexHtml, /data-hit-sort="risp">RISP/, "RISP should not be shown in the hitting stats table");
+mustMatch(indexHtml, /data-hit-sort="runs"[^>]*>R/, "Runs should be sortable in the hitting stats table");
+assert.doesNotMatch(indexHtml, /data-hit-sort="risp"[^>]*>RISP/, "RISP should not be shown in the hitting stats table");
 mustMatch(appJs, /statsEditButtonMarkup\(player\)/, "Hitting stats rows should render edit buttons");
 mustMatch(appJs, /data-edit-hitting-player="\$\{escapeHtml\(player\.id\)\}"/, "Edit buttons should target a specific player");
 mustMatch(appJs, /colspan="\$\{admin \? 24 : 23\}" class="stats-empty-row"/, "Empty stats rows should account for the admin-only edit column");

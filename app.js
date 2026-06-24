@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.108";
+const APP_VERSION = "v.1.1.109";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -2155,6 +2155,35 @@ function fieldCoordinatesForGame(game) {
 
 function gameLocationLabel(game) {
   return gameLocationName(game);
+}
+
+function gameLocationMapUrl(game) {
+  const destination = gameLocationAddress(game) || gameLocationName(game);
+  if (!destination) return "";
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destination)}`;
+}
+
+function syncHomeNextGameLocation(game) {
+  if (!els.homeNextGameLocation) return;
+  const label = gameLocationLabel(game) || "Field location TBD";
+  const mapUrl = gameLocationMapUrl(game);
+  els.homeNextGameLocation.textContent = label;
+  els.homeNextGameLocation.classList.toggle("is-disabled", !mapUrl);
+  if (!mapUrl) {
+    els.homeNextGameLocation.removeAttribute("href");
+    els.homeNextGameLocation.removeAttribute("target");
+    els.homeNextGameLocation.removeAttribute("rel");
+    els.homeNextGameLocation.removeAttribute("title");
+    els.homeNextGameLocation.setAttribute("aria-disabled", "true");
+    els.homeNextGameLocation.removeAttribute("aria-label");
+    return;
+  }
+  els.homeNextGameLocation.href = mapUrl;
+  els.homeNextGameLocation.target = "_blank";
+  els.homeNextGameLocation.rel = "noopener noreferrer";
+  els.homeNextGameLocation.title = `Open ${label} in Google Maps`;
+  els.homeNextGameLocation.setAttribute("aria-label", `Open ${label} in Google Maps`);
+  els.homeNextGameLocation.removeAttribute("aria-disabled");
 }
 
 function populateFieldLocationSelects() {
@@ -3958,12 +3987,12 @@ function ensureIndexAdminAccess() {
 }
 
 function boxScoreReturnLabel(view = boxScoreReturnView) {
-  if (view === "analysis") return "Archive";
-  if (view === "archive") return "Archive";
+  if (view === "analysis") return "Past Games";
+  if (view === "archive") return "Past Games";
   if (view === "games") return "Schedule";
   if (view === "home") return "Home";
   if (view === "scorebook") return "Scorebook";
-  return "Archive";
+  return "Past Games";
 }
 
 function loadStoredAdminEmail() {
@@ -8597,7 +8626,7 @@ function renderHome() {
       els.homeNextGameMobileTitle.hidden = false;
     }
     if (els.homeNextGameWhen) els.homeNextGameWhen.textContent = homeNextGameWhenLabel(next);
-    if (els.homeNextGameLocation) els.homeNextGameLocation.textContent = gameLocationLabel(next) || "Field location TBD";
+    syncHomeNextGameLocation(next);
     if (els.homeNextGameStatusText) els.homeNextGameStatusText.textContent = nextGameStatus.text;
     if (els.homeNextGameStatus) els.homeNextGameStatus.classList.toggle("is-live", nextGameStatus.isLive);
     if (els.homeNextGameWeather) {
@@ -8622,7 +8651,7 @@ function renderHome() {
       els.homeNextGameMobileTitle.hidden = false;
     }
     if (els.homeNextGameWhen) els.homeNextGameWhen.textContent = "Date and time TBD";
-    if (els.homeNextGameLocation) els.homeNextGameLocation.textContent = "Field location TBD";
+    syncHomeNextGameLocation(null);
     if (els.homeNextGameStatusText) els.homeNextGameStatusText.textContent = "Schedule and score updates show up here automatically.";
     if (els.homeNextGameStatus) els.homeNextGameStatus.classList.remove("is-live");
     if (els.homeNextGameWeather) {
@@ -13448,6 +13477,12 @@ function normalizeArchiveSeasonFilter(value, options = availableArchiveSeasons()
   return options[0] || String(currentLeagueSeason());
 }
 
+function syncSeasonChipLabel(select) {
+  if (!select) return;
+  const label = select.closest(".schedule-season-chip")?.querySelector(".schedule-season-chip-label");
+  if (label) label.textContent = select.selectedOptions?.[0]?.textContent || select.value || "Choose Season";
+}
+
 function populateArchiveSeasonSelect() {
   if (!els.archiveSeasonSelect) return;
   const seasons = availableArchiveSeasons();
@@ -13456,6 +13491,7 @@ function populateArchiveSeasonSelect() {
     .map((season) => `<option value="${escapeHtml(season)}">${escapeHtml(`${season} Season`)}</option>`)
     .join("");
   els.archiveSeasonSelect.value = archiveSeasonFilter;
+  syncSeasonChipLabel(els.archiveSeasonSelect);
 }
 
 function renderArchive() {
@@ -13466,7 +13502,7 @@ function renderArchive() {
 
   els.archiveGrid.innerHTML = games.length
     ? games.map(renderArchiveCard).join("")
-    : `<p class="player-meta">No games in Game Archive yet.</p>`;
+    : `<p class="player-meta">No past games yet.</p>`;
 }
 
 function renderArchiveCard(game) {
@@ -13750,7 +13786,7 @@ function renderGames() {
       els.gamesArchiveNote.innerHTML = "";
     } else {
       els.gamesArchiveNote.hidden = false;
-      els.gamesArchiveNote.innerHTML = `<span>Full game history lives in Game Archive.</span><button type="button" class="secondary-action" data-game-action="archive">Open Game Archive</button>`;
+      els.gamesArchiveNote.innerHTML = `<span>Full game history lives in Past Games.</span><button type="button" class="secondary-action" data-game-action="archive">Open Past Games</button>`;
     }
   }
 }
@@ -13825,6 +13861,7 @@ function populateScheduleSeasonSelect() {
     .map((season) => `<option value="${escapeHtml(season)}">${escapeHtml(`${season} Season`)}</option>`)
     .join("");
   els.scheduleSeasonSelect.value = scheduleSeasonFilter;
+  syncSeasonChipLabel(els.scheduleSeasonSelect);
 }
 
 function populateScheduleCalendarMonthSelect() {
@@ -13864,6 +13901,7 @@ function populateStatsSeasonSelect() {
     .map((season) => `<option value="${escapeHtml(season)}">${escapeHtml(`${season} Season`)}</option>`)
     .join("");
   els.statsSeasonSelect.value = statsSeasonFilter;
+  syncSeasonChipLabel(els.statsSeasonSelect);
 }
 
 function statsGamesForSeason(season = null) {
