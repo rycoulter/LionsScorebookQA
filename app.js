@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.109";
+const APP_VERSION = "v.1.1.110";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -931,6 +931,9 @@ const els = {
   homePitchingLeadersLink: document.getElementById("homePitchingLeadersLink"),
   homeRecentResultOutcome: document.getElementById("homeRecentResultOutcome"),
   homeRecentResultBody: document.getElementById("homeRecentResultBody"),
+  homeResultsCarouselControls: document.getElementById("homeResultsCarouselControls"),
+  homeResultsPrevBtn: document.getElementById("homeResultsPrevBtn"),
+  homeResultsNextBtn: document.getElementById("homeResultsNextBtn"),
   homeTeamNewsBody: document.getElementById("homeTeamNewsBody"),
   homeTeamNewsLink: document.getElementById("homeTeamNewsLink"),
   leagueStandingsStatus: document.getElementById("leagueStandingsStatus"),
@@ -4500,6 +4503,8 @@ function bindEvents() {
   els.homeScoutingBtn?.addEventListener("click", openNextGameScouting);
   els.homeBattingLeadersLink?.addEventListener("click", () => switchView("stats"));
   els.homePitchingLeadersLink?.addEventListener("click", () => switchView("stats"));
+  els.homeResultsPrevBtn?.addEventListener("click", () => scrollHomeResultsCarousel(-1));
+  els.homeResultsNextBtn?.addEventListener("click", () => scrollHomeResultsCarousel(1));
   els.homeTeamNewsLink?.addEventListener("click", () => {
     selectedNewsArticleId = "";
     newsLayoutMode = "latest";
@@ -4507,12 +4512,6 @@ function bindEvents() {
     switchView("news");
   });
   els.homeRecentResultBody?.addEventListener("click", (event) => {
-    const scrollButton = event.target.closest("[data-home-results-scroll]");
-    if (scrollButton) {
-      const direction = scrollButton.dataset.homeResultsScroll === "next" ? 1 : -1;
-      scrollHomeResultsCarousel(direction);
-      return;
-    }
     if (event.target.closest("[data-game-action]")) {
       handleGameActionClick(event);
       return;
@@ -8637,7 +8636,7 @@ function renderHome() {
       const showScoreAction = isAdminMode() && !gameIsFinal(next);
       els.homeNextGameScoreBtn.hidden = !showScoreAction;
       els.homeNextGameScoreBtn.dataset.gameId = next.id;
-      els.homeNextGameScoreBtn.innerHTML = `<span>${homeNextGameScoreButtonLabel(next)}</span><span aria-hidden="true">></span>`;
+      els.homeNextGameScoreBtn.innerHTML = `<span>${homeNextGameScoreButtonLabel(next)}</span>${inlineChevronIcon("right")}`;
       els.homeNextGameScoreBtn.setAttribute("aria-label", `${homeNextGameScoreButtonLabel(next)}: ${gameMatchupLabel(next)}`);
     }
     setHomeMatchupImage(next);
@@ -8667,6 +8666,7 @@ function renderHome() {
   }
   const recentFinals = completedGames();
   renderHomeLastGameResultHeading(recentFinals[0] || null);
+  syncHomeResultsCarouselControls(recentFinals);
   if (els.homeRecentResultBody) {
     els.homeRecentResultBody.innerHTML = renderHomeGameResultsCarousel(recentFinals);
     window.requestAnimationFrame(updateHomeResultsCarouselButtons);
@@ -9111,19 +9111,8 @@ function renderHomeLastGameResultHeading(game) {
 
 function renderHomeGameResultsCarousel(games = []) {
   if (!games.length) return renderHomeLastGameResultCard(null);
-  const controls = games.length > 1
-    ? `<div class="home-results-carousel-controls" aria-label="Game result carousel controls">
-        <button class="home-results-carousel-button" type="button" data-home-results-scroll="prev" aria-label="Previous game result">
-          <span aria-hidden="true">&lt;</span>
-        </button>
-        <button class="home-results-carousel-button" type="button" data-home-results-scroll="next" aria-label="Next game result">
-          <span aria-hidden="true">&gt;</span>
-        </button>
-      </div>`
-    : "";
   const singleClass = games.length === 1 ? " is-single" : "";
   return `<div class="home-results-carousel${singleClass}">
-    ${controls}
     <div class="home-results-carousel-track" tabindex="0" aria-label="Completed game results">
       ${games.map((game, index) => renderHomeLastGameResultCard(game, { carousel: true, index })).join("")}
     </div>
@@ -9136,9 +9125,18 @@ function homeResultsCarouselElements() {
   return {
     root,
     track,
-    prev: root?.querySelector('[data-home-results-scroll="prev"]'),
-    next: root?.querySelector('[data-home-results-scroll="next"]')
+    prev: els.homeResultsPrevBtn,
+    next: els.homeResultsNextBtn
   };
+}
+
+function syncHomeResultsCarouselControls(games = []) {
+  const showControls = games.length > 1;
+  if (els.homeResultsCarouselControls) els.homeResultsCarouselControls.hidden = !showControls;
+  if (!showControls) {
+    if (els.homeResultsPrevBtn) els.homeResultsPrevBtn.disabled = true;
+    if (els.homeResultsNextBtn) els.homeResultsNextBtn.disabled = true;
+  }
 }
 
 function updateHomeResultsCarouselButtons() {
@@ -9218,7 +9216,7 @@ function renderHomeLastGameResultCard(game, options = {}) {
     <div class="home-recent-result-footer">
       <button class="home-dashboard-link home-box-score-link" data-home-box-score-game="${escapeHtml(game.id)}" type="button">
         <span>View Box Score</span>
-        <span aria-hidden="true">></span>
+        ${inlineChevronIcon("right")}
       </button>
       ${renderGameHighlightsAction(game, "home-highlight-link")}
     </div>
@@ -9244,7 +9242,7 @@ function renderHomeRecentGamesRow(game) {
     <span class="home-recent-games-opponent">${escapeHtml(opponentName)}</span>
     <span class="home-recent-games-result home-recent-games-result-${result.toLowerCase()}">${escapeHtml(result)}</span>
     <strong class="home-recent-games-score">${escapeHtml(`${Number(game?.score?.lions || 0)} - ${Number(game?.score?.opponent || 0)}`)}</strong>
-    <span class="home-recent-games-arrow" aria-hidden="true">></span>
+    ${inlineChevronIcon("right", "home-recent-games-arrow")}
   </button>`;
 }
 
@@ -9283,7 +9281,7 @@ function renderHomeTeamNewsItem(article) {
       <span class="home-team-news-meta">${escapeHtml(article.category)} | ${escapeHtml(formatShortMonthDay(article.date))}</span>
       <strong>${escapeHtml(article.title)}</strong>
     </span>
-    <span class="home-team-news-arrow" aria-hidden="true">></span>
+    ${inlineChevronIcon("right", "home-team-news-arrow")}
   </button>`;
 }
 
@@ -11955,7 +11953,7 @@ function legacyPitchChoiceActionCard(title, subtitle, dataName, value, tone, ico
       <strong>${escapeHtml(title)}</strong>
       <span>${escapeHtml(subtitle)}</span>
     </span>
-    <span class="pitch-choice-arrow" aria-hidden="true">›</span>
+    ${inlineChevronIcon("right", "pitch-choice-arrow")}
   </button>`;
 }
 
@@ -17887,7 +17885,9 @@ function renderStatsSprayControls() {
   const focusedPlayerId = statsFocusedPlayerId();
   if (els.statsSprayModal) els.statsSprayModal.hidden = !statsSprayExpanded;
   if (els.statsSprayPanel) els.statsSprayPanel.classList.add("is-visible");
-  if (els.toggleStatsSprayBtn) els.toggleStatsSprayBtn.textContent = "Open Spray Chart >";
+  if (els.toggleStatsSprayBtn) {
+    els.toggleStatsSprayBtn.innerHTML = `<span>Open Spray Chart</span>${inlineChevronIcon("right")}`;
+  }
   const preferredPlayer = focusedPlayerId;
   const selectedPlayer = preferredPlayer || els.statsSprayPlayerSelect.value || state.roster[0]?.id || "";
   const sprayPlayerLabel = els.statsSprayPlayerSelect?.closest("label");
@@ -19127,7 +19127,10 @@ function leaderCard(label, rows, scorer, formatter, options = {}) {
           </div>`).join("")
         : `<p class="player-meta">No data yet.</p>`}
     </div>
-    <button type="button" class="secondary-action stats-leader-action" ${targetId ? `data-scroll-target="${escapeHtml(targetId)}"` : ""}>View Full List &gt;</button>
+    <button type="button" class="secondary-action stats-leader-action" ${targetId ? `data-scroll-target="${escapeHtml(targetId)}"` : ""}>
+      <span>View Full List</span>
+      ${inlineChevronIcon("right")}
+    </button>
   </article>`;
 }
 
@@ -20770,6 +20773,18 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function inlineChevronIcon(direction = "right", className = "") {
+  const isLeft = direction === "left";
+  const directionClass = isLeft ? "inline-chevron-icon--left" : "inline-chevron-icon--right";
+  const classes = ["inline-chevron-icon", directionClass, className].filter(Boolean).join(" ");
+  const mainPath = isLeft ? "M10 3 5 8l5 5" : "M6 3l5 5-5 5";
+  const clawPath = isLeft ? "M12.5 5.25 9.75 8l2.75 2.75" : "M3.5 5.25 6.25 8 3.5 10.75";
+  return `<svg class="${escapeHtml(classes)}" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+    <path class="inline-chevron-icon-main" d="${mainPath}"></path>
+    <path class="inline-chevron-icon-claw" d="${clawPath}"></path>
+  </svg>`;
 }
 
 function serviceWorkerRegistrationDisabled() {

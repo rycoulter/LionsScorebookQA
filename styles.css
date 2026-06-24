@@ -1871,6 +1871,7 @@ main {
   color: rgba(255, 255, 255, 0.82);
   font-size: 0.95rem;
   font-weight: 500;
+  transition: color 180ms ease, filter 180ms ease, text-shadow 180ms ease;
 }
 
 .home-dashboard-link:hover {
@@ -2062,8 +2063,21 @@ main {
 
 .home-results-carousel-controls {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 8px;
+  margin-left: auto;
+}
+
+.home-results-carousel-controls[hidden] {
+  display: none !important;
+}
+
+.home-recent-result-panel .home-dashboard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .home-results-carousel-button {
@@ -2076,17 +2090,54 @@ main {
   border-radius: 999px;
   background: rgba(7, 16, 29, 0.72);
   color: var(--lion-gold);
-  font-size: 1rem;
-  font-weight: 900;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 0 0 rgba(245, 189, 33, 0);
+  transition:
+    color 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.home-results-carousel-icon {
+  width: 19px;
+  height: 19px;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.home-results-carousel-icon-main {
+  stroke-width: 2.25;
+}
+
+.home-results-carousel-icon-claw {
+  stroke-width: 1.45;
+  opacity: 0.6;
+  transition: opacity 180ms ease, transform 180ms ease;
 }
 
 .home-results-carousel-button:hover,
 .home-results-carousel-button:focus-visible {
   border-color: rgba(245, 189, 33, 0.58);
   background: rgba(245, 189, 33, 0.1);
+  color: #ffd968;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 16px rgba(245, 189, 33, 0.2);
+  transform: translateY(-1px);
   outline: none;
+}
+
+.home-results-carousel-button:hover .home-results-carousel-icon-claw,
+.home-results-carousel-button:focus-visible .home-results-carousel-icon-claw {
+  opacity: 0.95;
 }
 
 .home-results-carousel-button:disabled {
@@ -2095,6 +2146,8 @@ main {
   border-color: rgba(148, 163, 184, 0.18);
   background: rgba(7, 16, 29, 0.42);
   color: rgba(255, 255, 255, 0.48);
+  box-shadow: none;
+  transform: none;
 }
 
 .home-results-carousel-track {
@@ -2236,9 +2289,14 @@ main {
   text-shadow: 0 0 22px rgba(34, 197, 94, 0.2);
 }
 
-.home-recent-result-card-loss .home-recent-result-score-opponent {
+.home-recent-result-card-loss .home-recent-result-score-lions {
   color: #ef4444;
   text-shadow: 0 0 22px rgba(239, 68, 68, 0.22);
+}
+
+.home-recent-result-card-loss .home-recent-result-score-opponent {
+  color: rgba(255, 255, 255, 0.72);
+  text-shadow: none;
 }
 
 .home-recent-result-dash {
@@ -2453,6 +2511,72 @@ main {
 
 .home-team-news-arrow {
   text-align: center;
+}
+
+.inline-chevron-icon {
+  width: 1.05em;
+  height: 1.05em;
+  flex: 0 0 auto;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition:
+    color 180ms ease,
+    filter 180ms ease,
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.inline-chevron-icon-main {
+  stroke-width: 2.2;
+}
+
+.inline-chevron-icon-claw {
+  opacity: 0.52;
+  stroke-width: 1.25;
+  transition: opacity 180ms ease;
+}
+
+button:hover .inline-chevron-icon,
+button:focus-visible .inline-chevron-icon,
+a:hover .inline-chevron-icon,
+a:focus-visible .inline-chevron-icon {
+  filter: drop-shadow(0 0 5px currentColor);
+}
+
+button:hover .inline-chevron-icon--right,
+button:focus-visible .inline-chevron-icon--right,
+a:hover .inline-chevron-icon--right,
+a:focus-visible .inline-chevron-icon--right {
+  transform: translateX(2px);
+}
+
+button:hover .inline-chevron-icon--left,
+button:focus-visible .inline-chevron-icon--left,
+a:hover .inline-chevron-icon--left,
+a:focus-visible .inline-chevron-icon--left {
+  transform: translateX(-2px);
+}
+
+button:hover .inline-chevron-icon-claw,
+button:focus-visible .inline-chevron-icon-claw,
+a:hover .inline-chevron-icon-claw,
+a:focus-visible .inline-chevron-icon-claw {
+  opacity: 0.9;
+}
+
+button:disabled .inline-chevron-icon {
+  filter: none;
+  transform: none;
+}
+
+.home-recent-games-arrow,
+.home-team-news-arrow {
+  width: 18px;
+  height: 18px;
+  justify-self: center;
 }
 
 .news-page-head {
@@ -2890,7 +3014,7 @@ main {
   }
 
   .home-results-carousel-controls {
-    justify-content: space-between;
+    justify-content: flex-end;
   }
 
   .home-results-carousel-track {
@@ -3602,6 +3726,9 @@ main {
 }
 
 .schedule-shell-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 0;
   padding: 0;
   background: transparent;
@@ -3609,6 +3736,13 @@ main {
   font-size: 0.95rem;
   font-weight: 900;
   cursor: pointer;
+  transition: color 180ms ease, filter 180ms ease, text-shadow 180ms ease;
+}
+
+.schedule-shell-link:hover,
+.schedule-shell-link:focus-visible {
+  color: #ffd75c;
+  text-shadow: 0 0 12px rgba(245, 189, 33, 0.34);
 }
 
 .schedule-shell-head-actions {
@@ -7106,8 +7240,19 @@ button:focus-visible {
 }
 
 #statsView .stats-leader-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
   margin-top: 18px;
+}
+
+#statsView .spray-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 #statsView .stats-hot-bats {
