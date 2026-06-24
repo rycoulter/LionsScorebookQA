@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.110";
+const APP_VERSION = "v.1.1.111";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -643,7 +643,7 @@ const VISIT_RECORDED_STORAGE_KEY = "oakmont-lions-visit-recorded-v1";
 const SITE_VISIT_SUMMARY_REFRESH_MS = 5 * 60 * 1000;
 const PUBLIC_TAB_VIEWS = new Set(["home", "news", "standings", "games", "roster", "stats", "highlights", "archive"]);
 const PUBLIC_READ_VIEWS = new Set(["home", "news", "standings", "games", "roster", "stats", "highlights", "archive", "scorebook", "boxscore"]);
-const ADMIN_TAB_VIEWS = new Set(["home", "news", "standings", "newsEditor", "score", "games", "lineup", "roster", "stats", "highlights", "scouting", "archive", "analysis"]);
+const ADMIN_TAB_VIEWS = new Set(["home", "news", "standings", "newsEditor", "score", "games", "lineup", "roster", "stats", "highlights", "archive"]);
 const VIEW_ROUTES = {
   home: "/",
   news: "/news",
@@ -923,7 +923,6 @@ const els = {
   homeNextGameWeather: document.getElementById("homeNextGameWeather"),
   homeNextGameScoreBtn: document.getElementById("homeNextGameScoreBtn"),
   homeNextGameScheduleLink: document.getElementById("homeNextGameScheduleLink"),
-  homeScoutingBtn: document.getElementById("homeScoutingBtn"),
   homeGamesBtn: document.getElementById("homeGamesBtn"),
   homeBattingLeaders: document.getElementById("homeBattingLeaders"),
   homeBattingLeadersLink: document.getElementById("homeBattingLeadersLink"),
@@ -1234,8 +1233,6 @@ const els = {
   halfInningLineBottom: document.getElementById("halfInningLineBottom"),
   halfInningTitle: document.getElementById("halfInningTitle"),
   halfInningSubtitle: document.getElementById("halfInningSubtitle"),
-  metricsGrid: document.getElementById("metricsGrid"),
-  gameBreakdown: document.getElementById("gameBreakdown"),
   boxScoreTitle: document.getElementById("boxScoreTitle"),
   boxScoreMobileTitle: document.getElementById("boxScoreMobileTitle"),
   boxScoreMobileMetaPrimary: document.getElementById("boxScoreMobileMetaPrimary"),
@@ -1265,7 +1262,6 @@ const els = {
   boxScoreBattingFoot: document.getElementById("boxScoreBattingFoot"),
   boxScorePitchingTitle: document.getElementById("boxScorePitchingTitle"),
   boxScorePitchingBody: document.getElementById("boxScorePitchingBody"),
-  valueBoard: document.getElementById("valueBoard"),
   statsView: document.getElementById("statsView"),
   statsSeasonSelect: document.getElementById("statsSeasonSelect"),
   statsPageHead: document.querySelector("#statsView .stats-page-head"),
@@ -1467,10 +1463,6 @@ const els = {
     sv: document.getElementById("pitchingStatEditSv"),
     decision: document.getElementById("pitchingStatEditDecision")
   },
-  scoutingTeamSelect: document.getElementById("scoutingTeamSelect"),
-  refreshScoutingBtn: document.getElementById("refreshScoutingBtn"),
-  scoutingSourceStatus: document.getElementById("scoutingSourceStatus"),
-  scoutingReport: document.getElementById("scoutingReport"),
   playerTemplate: document.getElementById("playerCardTemplate")
 };
 
@@ -3990,7 +3982,6 @@ function ensureIndexAdminAccess() {
 }
 
 function boxScoreReturnLabel(view = boxScoreReturnView) {
-  if (view === "analysis") return "Past Games";
   if (view === "archive") return "Past Games";
   if (view === "games") return "Schedule";
   if (view === "home") return "Home";
@@ -4500,7 +4491,6 @@ function bindEvents() {
   els.homeNextGameScoreBtn?.addEventListener("click", handleHomeNextGameScoreAction);
   els.homeGamesBtn?.addEventListener("click", () => switchView("games"));
   els.homeNextGameScheduleLink?.addEventListener("click", () => switchView("games"));
-  els.homeScoutingBtn?.addEventListener("click", openNextGameScouting);
   els.homeBattingLeadersLink?.addEventListener("click", () => switchView("stats"));
   els.homePitchingLeadersLink?.addEventListener("click", () => switchView("stats"));
   els.homeResultsPrevBtn?.addEventListener("click", () => scrollHomeResultsCarousel(-1));
@@ -4588,11 +4578,6 @@ function bindEvents() {
       deleteNewsArticle(deleteButton.dataset.newsDelete);
     }
   });
-  els.homeUpcomingGames?.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-home-scout-opponent]");
-    if (!button) return;
-    openScoutingForOpponent(button.dataset.homeScoutOpponent);
-  });
   els.homePastGames?.addEventListener("click", handleGameActionClick);
   els.scorebookGameSelect.addEventListener("change", () => {
     scorebookGameId = els.scorebookGameSelect.value;
@@ -4610,9 +4595,9 @@ function bindEvents() {
   els.boxScoreNextGameBtn?.addEventListener("click", () => navigateBoxScoreGame("next"));
   els.boxScoreMobilePrevGameBtn?.addEventListener("click", () => navigateBoxScoreGame("previous"));
   els.boxScoreMobileNextGameBtn?.addEventListener("click", () => navigateBoxScoreGame("next"));
-  els.boxScoreBackBtn?.addEventListener("click", () => switchView(boxScoreReturnView || (isAdminMode() ? "analysis" : "games")));
-  els.boxScoreMobileBackBtn?.addEventListener("click", () => switchView(boxScoreReturnView || (isAdminMode() ? "analysis" : "games")));
-  els.boxScoreMobileReturnBtn?.addEventListener("click", () => switchView(boxScoreReturnView || (isAdminMode() ? "analysis" : "games")));
+  els.boxScoreBackBtn?.addEventListener("click", () => switchView(boxScoreReturnView || (isAdminMode() ? "archive" : "games")));
+  els.boxScoreMobileBackBtn?.addEventListener("click", () => switchView(boxScoreReturnView || (isAdminMode() ? "archive" : "games")));
+  els.boxScoreMobileReturnBtn?.addEventListener("click", () => switchView(boxScoreReturnView || (isAdminMode() ? "archive" : "games")));
   els.boxScoreEditBtn?.addEventListener("click", openBoxScoreEditModal);
   els.boxScoreMobileEditBtn?.addEventListener("click", openBoxScoreEditModal);
   els.boxScoreMobileShareBtn?.addEventListener("click", () => {
@@ -4628,12 +4613,6 @@ function bindEvents() {
     boxScoreTeam = button.dataset.boxScoreTeam || "lions";
     renderBoxScore();
   });
-  els.gameBreakdown?.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-box-score-game]");
-    if (!button) return;
-    openBoxScore(button.dataset.boxScoreGame);
-  });
-
   els.scoreForm.addEventListener("submit", (event) => {
     event.preventDefault();
   });
@@ -5341,12 +5320,6 @@ window.addEventListener("pageshow", () => {
     if (!button) return;
     removeStatEditSpray(button.dataset.statEditSprayRemove);
   });
-  els.scoutingTeamSelect.addEventListener("change", () => {
-    selectedScoutingTeamId = els.scoutingTeamSelect.value;
-    renderScoutingReport();
-    refreshScoutingData({ silent: true });
-  });
-  els.refreshScoutingBtn.addEventListener("click", () => refreshScoutingData());
   els.refreshLeagueStandingsBtn?.addEventListener("click", () => refreshScoutingData({ force: true }));
   document.querySelectorAll("[data-hit-sort]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -7993,7 +7966,7 @@ function openGameScorebook(gameId) {
 function openBoxScore(gameId) {
   if (!state.games.some((game) => game.id === gameId)) return;
   const sourceView = canAccessView(currentView) ? currentView : (isAdminMode() ? "archive" : "games");
-  boxScoreReturnView = sourceView === "analysis" ? "archive" : sourceView;
+  boxScoreReturnView = sourceView;
   boxScoreGameId = gameId;
   renderBoxScore();
   switchView("boxscore");
@@ -8567,7 +8540,6 @@ function render() {
   renderArchive();
   renderTeamNews();
   renderNewsEditor();
-  renderAnalysis();
   renderBoxScore();
   renderGameSetupPreview();
   renderGames();
@@ -8612,7 +8584,6 @@ function renderHome() {
   renderSiteVisitCounter();
   if (isAdminMode()) requestSiteVisitSummaryRefresh("home");
   if (els.homeStartGameBtn) els.homeStartGameBtn.hidden = true;
-  if (els.homeScoutingBtn) els.homeScoutingBtn.hidden = true;
   if (els.homeGamesBtn) els.homeGamesBtn.hidden = true;
   if (next) {
     const nextGameStatus = homeNextGameStatusState(next);
@@ -9820,7 +9791,6 @@ function renderUpcomingGameCard(game) {
       <h4>${escapeHtml(gameMatchupLabel(game))}</h4>
       <p class="player-meta">${escapeHtml(gameScheduleMeta(game))}</p>
       <div class="weather-chip" data-weather-game-id="${escapeHtml(game.id)}">${renderWeatherChip(game)}</div>
-      ${isAdminMode() ? `<button type="button" class="secondary-action upcoming-scout-button" data-home-scout-opponent="${escapeHtml(game.opponent)}">View Scouting Report</button>` : ""}
     </div>
   </article>`;
 }
@@ -9954,51 +9924,6 @@ function openCurrentGameForScoring() {
     return;
   }
   openActiveGameForScoring(current);
-}
-
-function openNextGameScouting() {
-  if (!requireAdminAccess("Admin sign-in required to open scouting tools.")) return;
-  const next = nextScheduledGame();
-  openScoutingForOpponent(next?.opponent || "");
-}
-
-function openScoutingForOpponent(opponent) {
-  const match = matchScoutingTeam(opponent);
-  if (match) selectedScoutingTeamId = match.id;
-  renderScoutingReport();
-  switchView("scouting");
-}
-
-function matchScoutingTeam(opponent) {
-  const key = normalizeScoutName(opponent);
-  if (!key || !scoutingData?.teams) return null;
-  return scoutingData.teams
-    .map((team) => ({ team, score: scoutingMatchScore(opponent, team) }))
-    .filter((match) => match.score > 0)
-    .sort((a, b) => b.score - a.score)[0]?.team || null;
-}
-
-function scoutingMatchScore(opponent, team) {
-  const opponentKey = normalizeScoutName(opponent);
-  const teamKeys = [team.name, team.code, team.id, ...(team.aliases || [])].map(normalizeScoutName).filter(Boolean);
-  if (teamKeys.includes(opponentKey)) return 100;
-  if (teamKeys.some((teamKey) => teamKey.includes(opponentKey) || opponentKey.includes(teamKey))) return 80;
-
-  const opponentTokens = scoutNameTokens(opponent);
-  const teamTokens = new Set([team.name, team.code, team.id, ...(team.aliases || [])].flatMap(scoutNameTokens));
-  const matches = opponentTokens.filter((token) => teamTokens.has(token));
-  if (!matches.length) return 0;
-  return Math.round((matches.length / Math.max(opponentTokens.length, 1)) * 60);
-}
-
-function scoutNameTokens(value) {
-  return String(value || "")
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .split(/\s+/)
-    .filter((token) => token.length > 1);
 }
 
 function scoreboardTeamLogo(teamName, side, game = activeGame()) {
@@ -13563,7 +13488,6 @@ function renderArchiveCard(game) {
       <span>Final</span>
     </div>
     <div class="archive-card-actions ${isAdmin ? "archive-card-actions-admin" : "archive-card-actions-public"}">
-      <button type="button" class="secondary-action archive-card-action" data-game-action="summary" data-game-id="${escapeHtml(game.id)}">View Summary</button>
       <button type="button" class="secondary-action archive-card-action" data-game-action="boxscore" data-game-id="${escapeHtml(game.id)}">View Box Score</button>
       ${renderGameHighlightsAction(game, "archive-card-action")}
       ${syncButton}
@@ -15921,49 +15845,6 @@ function useLastLineup() {
   renderLineupBuilder();
 }
 
-function renderAnalysis() {
-  const team = teamStats();
-  els.metricsGrid.innerHTML = [
-    metricCard("Team OPS", formatRate(team.ops), "OBP plus slugging from logged plate appearances."),
-    metricCard("wOBA-lite", formatRate(team.woba), "Weighted offensive value using MLB-style event weights."),
-    metricCard("Pitches/PA", team.pitchesPerPa.toFixed(2), "Plate discipline signal from pitch-by-pitch scoring."),
-    metricCard("AVG", formatRate(team.avg), "Team batting average from scored at-bats."),
-    metricCard("K rate", `${Math.round(team.kRate * 100)}%`, "Strikeouts per plate appearance."),
-    metricCard("First-pitch strike", `${Math.round(team.firstPitchStrikeRate * 100)}%`, "How often the AB starts in a pitcher count.")
-  ].join("");
-  renderGameBreakdown();
-  renderValueBoard();
-}
-
-function renderGameBreakdown() {
-  els.gameBreakdown.innerHTML = state.games
-    .filter((game) => game.events.length || Object.keys(hittingStatEditMap(game)).length || game.status !== "scheduled")
-    .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
-    .map((game) => {
-      const offensiveEvents = offensiveEventsForStatsGame(game).filter((event) => eventRules[event.result]?.pa);
-      const stats = emptyStats();
-      offensiveEvents.forEach((event) => applyEventToStats(stats, event));
-      finishStats(stats);
-      return `<article class="breakdown-card">
-        <div class="mini-head">
-          <div>
-            <h3>${escapeHtml(game.date || "No date")} ${escapeHtml(gameMatchupLabel(game))}</h3>
-            <span class="player-meta">${escapeHtml(gameScoreLabel(game))} | ${escapeHtml(gameStatusLabel(game))}</span>
-          </div>
-          <button type="button" class="secondary-action" data-box-score-game="${escapeHtml(game.id)}">View Box Score</button>
-        </div>
-        <div class="stat-strip">
-          ${statCell("AVG", formatRate(stats.avg))}
-          ${statCell("OPS", formatRate(stats.ops))}
-          ${statCell("K%", `${Math.round(stats.kRate * 100)}%`)}
-          ${statCell("P/PA", stats.pitchesPerPa.toFixed(2))}
-        </div>
-        <p class="player-meta">${offensiveEvents.length} scored plate appearances</p>
-      </article>`;
-    })
-    .join("") || `<p class="player-meta">Game analysis appears after scorekeeping begins.</p>`;
-}
-
 function setBoxScoreEditButtonsVisible(visible) {
   [els.boxScoreEditBtn, els.boxScoreMobileEditBtn].filter(Boolean).forEach((button) => {
     button.hidden = !visible;
@@ -17028,7 +16909,7 @@ async function refreshScoutingData(options = {}) {
 
   if (!options.silent) {
     scoutingStatusMessage = "Checking Pittsburgh NABA for the latest AA data...";
-    els.refreshScoutingBtn.disabled = true;
+    if (els.refreshScoutingBtn) els.refreshScoutingBtn.disabled = true;
     if (els.refreshLeagueStandingsBtn) els.refreshLeagueStandingsBtn.disabled = true;
     renderScoutingReport();
     renderLeagueStandings();
@@ -17073,7 +16954,7 @@ async function refreshScoutingData(options = {}) {
       ? "Using Supabase AA standings cache. League-site live refresh is blocked from this browser."
       : "Using Pittsburgh NABA AA snapshot. Live refresh may be blocked by the league site from this browser.";
   if (!fetchFailed && !touchedLiveData && !supabaseStandingsLoaded) scoutingStatusMessage = "Using Pittsburgh NABA AA snapshot.";
-  els.refreshScoutingBtn.disabled = false;
+  if (els.refreshScoutingBtn) els.refreshScoutingBtn.disabled = false;
   if (els.refreshLeagueStandingsBtn) els.refreshLeagueStandingsBtn.disabled = false;
   renderScoutingReport();
   renderLeagueStandings();
@@ -19431,26 +19312,6 @@ function metricCard(label, value, copy) {
     <strong>${escapeHtml(value)}</strong>
     <div class="player-meta">${escapeHtml(copy)}</div>
   </article>`;
-}
-
-function renderValueBoard() {
-  const ranked = state.roster
-    .filter((player) => state.lineup.includes(player.id))
-    .map((player) => ({ player, value: playerValue(player) }))
-    .sort((a, b) => b.value - a.value);
-  const max = Math.max(...ranked.map((item) => item.value), 1);
-  els.valueBoard.innerHTML = ranked
-    .map(({ player, value }) => {
-      const pct = Math.max(8, Math.round((value / max) * 100));
-      return `<div class="value-row">
-        <div>
-          <strong>${escapeHtml(player.name)}</strong>
-          <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
-        </div>
-        <span>${Math.round(value)}</span>
-      </div>`;
-    })
-    .join("");
 }
 
 const lineupAnalyzerStatFields = ["pa", "ab", "h", "doubles", "triples", "hr", "bb", "hbp", "k", "rbi", "sac"];
