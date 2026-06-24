@@ -25,8 +25,8 @@ assert.match(indexHtml, /id="statsDashboardEmpty"[\s\S]*No season stats yet\./, 
 assert.match(indexHtml, /class="stats-spray-copy"[\s\S]*class="stats-spray-legend"[\s\S]*id="toggleStatsSprayBtn"[\s\S]*id="statsTendenciesPanel"/, "Open Spray Chart should sit under the spray legend before Team Tendencies");
 
 const renderSeasonStatsBody = functionBody(appJs, "renderSeasonStats");
-assert.match(renderSeasonStatsBody, /renderPlayerSpotlight\(recentHittingRowsForSpotlight\(\)\)/, "Season stats should render the Player Spotlight from recent-game rows");
-assert.match(renderSeasonStatsBody, /renderHotBats\(allHittingRows\)/, "Season stats should render Hot Bats from current rows");
+assert.match(renderSeasonStatsBody, /const recentHittingRows = recentHittingRowsForSpotlight\(\)/, "Spotlight and Hot Bats should share the recent-game stat window");
+assert.match(renderSeasonStatsBody, /renderPlayerSpotlight\(recentHittingRows\)[\s\S]*renderHotBats\(recentHittingRows\)/, "Hot Bats should use the same recent rows as Player Spotlight");
 assert.match(renderSeasonStatsBody, /renderStatsProfiles\(teamStats\(statsSeasonFilter\), teamPitchingStats\(statsSeasonFilter\)\)/, "Season stats should render profile cards from current season team stats");
 assert.match(renderSeasonStatsBody, /renderStatsSprayDashboard\(\)/, "Season stats should refresh spray chart preview and tendencies");
 assert.match(renderSeasonStatsBody, /statsThresholdClass\("avg", hit\.avg, hit\.ab > 0\)/, "AVG table cells should get threshold formatting");
@@ -82,6 +82,12 @@ assert.match(spotlightScoreBody, /so: hit\.k/, "Player Spotlight score should ap
 
 const topSpotlightRowsBody = functionBody(appJs, "topPlayerSpotlightRows");
 assert.match(topSpotlightRowsBody, /playerSpotlightHitterScore\(b\) - playerSpotlightHitterScore\(a\)/, "Player Spotlight should rank by weighted production score before rate-stat tie breakers");
+
+const hotBatRowsBody = functionBody(appJs, "hotBatRows");
+assert.match(hotBatRowsBody, /\(row\.hit\?\.pa \|\| 0\) >= PLAYER_SPOTLIGHT_MIN_PA/, "Hot Bats should prefer the same recent PA qualification as Player Spotlight");
+assert.match(hotBatRowsBody, /topPlayerSpotlightRows\(qualifiedRows, limit\)/, "Hot Bats should use the Player Spotlight production ranking");
+assert.match(hotBatRowsBody, /return \[\.\.\.selected, \.\.\.fallbackRows\]/, "Hot Bats should fill up to three cards when fewer than three hitters qualify");
+assert.match(indexHtml, /Hottest Bats across the past 3 games/, "Hot Bats should explain its recent three-game window");
 
 const spotlightSelectionBody = functionBody(appJs, "playerSpotlightSelection");
 assert.match(spotlightSelectionBody, /\(row\.hit\?\.pa \|\| 0\) >= PLAYER_SPOTLIGHT_MIN_PA/, "Player Spotlight should filter to hitters with enough PA before ranking");

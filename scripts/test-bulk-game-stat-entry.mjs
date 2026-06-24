@@ -31,7 +31,8 @@ mustMatch(appJs, /els\.bulkStatEditBtn\?\.addEventListener\("click", openBulkSta
 mustMatch(appJs, /els\.bulkStatEditBody\?\.addEventListener\("click", handleBulkStatEditBodyClick\)/, "Bulk stat body should delegate spray chart buttons");
 
 const renderStatsBody = functionBody(appJs, "renderSeasonStats");
-mustMatch(renderStatsBody, /els\.bulkStatEditBtn\.hidden = !isAdminMode\(\)/, "Bulk stat entry should be admin-only in the UI");
+mustMatch(renderStatsBody, /const admin = isAdminMode\(\)/, "Stats rendering should capture the current access mode");
+mustMatch(renderStatsBody, /syncStatsAdminVisibility\(admin\)/, "Bulk stat entry should use the shared admin visibility guard");
 
 const gamesBody = functionBody(appJs, "bulkStatEditGames");
 mustMatch(gamesBody, /statsGamesForSeason\(statsSeasonFilter\)/, "Bulk game picker should use the completed-or-scored stats game list");

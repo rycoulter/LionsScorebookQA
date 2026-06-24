@@ -19,12 +19,13 @@ function functionBody(source, functionName) {
   return nextFunction === -1 ? source.slice(start) : source.slice(start, nextFunction);
 }
 
-mustMatch(indexHtml, /<th>Edit<\/th>/, "Hitting stats table should include an Edit column");
+mustMatch(indexHtml, /<th id="hittingStatsEditHeader" data-admin-only hidden>Edit<\/th>/, "Hitting Edit header should start hidden and be admin-only");
+mustMatch(indexHtml, /<th id="pitchingStatsEditHeader" data-admin-only hidden>Edit<\/th>/, "Pitching Edit header should start hidden and be admin-only");
 mustMatch(indexHtml, /data-hit-sort="runs">R/, "Runs should be sortable in the hitting stats table");
 assert.doesNotMatch(indexHtml, /data-hit-sort="risp">RISP/, "RISP should not be shown in the hitting stats table");
 mustMatch(appJs, /statsEditButtonMarkup\(player\)/, "Hitting stats rows should render edit buttons");
 mustMatch(appJs, /data-edit-hitting-player="\$\{escapeHtml\(player\.id\)\}"/, "Edit buttons should target a specific player");
-mustMatch(appJs, /colspan="24" class="stats-empty-row"/, "Empty hitting stats row should span the added edit column");
+mustMatch(appJs, /colspan="\$\{admin \? 24 : 23\}" class="stats-empty-row"/, "Empty stats rows should account for the admin-only edit column");
 mustMatch(stylesCss, /\.stats-row-edit-button[\s\S]*place-items: center/, "Edit button should have compact icon styling");
 
 mustMatch(indexHtml, /id="statEditGameSelectModal"[\s\S]*Select Game to Edit/, "Select Game to Edit modal should exist");

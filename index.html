@@ -3,24 +3,24 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <link rel="manifest" href="manifest.json?v=2026.06.24-build-271">
-    <link rel="icon" href="favicon.ico?v=2026.06.24-build-271" sizes="any">
-    <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png?v=2026.06.24-build-271">
-    <link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-48.png?v=2026.06.24-build-271">
-    <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=2026.06.24-build-271">
+    <link rel="manifest" href="manifest.json?v=2026.06.24-build-272">
+    <link rel="icon" href="favicon.ico?v=2026.06.24-build-272" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png?v=2026.06.24-build-272">
+    <link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-48.png?v=2026.06.24-build-272">
+    <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=2026.06.24-build-272">
     <meta name="theme-color" content="#1f2937">
   <title>Oakmont Lions</title>
     <link rel="preconnect" href="https://images.unsplash.com">
-    <link rel="stylesheet" href="styles.css?v=2026.06.24-build-271">
+    <link rel="stylesheet" href="styles.css?v=2026.06.24-build-272">
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
         <div class="brand-block">
-          <img src="assets/team-logos/lions-header-mark.png?v=2026.06.24-build-271" alt="" class="brand-logo" width="48" height="48">
+          <img src="assets/team-logos/lions-header-mark.png?v=2026.06.24-build-272" alt="" class="brand-logo" width="48" height="48">
           <div class="brand-copy">
             <h1 class="sr-only">Oakmont Lions</h1>
-            <img src="assets/team-logos/lions-header-wordmark-cropped.png?v=2026.06.24-build-271" alt="" class="brand-wordmark" width="170" height="67" aria-hidden="true">
+            <img src="assets/team-logos/lions-header-wordmark-cropped.png?v=2026.06.24-build-272" alt="" class="brand-wordmark" width="170" height="67" aria-hidden="true">
           </div>
         </div>
         <nav class="tabs" aria-label="Scorebook sections">
@@ -91,7 +91,7 @@
                   </p>
                 </div>
                 <img
-                src="assets/backgrounds/lions-no-game-hero.png?v=2026.06.24-build-271"
+                src="assets/backgrounds/lions-no-game-hero.png?v=2026.06.24-build-272"
                   alt="Oakmont Lions"
                   id="homeMatchupImage"
                   class="home-field-image is-no-game-hero">
@@ -175,7 +175,7 @@
               </section>
             </div>
           </div>
-          <section class="home-panel home-visit-counter-panel" id="homeVisitCounterCard" hidden>
+          <section class="home-panel home-visit-counter-panel" id="homeVisitCounterCard" data-admin-only hidden>
             <div class="mini-head home-dashboard-head">
               <div>
                 <h3>Site Visits</h3>
@@ -265,7 +265,7 @@
           </section>
         </section>
 
-        <section class="view" id="newsEditorView" data-panel="newsEditor">
+        <section class="view" id="newsEditorView" data-panel="newsEditor" data-admin-only>
           <div class="section-head">
             <div>
               <p class="eyebrow">Admin</p>
@@ -525,7 +525,7 @@
                   </div>
                   <div class="spray-chart" id="sprayChart" role="button" tabindex="0" aria-label="Tap to set batted ball location">
                     <div class="field-layer field-background" aria-hidden="true">
-                      <img class="field-background-art" src="assets/updated-field.png?v=2026.06.24-build-271" alt="" aria-hidden="true">
+                      <img class="field-background-art" src="assets/updated-field.png?v=2026.06.24-build-272" alt="" aria-hidden="true">
                     </div>
                     <div class="field-layer position-marker-layer" aria-hidden="true"></div>
                     <div class="field-layer spray-chart-overlay">
@@ -819,7 +819,7 @@
               <p class="player-meta">View your upcoming games, results, and team schedule.</p>
             </div>
           </div>
-          <form class="game-form" id="gameForm" hidden>
+          <form class="game-form" id="gameForm" data-admin-only hidden>
             <div class="team-side-card wide" id="gameSetupTeamIndicator">
               <span>Away: Lions</span>
               <strong>Home: Opponent</strong>
@@ -887,7 +887,7 @@
                     </svg>
                   </span>
                 </label>
-                <button type="button" class="primary-action" id="scheduleGameBtn">Create Game</button>
+                <button type="button" class="primary-action" id="scheduleGameBtn" data-admin-only hidden>Create Game</button>
               </div>
             </div>
           </div>
@@ -1158,14 +1158,14 @@
           </div>
         </section>
 
-        <section class="view" id="lineupView" data-panel="lineup">
+        <section class="view" id="lineupView" data-panel="lineup" data-admin-only>
           <div class="section-head lineup-analyzer-page-head">
             <div>
               <p class="eyebrow">Lineup Analyzer</p>
               <h2>Game lineups and pitcher matchups</h2>
               <p class="player-meta">Build the lineup used, log every opposing pitcher, and enter hitter splits without using live scoring.</p>
             </div>
-            <button class="primary-action" id="lineupAnalyzerSaveBtn">Save Game Matchups</button>
+            <button class="primary-action" id="lineupAnalyzerSaveBtn" data-admin-only>Save Game Matchups</button>
           </div>
 
           <section class="lineup-analyzer-toolbar">
@@ -1261,7 +1261,7 @@
               <p class="eyebrow">Roster</p>
               <h2>Player cards</h2>
             </div>
-            <button class="primary-action" id="addPlayerBtn">Add Player</button>
+            <button class="primary-action" id="addPlayerBtn" data-admin-only hidden>Add Player</button>
           </div>
           <form class="player-form roster-player-form" id="playerForm">
             <label class="roster-search-field">
@@ -1306,7 +1306,7 @@
               <input id="playerHeight" placeholder="Height   6'1&quot;" autocomplete="off">
               <input id="playerWeight" placeholder="Weight   195 lbs" autocomplete="off">
               <button class="primary-action" id="savePlayerBtn" type="submit">Save Player</button>
-              <button class="ghost-action" id="cancelPlayerEditBtn" type="button" hidden>Cancel</button>
+              <button class="ghost-action" id="cancelPlayerEditBtn" type="button" data-admin-only hidden>Cancel</button>
             </div>
             <datalist id="rosterPositionOptions">
               <option value="COACH"></option>
@@ -1376,7 +1376,7 @@
             </div>
             <div class="stats-page-actions">
               <span class="player-meta stats-page-updated">Updates from completed and in-progress games</span>
-              <button type="button" class="secondary-action compact-action" id="bulkStatEditBtn" hidden>Enter Game Stats</button>
+              <button type="button" class="secondary-action compact-action" id="bulkStatEditBtn" data-admin-only hidden>Enter Game Stats</button>
               <label class="schedule-season-chip" for="statsSeasonSelect" aria-label="Choose stats season">
                 <span class="schedule-season-chip-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1435,7 +1435,10 @@
             <div class="leader-grid stats-leader-grid" id="leadersGrid"></div>
             <section class="stats-hot-bats" id="statsHotBats">
               <div class="mini-head">
-                <h3 class="stats-subhead">Hot Bats</h3>
+                <div>
+                  <h3 class="stats-subhead">Hot Bats</h3>
+                  <p class="player-meta">Hottest Bats across the past 3 games</p>
+                </div>
               </div>
               <div class="stats-hot-bats-grid" id="statsHotBatsGrid"></div>
             </section>
@@ -1444,7 +1447,7 @@
             <div class="stats-spray-feature">
               <div class="stats-spray-preview" aria-hidden="true">
                 <div class="field-layer field-background stats-field-background">
-                  <img class="field-background-art stats-field-background-art" src="assets/updated-field.png?v=2026.06.24-build-271" alt="" aria-hidden="true">
+                  <img class="field-background-art stats-field-background-art" src="assets/updated-field.png?v=2026.06.24-build-272" alt="" aria-hidden="true">
                 </div>
                 <div class="stats-spray-preview-markers" id="statsSprayPreviewMarkers"></div>
               </div>
@@ -1517,7 +1520,7 @@
                     <th><button type="button" data-hit-sort="po">PO</button></th>
                     <th><button type="button" data-hit-sort="roe">ROE</button></th>
                     <th><button type="button" data-hit-sort="errors">E</button></th>
-                    <th>Edit</th>
+                    <th id="hittingStatsEditHeader" data-admin-only hidden>Edit</th>
                   </tr>
                 </thead>
                 <tbody id="hittingStatsBody"></tbody>
@@ -1577,7 +1580,7 @@
                     <th><button type="button" data-pit-sort="r9">R/9</button></th>
                     <th><button type="button" data-pit-sort="whip">WHIP</button></th>
                     <th><button type="button" data-pit-sort="pitchesPerInning">P/IP</button></th>
-                    <th>Edit</th>
+                    <th id="pitchingStatsEditHeader" data-admin-only hidden>Edit</th>
                   </tr>
                 </thead>
                 <tbody id="pitchingStatsBody"></tbody>
@@ -1612,7 +1615,7 @@
             <div class="public-highlights-grid" id="publicHighlightsGrid"></div>
             <p class="player-meta public-highlights-status" id="publicHighlightsStatus">No highlights loaded.</p>
           </section>
-          <div class="highlights-admin-tools" id="highlightsAdminTools" hidden>
+          <div class="highlights-admin-tools" id="highlightsAdminTools" data-admin-only hidden>
             <div class="mini-head highlights-admin-head">
               <div>
                 <p class="eyebrow">Admin</p>
@@ -1833,7 +1836,7 @@
                 <button type="button" class="secondary-action compact-action" id="boxScorePrevGameBtn">Previous Game</button>
                 <button type="button" class="secondary-action compact-action" id="boxScoreNextGameBtn">Next Game</button>
               </div>
-              <button type="button" class="secondary-action" id="boxScoreEditBtn" hidden>Edit Box Score</button>
+              <button type="button" class="secondary-action" id="boxScoreEditBtn" data-admin-only hidden>Edit Box Score</button>
               <button type="button" class="secondary-action" id="boxScoreBackBtn">Back to Archive</button>
             </div>
           </div>
@@ -1852,7 +1855,7 @@
               <button type="button" class="secondary-action compact-action" id="boxScoreMobileNextGameBtn">Next</button>
             </div>
             <button type="button" class="secondary-action box-score-mobile-share" id="boxScoreMobileShareBtn">Share</button>
-            <button type="button" class="secondary-action box-score-mobile-edit" id="boxScoreMobileEditBtn" hidden>Edit</button>
+            <button type="button" class="secondary-action box-score-mobile-edit" id="boxScoreMobileEditBtn" data-admin-only hidden>Edit</button>
           </div>
           <section class="box-score-card">
             <div class="mini-head">
@@ -2016,7 +2019,7 @@
       </div>
     </div>
 
-    <div class="modal-backdrop" id="boxScoreEditModal" hidden>
+    <div class="modal-backdrop" id="boxScoreEditModal" data-admin-only hidden>
       <div class="modal-card box-score-edit-modal-card" role="dialog" aria-modal="true" aria-labelledby="boxScoreEditTitle">
         <div class="mini-head">
           <div>
@@ -2136,7 +2139,7 @@
             </span>
             <span>View Stats</span>
           </button>
-          <div class="roster-card-admin-actions" data-roster-admin-actions hidden>
+          <div class="roster-card-admin-actions" data-roster-admin-actions data-admin-only hidden>
             <button type="button" class="ghost-action compact-action" data-player-edit>
               <span class="roster-card-action-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -2285,7 +2288,7 @@
           </div>
           <div class="spray-chart stats-spray-chart" id="statsSprayChart" aria-label="Player spray chart">
             <div class="field-layer field-background stats-field-background" aria-hidden="true">
-                <img class="field-background-art stats-field-background-art" src="assets/updated-field.png?v=2026.06.24-build-271" alt="" aria-hidden="true">
+                <img class="field-background-art stats-field-background-art" src="assets/updated-field.png?v=2026.06.24-build-272" alt="" aria-hidden="true">
             </div>
             <div class="field-layer stats-spray-chart-overlay">
               <div class="spray-markers stats-spray-markers" id="statsSprayMarkers"></div>
@@ -2295,7 +2298,7 @@
       </div>
     </div>
 
-    <div class="modal-backdrop" id="bulkStatEditModal" hidden>
+    <div class="modal-backdrop" id="bulkStatEditModal" data-admin-only hidden>
       <div class="modal-card bulk-stat-edit-modal" role="dialog" aria-modal="true" aria-labelledby="bulkStatEditTitle">
         <div class="mini-head">
           <div>
@@ -2325,7 +2328,7 @@
       </div>
     </div>
 
-    <div class="modal-backdrop" id="statEditGameSelectModal" hidden>
+    <div class="modal-backdrop" id="statEditGameSelectModal" data-admin-only hidden>
       <div class="modal-card stat-edit-select-modal" role="dialog" aria-modal="true" aria-labelledby="statEditGameSelectTitle">
         <div class="mini-head">
           <div>
@@ -2339,7 +2342,7 @@
       </div>
     </div>
 
-    <div class="modal-backdrop" id="statEditGameModal" hidden>
+    <div class="modal-backdrop" id="statEditGameModal" data-admin-only hidden>
       <div class="modal-card stat-edit-modal" role="dialog" aria-modal="true" aria-labelledby="statEditGameTitle">
         <div class="mini-head">
           <div>
@@ -2397,7 +2400,7 @@
             </div>
             <div class="spray-chart stat-edit-spray-chart" id="statEditSprayChart" role="button" tabindex="0" aria-label="Tap to add a spray chart location">
               <div class="field-layer field-background" aria-hidden="true">
-                <img class="field-background-art" src="assets/updated-field.png?v=2026.06.24-build-271" alt="" aria-hidden="true">
+                <img class="field-background-art" src="assets/updated-field.png?v=2026.06.24-build-272" alt="" aria-hidden="true">
               </div>
               <div class="field-layer stats-spray-chart-overlay">
                 <div class="spray-markers stats-spray-markers" id="statEditSprayMarkers"></div>
@@ -2415,7 +2418,7 @@
       </div>
     </div>
 
-    <div class="modal-backdrop" id="pitchingStatEditGameSelectModal" hidden>
+    <div class="modal-backdrop" id="pitchingStatEditGameSelectModal" data-admin-only hidden>
       <div class="modal-card stat-edit-select-modal" role="dialog" aria-modal="true" aria-labelledby="pitchingStatEditGameSelectTitle">
         <div class="modal-head">
           <div>
@@ -2429,7 +2432,7 @@
       </div>
     </div>
 
-    <div class="modal-backdrop" id="pitchingStatEditGameModal" hidden>
+    <div class="modal-backdrop" id="pitchingStatEditGameModal" data-admin-only hidden>
       <div class="modal-card stat-edit-modal" role="dialog" aria-modal="true" aria-labelledby="pitchingStatEditGameTitle">
         <div class="modal-head">
           <div>
@@ -2470,16 +2473,16 @@
       </div>
     </div>
 
-    <script src="dexie.min.js?v=2026.06.24-build-271"></script>
-    <script src="db.js?v=2026.06.24-build-271"></script>
-    <script src="storage.js?v=2026.06.24-build-271"></script>
-    <script src="matchup-images.js?v=2026.06.24-build-271"></script>
+    <script src="dexie.min.js?v=2026.06.24-build-272"></script>
+    <script src="db.js?v=2026.06.24-build-272"></script>
+    <script src="storage.js?v=2026.06.24-build-272"></script>
+    <script src="matchup-images.js?v=2026.06.24-build-272"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=2026.06.24-build-271"></script>
-    <script src="supabase-storage.js?v=2026.06.24-build-271"></script>
-    <script src="data/league-standings-cache.js?v=2026.06.24-build-271"></script>
-    <script src="data/naba-rosters-cache.js?v=2026.06.24-build-271"></script>
+    <script src="supabase-config.js?v=2026.06.24-build-272"></script>
+    <script src="supabase-storage.js?v=2026.06.24-build-272"></script>
+    <script src="data/league-standings-cache.js?v=2026.06.24-build-272"></script>
+    <script src="data/naba-rosters-cache.js?v=2026.06.24-build-272"></script>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js"></script>
-    <script src="app.js?v=2026.06.24-build-271"></script>
+    <script src="app.js?v=2026.06.24-build-272"></script>
   </body>
 </html>

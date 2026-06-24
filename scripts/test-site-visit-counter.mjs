@@ -21,7 +21,7 @@ function functionBody(source, functionName) {
   return nextFunction === -1 ? source.slice(start) : source.slice(start, nextFunction);
 }
 
-mustMatch(indexHtml, /<section class="home-panel home-visit-counter-panel" id="homeVisitCounterCard" hidden>[\s\S]*id="homeVisitTotal"[\s\S]*id="homeVisitMeta"/, "Home should include an admin-only visit counter panel at the bottom of the view");
+mustMatch(indexHtml, /<section class="home-panel home-visit-counter-panel" id="homeVisitCounterCard" data-admin-only hidden>[\s\S]*id="homeVisitTotal"[\s\S]*id="homeVisitMeta"/, "Home should include an admin-only visit counter panel at the bottom of the view");
 assert.doesNotMatch(indexHtml, /home-overview-stat home-visit-counter-stat/, "Visit counter should not be embedded in the overview stats grid");
 mustMatch(indexHtml, /app\.js\?v=\d{4}\.\d{2}\.\d{2}-build-\d+/, "Visit counter release should bump the app asset marker");
 
