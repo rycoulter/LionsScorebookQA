@@ -20,8 +20,8 @@ const mobileLeaderMap = functionBody(appJs, "mobileLeaderMap");
 const mobileHittingLeaderMap = functionBody(appJs, "mobileHittingLeaderMap");
 const mobilePitchingLeaderMap = functionBody(appJs, "mobilePitchingLeaderMap");
 
-assert.match(renderSeasonStats, /mobileHittingLeaderMap\(getMobileHittingRows\("all", mobileHitGameFilter\)\)/, "mobile hitting leaders should be calculated from all players in the selected game context");
-assert.match(renderSeasonStats, /mobilePitchingLeaderMap\(getMobilePitchingRows\("all", mobilePitGameFilter\)\)/, "mobile pitching leaders should be calculated from all pitchers in the selected game context");
+assert.match(renderSeasonStats, /mobileHittingLeaderMap\([\s\S]*getMobileHittingRows\("all", mobileHitGameFilter\),[\s\S]*mobileLeaderMinimumGames[\s\S]*\)/, "mobile hitting leaders should be calculated from qualified players in the selected game context");
+assert.match(renderSeasonStats, /mobilePitchingLeaderMap\([\s\S]*getMobilePitchingRows\("all", mobilePitGameFilter\),[\s\S]*mobilePitchingLeaderMinimumGames[\s\S]*\)/, "mobile pitching leaders should be calculated from qualified pitchers in the selected game context");
 assert.match(renderSeasonStats, /mobileStatPill\("AVG"[\s\S]*mobileStatIsLeader\(mobileHittingLeaders, "avg", player\.id\)/, "AVG labels should highlight when a player leads or ties");
 assert.match(renderSeasonStats, /mobileStatPill\("K", hit\.k[\s\S]*mobileStatIsLeader\(mobileHittingLeaders, "k", player\.id\)/, "hitter K labels should use leader highlighting");
 assert.match(renderSeasonStats, /mobileStatPill\("ERA"[\s\S]*mobileStatIsLeader\(mobilePitchingLeaders, "era", player\.id\)/, "ERA labels should highlight when a pitcher leads or ties");
@@ -34,6 +34,8 @@ assert.match(mobileLeaderMap, /Math\.abs\(item\.value - best\) <= 0\.0000001/, "
 assert.match(mobileHittingLeaderMap, /key: "k"[\s\S]*lowWins: true/, "hitter strikeout leaders should treat lower as better");
 assert.match(mobilePitchingLeaderMap, /key: "era"[\s\S]*lowWins: true/, "pitching ERA leaders should treat lower as better");
 assert.match(mobilePitchingLeaderMap, /key: "bbRate"[\s\S]*lowWins: true/, "pitching BB% leaders should treat lower as better");
+assert.match(mobileHittingLeaderMap, /statLeaderEligible\(row, minimumGames\)/, "mobile hitting highlights should honor the season games-played qualifier");
+assert.match(mobilePitchingLeaderMap, /statLeaderEligible\(row, minimumGames\)/, "mobile pitching highlights should honor the season appearance qualifier");
 assert.match(stylesCss, /\.stats-mobile-pill\.is-leader small[\s\S]*color: var\(--lion-gold\)/, "leader stat labels should render gold on mobile cards");
 
 console.log("Mobile stat leader highlight checks passed.");

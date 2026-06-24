@@ -8,7 +8,7 @@ const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 const appJs = readFileSync(join(rootDir, "app.js"), "utf8");
 
 function functionBody(source, functionName) {
-  const start = source.indexOf(`function ${functionName}`);
+  const start = source.indexOf(`function ${functionName}(`);
   assert.notEqual(start, -1, `${functionName} should exist`);
   const nextFunction = source.indexOf("\nfunction ", start + 1);
   return nextFunction === -1 ? source.slice(start) : source.slice(start, nextFunction);

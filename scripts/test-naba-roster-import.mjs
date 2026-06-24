@@ -25,7 +25,7 @@ function functionBody(source, functionName) {
 
 mustMatch(indexHtml, /id="importOpponentRosterBtn"[\s\S]*Load NABA Roster/, "Opponent lineup setup should expose a NABA roster import button");
 mustMatch(indexHtml, /id="opponentRosterImportPanel"[\s\S]*id="opponentRosterSearch"[\s\S]*id="opponentRosterList"/, "Opponent lineup setup should include a roster picker panel");
-mustMatch(indexHtml, /data\/naba-rosters-cache\.js\?v=2026\.04\.29-build-211/, "NABA roster cache script should load before app.js");
+mustMatch(indexHtml, /data\/naba-rosters-cache\.js\?v=\d{4}\.\d{2}\.\d{2}-build-\d+[\s\S]*app\.js\?v=\d{4}\.\d{2}\.\d{2}-build-\d+/, "NABA roster cache script should load before app.js");
 
 mustMatch(appJs, /const NABA_ROSTERS_CACHE_URL = "data\/naba-rosters\.json"/, "App should define the static NABA roster JSON cache URL");
 mustMatch(appJs, /nabaRosterCache = normalizeNabaRosterCache\(window\.ScorebookNabaRostersCache\)/, "App should initialize the roster cache from the script payload");

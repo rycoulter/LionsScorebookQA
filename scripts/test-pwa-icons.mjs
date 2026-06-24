@@ -17,10 +17,10 @@ function pngSize(relativePath) {
   };
 }
 
-assert.match(indexHtml, /rel="icon" href="favicon\.ico\?v=2026\.04\.30-build-214"/, "Desktop favicon should be linked");
-assert.match(indexHtml, /sizes="32x32" href="assets\/icons\/favicon-32\.png\?v=2026\.04\.30-build-214"/, "32px favicon should be linked");
-assert.match(indexHtml, /sizes="48x48" href="assets\/icons\/favicon-48\.png\?v=2026\.04\.30-build-214"/, "48px favicon should be linked");
-assert.match(indexHtml, /rel="apple-touch-icon" href="assets\/icons\/apple-touch-icon\.png\?v=2026\.04\.30-build-214"/, "Apple touch icon should be linked");
+assert.match(indexHtml, /rel="icon" href="favicon\.ico\?v=\d{4}\.\d{2}\.\d{2}-build-\d+"/, "Desktop favicon should be linked");
+assert.match(indexHtml, /sizes="32x32" href="assets\/icons\/favicon-32\.png\?v=\d{4}\.\d{2}\.\d{2}-build-\d+"/, "32px favicon should be linked");
+assert.match(indexHtml, /sizes="48x48" href="assets\/icons\/favicon-48\.png\?v=\d{4}\.\d{2}\.\d{2}-build-\d+"/, "48px favicon should be linked");
+assert.match(indexHtml, /rel="apple-touch-icon" href="assets\/icons\/apple-touch-icon\.png\?v=\d{4}\.\d{2}\.\d{2}-build-\d+"/, "Apple touch icon should be linked");
 
 assert.deepEqual(manifest.icons.map((icon) => icon.src), ["icon-192.png", "icon-512.png"], "Manifest should keep the PWA install icons");
 assert.deepEqual(pngSize("assets/icons/favicon-32.png"), { width: 32, height: 32 }, "32px favicon should be 32x32");

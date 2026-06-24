@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.106";
+const APP_VERSION = "v.1.1.107";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -714,6 +714,10 @@ const FIELD_LOCATION_COORDINATES = {
 let state = seedState();
 let accessMode = loadAccessMode();
 let optimizedIds = [];
+let lineupAnalyzerGameId = "";
+let lineupAnalyzerPitcherId = "";
+let lineupAnalyzerDraft = null;
+let lineupAnalyzerNotice = "";
 let pendingSpray = null;
 let lineupBuilderGameId = null;
 let gameEditId = null;
@@ -1171,6 +1175,17 @@ const els = {
   opponentMoveNameInput: document.getElementById("opponentMoveNameInput"),
   opponentMoveHint: document.getElementById("opponentMoveHint"),
   applyOpponentMoveBtn: document.getElementById("applyOpponentMoveBtn"),
+  lineupAnalyzerGameSelect: document.getElementById("lineupAnalyzerGameSelect"),
+  lineupAnalyzerStatus: document.getElementById("lineupAnalyzerStatus"),
+  lineupAnalyzerSaveBtn: document.getElementById("lineupAnalyzerSaveBtn"),
+  lineupAnalyzerAddHitterBtn: document.getElementById("lineupAnalyzerAddHitterBtn"),
+  lineupAnalyzerLineupRows: document.getElementById("lineupAnalyzerLineupRows"),
+  lineupAnalyzerAddPitcherBtn: document.getElementById("lineupAnalyzerAddPitcherBtn"),
+  lineupAnalyzerPitcherList: document.getElementById("lineupAnalyzerPitcherList"),
+  lineupAnalyzerPitcherTabs: document.getElementById("lineupAnalyzerPitcherTabs"),
+  lineupAnalyzerMatchupBody: document.getElementById("lineupAnalyzerMatchupBody"),
+  lineupAnalyzerMatchupMeta: document.getElementById("lineupAnalyzerMatchupMeta"),
+  lineupAnalyzerSummary: document.getElementById("lineupAnalyzerSummary"),
   optimizeBtn: document.getElementById("optimizeBtn"),
   optimizedLineup: document.getElementById("optimizedLineup"),
   optimizerMode: document.getElementById("optimizerMode"),
@@ -2534,6 +2549,9 @@ function normalizeGame(game, nextState = state) {
       pitches: normalizePitchTrail(event.pitches || []),
       spray: event.spray || event.result?.sprayChart || null
     })),
+    lineupUsage: normalizeLineupAnalyzerUsage(game.lineupUsage || []),
+    opponentPitchers: normalizeLineupAnalyzerPitchers(game.opponentPitchers || []),
+    hittingMatchups: normalizeLineupAnalyzerMatchups(game.hittingMatchups || []),
     substitutions: game.substitutions || [],
     playHistory: normalizePlayHistory(game.playHistory, game.id),
     pendingScoring: game.pendingScoring ? deepClone(game.pendingScoring) : null
@@ -5055,6 +5073,24 @@ window.addEventListener("pageshow", () => {
   });
   els.finishGameBtn.addEventListener("click", finishGame);
 
+  els.lineupAnalyzerGameSelect?.addEventListener("change", () => {
+    lineupAnalyzerGameId = els.lineupAnalyzerGameSelect.value || "";
+    lineupAnalyzerPitcherId = "";
+    lineupAnalyzerDraft = null;
+    lineupAnalyzerNotice = "";
+    renderLineupAnalyzer();
+  });
+  els.lineupAnalyzerSaveBtn?.addEventListener("click", saveLineupAnalyzerGame);
+  els.lineupAnalyzerAddHitterBtn?.addEventListener("click", addLineupAnalyzerHitter);
+  els.lineupAnalyzerAddPitcherBtn?.addEventListener("click", addLineupAnalyzerPitcher);
+  els.lineupAnalyzerLineupRows?.addEventListener("change", handleLineupAnalyzerLineupChange);
+  els.lineupAnalyzerLineupRows?.addEventListener("click", handleLineupAnalyzerLineupClick);
+  els.lineupAnalyzerPitcherList?.addEventListener("input", handleLineupAnalyzerPitcherInput);
+  els.lineupAnalyzerPitcherList?.addEventListener("change", handleLineupAnalyzerPitcherInput);
+  els.lineupAnalyzerPitcherList?.addEventListener("click", handleLineupAnalyzerPitcherClick);
+  els.lineupAnalyzerPitcherTabs?.addEventListener("click", handleLineupAnalyzerPitcherTabClick);
+  els.lineupAnalyzerMatchupBody?.addEventListener("input", handleLineupAnalyzerMatchupInput);
+
   els.optimizeBtn.addEventListener("click", () => {
     optimizedIds = buildOptimizedLineup();
     renderOptimizedLineup();
@@ -5063,13 +5099,17 @@ window.addEventListener("pageshow", () => {
   els.applyOptimizedBtn.addEventListener("click", () => {
     if (!requireAdminAccess("Admin sign-in required to apply lineup changes.")) return;
     if (!optimizedIds.length) optimizedIds = buildOptimizedLineup();
-    const game = activeGame();
-    game.lineupEntries = makeLineupEntries(optimizedIds);
-    game.lineups.away = deepClone(game.lineupEntries);
-    game.batterIndex = 0;
-    saveState();
-    render();
-    switchView("score");
+    const draft = ensureLineupAnalyzerDraft();
+    if (!draft) return;
+    const positionsByPlayer = new Map(draft.lineupUsage.map((entry) => [entry.playerId, entry.position]));
+    draft.lineupUsage = optimizedIds.map((playerId, index) => ({
+      id: createId("lineup-use"),
+      order: index + 1,
+      playerId,
+      position: positionsByPlayer.get(playerId) || playerPrimaryPosition(state.roster.find((player) => player.id === playerId)) || "DH",
+      started: true
+    }));
+    renderLineupAnalyzer();
   });
 
   els.addPlayerBtn.addEventListener("click", () => {
@@ -8492,6 +8532,7 @@ function render() {
   renderStatsSprayControls();
   renderScoutingReport();
   renderTraditionalScorebook();
+  renderLineupAnalyzer();
   if (!optimizedIds.length) optimizedIds = buildOptimizedLineup();
   renderOptimizedLineup();
   if (!scoreGame || gameIsScoreLocked(scoreGame) || !isAdminMode()) setScoreGameLocked(true, scoreGame);
@@ -8584,10 +8625,24 @@ function renderHome() {
   }
   hydrateHomeWeather(upcoming);
 
-  const hitterRows = state.roster.map((player) => ({ player, stats: statsForPlayer(player.id), runs: runsScoredForPlayer(player.id) }));
+  const leaderSeason = String(currentLeagueSeason());
+  const leaderMinimumGames = statLeaderMinimumGames(leaderSeason);
+  const hitterRows = state.roster
+    .map((player) => ({
+      player,
+      stats: statsForPlayer(player.id, leaderSeason),
+      runs: runsScoredForPlayer(player.id, leaderSeason),
+      gp: gamesPlayedForPlayer(player.id, leaderSeason)
+    }))
+    .filter((row) => statLeaderEligible(row, leaderMinimumGames));
   const pitcherRows = state.roster
-    .map((player) => ({ player, stats: pitcherStats(player.id) }))
-    .filter((row) => hasPitchingStats(row.stats));
+    .map((player) => ({
+      player,
+      stats: pitcherStats(player.id, null, leaderSeason),
+      gp: gamesPitchedForPlayer(player.id, leaderSeason)
+    }))
+    .filter((row) => hasPitchingStats(row.stats))
+    .filter((row) => statLeaderEligible(row, leaderMinimumGames));
   els.homeBattingLeaders.innerHTML = [
     renderHomeLeaderFeatureCard("AVG", hitterRows, (row) => row.stats.avg, formatRate),
     renderHomeLeaderFeatureCard("H", hitterRows, (row) => row.stats.h, String),
@@ -13871,7 +13926,8 @@ function getMobilePitchingRows(playerId = "all", gameId = "all") {
   return state.roster
     .map((player) => ({
       player,
-      pit: pitcherStats(player.id, gameId === "all" ? null : gameId, statsSeasonFilter)
+      pit: pitcherStats(player.id, gameId === "all" ? null : gameId, statsSeasonFilter),
+      gp: gameId === "all" ? gamesPitchedForPlayer(player.id, statsSeasonFilter) : 0
     }))
     .filter(({ player, pit }) => (playerId === "all" || player.id === playerId) && (hasPitchingStats(pit) || playerHasPosition(player, "P")))
     .sort((a, b) => comparePitchingRows(a, b));
@@ -17646,7 +17702,13 @@ function renderSeasonStats() {
   }
   renderMobileStatsFilters();
   const mobileHittingRows = getMobileHittingRows(mobileHitPlayerFilter, mobileHitGameFilter);
-  const mobileHittingLeaders = mobileHittingLeaderMap(getMobileHittingRows("all", mobileHitGameFilter));
+  const mobileLeaderMinimumGames = mobileHitGameFilter === "all"
+    ? statLeaderMinimumGames(statsSeasonFilter)
+    : 0;
+  const mobileHittingLeaders = mobileHittingLeaderMap(
+    getMobileHittingRows("all", mobileHitGameFilter),
+    mobileLeaderMinimumGames
+  );
   if (els.mobileHittingStatsList) {
     els.mobileHittingStatsList.innerHTML = mobileHittingRows.length
       ? mobileHittingRows.map(({ player, hit, gp }) => {
@@ -17673,7 +17735,13 @@ function renderSeasonStats() {
       : `<p class="stats-mobile-empty">No batting stats yet.</p>`;
   }
   const mobilePitchingRows = getMobilePitchingRows(mobilePitPlayerFilter, mobilePitGameFilter);
-  const mobilePitchingLeaders = mobilePitchingLeaderMap(getMobilePitchingRows("all", mobilePitGameFilter));
+  const mobilePitchingLeaderMinimumGames = mobilePitGameFilter === "all"
+    ? statLeaderMinimumGames(statsSeasonFilter)
+    : 0;
+  const mobilePitchingLeaders = mobilePitchingLeaderMap(
+    getMobilePitchingRows("all", mobilePitGameFilter),
+    mobilePitchingLeaderMinimumGames
+  );
   if (els.mobilePitchingStatsList) {
     els.mobilePitchingStatsList.innerHTML = mobilePitchingRows.length
       ? mobilePitchingRows.map(({ player, pit }) => {
@@ -18937,14 +19005,21 @@ function savePitchingStatEditGameStats(event) {
 
 function renderLeaders() {
   const focusedPlayerId = statsPlayerFocus !== "all" ? statsPlayerFocus : "";
+  const minimumGames = statLeaderMinimumGames(statsSeasonFilter);
   const hitterRows = state.roster
     .map((player) => ({ player, stats: statsForPlayer(player.id, statsSeasonFilter), gp: gamesPlayedForPlayer(player.id, statsSeasonFilter) }))
     .filter((row) => !focusedPlayerId || row.player.id === focusedPlayerId)
-    .filter((row) => playerHasHittingLine({ player: row.player, hit: row.stats, gp: row.gp }));
+    .filter((row) => playerHasHittingLine({ player: row.player, hit: row.stats, gp: row.gp }))
+    .filter((row) => statLeaderEligible(row, minimumGames));
   const pitcherRows = state.roster
-    .map((player) => ({ player, stats: pitcherStats(player.id, null, statsSeasonFilter) }))
+    .map((player) => ({
+      player,
+      stats: pitcherStats(player.id, null, statsSeasonFilter),
+      gp: gamesPitchedForPlayer(player.id, statsSeasonFilter)
+    }))
     .filter((row) => !focusedPlayerId || row.player.id === focusedPlayerId)
-    .filter((row) => hasPitchingStats(row.stats));
+    .filter((row) => hasPitchingStats(row.stats))
+    .filter((row) => statLeaderEligible(row, minimumGames));
   renderStatsMode();
   const cards = statsMode === "pitching"
     ? [
@@ -19074,6 +19149,43 @@ function gamesPlayedForPlayer(playerId, season = null) {
   }).length;
 }
 
+const STAT_LEADER_MIN_GAMES = 3;
+
+function statLeaderMinimumGames(season = null) {
+  return Math.min(STAT_LEADER_MIN_GAMES, statLeaderSeasonGames(season).length);
+}
+
+function statLeaderSeasonGames(season = null) {
+  return statsGamesForSeason(season).filter((game) => {
+    if (gameIsFinal(game)) return true;
+    const hasRecordedEvents = Array.isArray(game?.events) && game.events.length > 0;
+    const hasPlateAppearanceData = (Array.isArray(game?.plateAppearances) ? game.plateAppearances : []).some((appearance) =>
+      Boolean(appearance?.result || appearance?.completedAt || (Array.isArray(appearance?.pitches) && appearance.pitches.length))
+    );
+    const hasManualStats = Object.keys(game?.hittingStatEdits || {}).length > 0
+      || Object.keys(game?.pitchingStatEdits || {}).length > 0;
+    return hasRecordedEvents || hasPlateAppearanceData || hasManualStats;
+  });
+}
+
+function statLeaderEligible(row, minimumGames = 0) {
+  const gamesPlayed = Math.max(0, Number(row?.gp) || 0);
+  return gamesPlayed > 0 && gamesPlayed >= Math.max(0, Number(minimumGames) || 0);
+}
+
+function gamesPitchedForPlayer(playerId, season = null) {
+  return statsGamesForSeason(season).filter((game) => {
+    if (hasPitchingStatEdit(game, playerId)) return true;
+    return pitchingEventsForStatsGame(game).some((event) =>
+      event.scope === "defense"
+        && (
+          event.pitcherId === playerId
+          || (event.pitches || []).some((pitch) => pitch.pitcherId === playerId)
+        )
+    );
+  }).length;
+}
+
 function updateSortIndicators() {
   document.querySelectorAll("[data-hit-sort]").forEach((button) => {
     const active = button.dataset.hitSort === hittingSort.key;
@@ -19095,8 +19207,8 @@ function mobileStatIsLeader(leaderMap, key, playerId) {
   return Boolean(leaderMap?.[key]?.has(playerId));
 }
 
-function mobileHittingLeaderMap(rows = []) {
-  return mobileLeaderMap(rows, [
+function mobileHittingLeaderMap(rows = [], minimumGames = 0) {
+  return mobileLeaderMap(rows.filter((row) => !minimumGames || statLeaderEligible(row, minimumGames)), [
     { key: "gp", value: (row) => row.gp, eligible: (row) => row.gp > 0 },
     { key: "pa", value: (row) => row.hit.pa, eligible: (row) => row.hit.pa > 0 },
     { key: "avg", value: (row) => row.hit.avg, eligible: (row) => row.hit.ab > 0 },
@@ -19109,8 +19221,8 @@ function mobileHittingLeaderMap(rows = []) {
   ]);
 }
 
-function mobilePitchingLeaderMap(rows = []) {
-  return mobileLeaderMap(rows, [
+function mobilePitchingLeaderMap(rows = [], minimumGames = 0) {
+  return mobileLeaderMap(rows.filter((row) => !minimumGames || statLeaderEligible(row, minimumGames)), [
     { key: "record", value: (row) => row.pit.wins - row.pit.losses, eligible: (row) => row.pit.wins > 0 },
     { key: "outs", value: (row) => row.pit.outs, eligible: (row) => row.pit.outs > 0 },
     { key: "era", value: (row) => row.pit.era, eligible: (row) => row.pit.outs > 0, lowWins: true },
@@ -19272,6 +19384,538 @@ function renderValueBoard() {
       </div>`;
     })
     .join("");
+}
+
+const lineupAnalyzerStatFields = ["pa", "ab", "h", "doubles", "triples", "hr", "bb", "hbp", "k", "rbi", "sac"];
+
+function normalizeLineupAnalyzerUsage(entries = []) {
+  return (Array.isArray(entries) ? entries : [])
+    .map((entry, index) => ({
+      id: String(entry?.id || createId("lineup-use")),
+      order: index + 1,
+      playerId: String(entry?.playerId || entry?.id || "").trim(),
+      position: normalizeGameStatPosition(entry?.position || entry?.role || "") || "DH",
+      started: entry?.started !== false
+    }))
+    .filter((entry) => entry.playerId);
+}
+
+function normalizeLineupAnalyzerPitchers(pitchers = []) {
+  return (Array.isArray(pitchers) ? pitchers : [])
+    .map((pitcher, index) => ({
+      id: String(pitcher?.id || createId("opp-pitcher")),
+      name: String(pitcher?.name || "").trim(),
+      number: String(pitcher?.number || "").trim(),
+      throws: ["R", "L", "S"].includes(String(pitcher?.throws || "R").toUpperCase()) ? String(pitcher?.throws || "R").toUpperCase() : "R",
+      role: pitcher?.role === "relief" ? "relief" : index === 0 ? "starter" : "relief",
+      order: index + 1
+    }));
+}
+
+function normalizeLineupAnalyzerMatchupStats(input = {}) {
+  const stats = {};
+  lineupAnalyzerStatFields.forEach((key) => {
+    stats[key] = clampNumber(input?.[key], 0, 99);
+  });
+  const extraBaseHits = stats.doubles + stats.triples + stats.hr;
+  if (stats.h < extraBaseHits) stats.h = extraBaseHits;
+  if (stats.ab < stats.h + stats.k) stats.ab = stats.h + stats.k;
+  const minimumPa = stats.ab + stats.bb + stats.hbp + stats.sac;
+  if (stats.pa < minimumPa) stats.pa = minimumPa;
+  return stats;
+}
+
+function normalizeLineupAnalyzerMatchups(matchups = []) {
+  return (Array.isArray(matchups) ? matchups : [])
+    .map((matchup) => ({
+      id: String(matchup?.id || createId("matchup")),
+      playerId: String(matchup?.playerId || "").trim(),
+      opponentPitcherId: String(matchup?.opponentPitcherId || matchup?.pitcherId || "").trim(),
+      stats: normalizeLineupAnalyzerMatchupStats(matchup?.stats || matchup || {})
+    }))
+    .filter((matchup) => matchup.playerId && matchup.opponentPitcherId);
+}
+
+function lineupAnalyzerGames() {
+  return [...(state.games || [])].sort(sortGamesNewestFirst);
+}
+
+function lineupAnalyzerGame() {
+  return state.games.find((game) => game.id === lineupAnalyzerGameId) || null;
+}
+
+function lineupAnalyzerDefaultLineup(game) {
+  const stored = normalizeLineupAnalyzerUsage(game?.lineupUsage || []);
+  if (stored.length) return stored;
+  const edits = game?.hittingStatEdits || {};
+  const editedPlayerIds = Object.keys(edits).filter((playerId) => {
+    const edit = normalizeHittingStatEdit(edits[playerId], playerId, game);
+    return manualHittingStatLineHasValues(edit.stats) || Boolean(edit.position) || edit.sprays.length > 0;
+  });
+  const appearedPlayerIds = [];
+  (game?.events || [])
+    .filter((event) => event.scope === "offense" && state.roster.some((player) => player.id === event.playerId))
+    .forEach((event) => {
+      if (!appearedPlayerIds.includes(event.playerId)) appearedPlayerIds.push(event.playerId);
+    });
+  const relevantIds = [...new Set([...appearedPlayerIds, ...editedPlayerIds])];
+  const gameOrder = new Map((game ? gameLineupEntries(game) : []).map((entry, index) => [entry.playerId, index]));
+  relevantIds.sort((left, right) => (gameOrder.get(left) ?? 999) - (gameOrder.get(right) ?? 999));
+  return relevantIds.map((playerId, index) => {
+    const edit = edits[playerId];
+    const player = state.roster.find((item) => item.id === playerId);
+    const gameEntry = (game ? gameLineupEntries(game) : []).find((entry) => entry.playerId === playerId);
+    return {
+      id: createId("lineup-use"),
+      order: index + 1,
+      playerId,
+      position: normalizeGameStatPosition(edit?.position || gameEntry?.role || playerPrimaryPosition(player)) || "DH",
+      started: true
+    };
+  });
+}
+
+function lineupAnalyzerDraftFromGame(game) {
+  return {
+    gameId: game.id,
+    dirty: false,
+    lineupUsage: lineupAnalyzerDefaultLineup(game),
+    opponentPitchers: normalizeLineupAnalyzerPitchers(game.opponentPitchers || []),
+    hittingMatchups: normalizeLineupAnalyzerMatchups(game.hittingMatchups || [])
+  };
+}
+
+function ensureLineupAnalyzerDraft() {
+  const games = lineupAnalyzerGames();
+  if (!games.length) {
+    lineupAnalyzerGameId = "";
+    lineupAnalyzerPitcherId = "";
+    lineupAnalyzerDraft = null;
+    return null;
+  }
+  if (!lineupAnalyzerGameId || !state.games.some((game) => game.id === lineupAnalyzerGameId)) {
+    lineupAnalyzerGameId = games[0].id;
+  }
+  const game = lineupAnalyzerGame();
+  if (!game) return null;
+  if (!lineupAnalyzerDraft || lineupAnalyzerDraft.gameId !== game.id) {
+    lineupAnalyzerDraft = lineupAnalyzerDraftFromGame(game);
+  }
+  if (!lineupAnalyzerPitcherId || !lineupAnalyzerDraft.opponentPitchers.some((pitcher) => pitcher.id === lineupAnalyzerPitcherId)) {
+    lineupAnalyzerPitcherId = lineupAnalyzerDraft.opponentPitchers[0]?.id || "";
+  }
+  return lineupAnalyzerDraft;
+}
+
+function lineupAnalyzerPlayerOptions(currentPlayerId, draft) {
+  const usedIds = new Set(draft.lineupUsage.map((entry) => entry.playerId).filter(Boolean));
+  const players = [...state.roster].sort((left, right) => {
+    const numberDiff = Number(left.number || 0) - Number(right.number || 0);
+    return numberDiff || String(left.name || "").localeCompare(String(right.name || ""));
+  });
+  return [
+    `<option value="">Select player</option>`,
+    ...players.map((player) => `<option value="${escapeHtml(player.id)}" ${player.id === currentPlayerId ? "selected" : ""} ${usedIds.has(player.id) && player.id !== currentPlayerId ? "disabled" : ""}>${escapeHtml(`#${player.number || "--"} ${player.name}`)}</option>`)
+  ].join("");
+}
+
+function lineupAnalyzerPositionOptions(currentPosition = "DH") {
+  const positions = [...new Set(["P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF", "DH", "EH", "UTL"] )];
+  return positions.map((position) => `<option value="${position}" ${position === currentPosition ? "selected" : ""}>${position}</option>`).join("");
+}
+
+function renderLineupAnalyzerLineup(draft) {
+  if (!els.lineupAnalyzerLineupRows) return;
+  els.lineupAnalyzerLineupRows.innerHTML = draft.lineupUsage.length
+    ? draft.lineupUsage.map((entry, index) => `<div class="lineup-analyzer-lineup-row" data-lineup-analyzer-entry="${escapeHtml(entry.id)}">
+        <span class="lineup-analyzer-order">${index + 1}</span>
+        <label>
+          <span>Player</span>
+          <select data-lineup-analyzer-lineup-key="playerId">${lineupAnalyzerPlayerOptions(entry.playerId, draft)}</select>
+        </label>
+        <label class="lineup-analyzer-position-field">
+          <span>Pos</span>
+          <select data-lineup-analyzer-lineup-key="position">${lineupAnalyzerPositionOptions(entry.position)}</select>
+        </label>
+        <div class="lineup-analyzer-row-actions">
+          <button type="button" class="icon-button" data-lineup-analyzer-lineup-action="up" aria-label="Move hitter up" title="Move up" ${index === 0 ? "disabled" : ""}>↑</button>
+          <button type="button" class="icon-button" data-lineup-analyzer-lineup-action="down" aria-label="Move hitter down" title="Move down" ${index === draft.lineupUsage.length - 1 ? "disabled" : ""}>↓</button>
+          <button type="button" class="icon-button danger-action" data-lineup-analyzer-lineup-action="remove" aria-label="Remove hitter" title="Remove hitter">×</button>
+        </div>
+      </div>`).join("")
+    : `<div class="lineup-analyzer-empty">Add the hitters who appeared in this game.</div>`;
+}
+
+function renderLineupAnalyzerPitchers(draft) {
+  if (!els.lineupAnalyzerPitcherList) return;
+  els.lineupAnalyzerPitcherList.innerHTML = draft.opponentPitchers.length
+    ? draft.opponentPitchers.map((pitcher, index) => `<div class="lineup-analyzer-pitcher-row" data-lineup-analyzer-pitcher="${escapeHtml(pitcher.id)}">
+        <span class="lineup-analyzer-order">${index + 1}</span>
+        <label class="lineup-analyzer-pitcher-number">
+          <span>#</span>
+          <input value="${escapeHtml(pitcher.number)}" data-lineup-analyzer-pitcher-key="number" inputmode="numeric" aria-label="Pitcher number">
+        </label>
+        <label>
+          <span>Name</span>
+          <input value="${escapeHtml(pitcher.name)}" data-lineup-analyzer-pitcher-key="name" autocomplete="off" aria-label="Pitcher name">
+        </label>
+        <label>
+          <span>Throws</span>
+          <select data-lineup-analyzer-pitcher-key="throws">
+            ${["R", "L", "S"].map((hand) => `<option value="${hand}" ${pitcher.throws === hand ? "selected" : ""}>${hand}</option>`).join("")}
+          </select>
+        </label>
+        <label>
+          <span>Role</span>
+          <select data-lineup-analyzer-pitcher-key="role">
+            <option value="starter" ${pitcher.role === "starter" ? "selected" : ""}>Starter</option>
+            <option value="relief" ${pitcher.role === "relief" ? "selected" : ""}>Relief</option>
+          </select>
+        </label>
+        <button type="button" class="icon-button danger-action" data-lineup-analyzer-pitcher-action="remove" aria-label="Remove pitcher" title="Remove pitcher">×</button>
+      </div>`).join("")
+    : `<div class="lineup-analyzer-empty">Add the opposing starter, then any relievers used.</div>`;
+}
+
+function lineupAnalyzerMatchupRecord(draft, playerId, pitcherId, createIfMissing = true) {
+  let record = draft.hittingMatchups.find((matchup) => matchup.playerId === playerId && matchup.opponentPitcherId === pitcherId);
+  if (!record && createIfMissing) {
+    record = {
+      id: createId("matchup"),
+      playerId,
+      opponentPitcherId: pitcherId,
+      stats: normalizeLineupAnalyzerMatchupStats({})
+    };
+    draft.hittingMatchups.push(record);
+  }
+  return record || null;
+}
+
+function lineupAnalyzerInputValue(value) {
+  return Number(value) > 0 ? String(value) : "";
+}
+
+function renderLineupAnalyzerMatchups(draft) {
+  const selectedPitcher = draft.opponentPitchers.find((pitcher) => pitcher.id === lineupAnalyzerPitcherId) || null;
+  if (els.lineupAnalyzerPitcherTabs) {
+    els.lineupAnalyzerPitcherTabs.innerHTML = draft.opponentPitchers.length
+      ? draft.opponentPitchers.map((pitcher, index) => `<button type="button" class="lineup-analyzer-pitcher-tab ${pitcher.id === lineupAnalyzerPitcherId ? "is-active" : ""}" data-lineup-analyzer-pitcher-tab="${escapeHtml(pitcher.id)}" role="tab" aria-selected="${pitcher.id === lineupAnalyzerPitcherId}">${escapeHtml(pitcher.name || `Pitcher ${index + 1}`)} <span>${pitcher.throws}HP</span></button>`).join("")
+      : "";
+  }
+  if (els.lineupAnalyzerMatchupMeta) {
+    els.lineupAnalyzerMatchupMeta.textContent = selectedPitcher
+      ? `${selectedPitcher.role === "starter" ? "Starter" : "Reliever"} | ${selectedPitcher.throws}HP`
+      : "Add and select a pitcher to enter splits.";
+  }
+  if (!els.lineupAnalyzerMatchupBody) return;
+  if (!selectedPitcher || !draft.lineupUsage.length) {
+    els.lineupAnalyzerMatchupBody.innerHTML = `<tr><td colspan="12" class="lineup-analyzer-table-empty">${!draft.lineupUsage.length ? "Add the game lineup first." : "Add an opposing pitcher to enter matchup stats."}</td></tr>`;
+    renderLineupAnalyzerSummary(draft);
+    return;
+  }
+  els.lineupAnalyzerMatchupBody.innerHTML = draft.lineupUsage.map((entry) => {
+    const player = state.roster.find((item) => item.id === entry.playerId);
+    const matchup = lineupAnalyzerMatchupRecord(draft, entry.playerId, selectedPitcher.id);
+    return `<tr>
+      <th><strong>${escapeHtml(`#${player?.number || "--"} ${player?.name || "Unknown player"}`)}</strong><span>${escapeHtml(entry.position)}</span></th>
+      ${lineupAnalyzerStatFields.map((key) => `<td><input type="number" min="0" max="99" step="1" value="${lineupAnalyzerInputValue(matchup.stats[key])}" data-lineup-analyzer-matchup-player="${escapeHtml(entry.playerId)}" data-lineup-analyzer-matchup-pitcher="${escapeHtml(selectedPitcher.id)}" data-lineup-analyzer-matchup-key="${key}" aria-label="${escapeHtml(`${player?.name || "Player"} ${key.toUpperCase()} versus ${selectedPitcher.name || "pitcher"}`)}"></td>`).join("")}
+    </tr>`;
+  }).join("");
+  renderLineupAnalyzerSummary(draft);
+}
+
+function lineupAnalyzerMatchupHasValues(matchup) {
+  return lineupAnalyzerStatFields.some((key) => Number(matchup?.stats?.[key]) > 0);
+}
+
+function lineupAnalyzerAggregate(matchups = []) {
+  return matchups.reduce((totals, matchup) => {
+    lineupAnalyzerStatFields.forEach((key) => {
+      totals[key] += Number(matchup?.stats?.[key]) || 0;
+    });
+    return totals;
+  }, normalizeLineupAnalyzerMatchupStats({}));
+}
+
+function renderLineupAnalyzerSummary(draft) {
+  if (!els.lineupAnalyzerSummary) return;
+  const activeMatchups = draft.hittingMatchups.filter(lineupAnalyzerMatchupHasValues);
+  const totals = lineupAnalyzerAggregate(activeMatchups);
+  const allocatedPlayers = new Set(activeMatchups.map((matchup) => matchup.playerId)).size;
+  els.lineupAnalyzerSummary.innerHTML = [
+    ["Hitters", draft.lineupUsage.length],
+    ["Pitchers", draft.opponentPitchers.length],
+    ["Allocated Players", allocatedPlayers],
+    ["PA", totals.pa],
+    ["H", totals.h]
+  ].map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${value}</strong></div>`).join("");
+}
+
+function renderLineupAnalyzer() {
+  if (!els.lineupAnalyzerGameSelect) return;
+  const games = lineupAnalyzerGames();
+  const draft = ensureLineupAnalyzerDraft();
+  els.lineupAnalyzerGameSelect.innerHTML = games.length
+    ? games.map((game) => `<option value="${escapeHtml(game.id)}" ${game.id === lineupAnalyzerGameId ? "selected" : ""}>${escapeHtml(`${formatGameDateDisplay(game.date)} | ${gameMatchupLabel(game)} | ${gameStatusLabel(game)}`)}</option>`).join("")
+    : `<option value="">No games available</option>`;
+  [els.lineupAnalyzerSaveBtn, els.lineupAnalyzerAddHitterBtn, els.lineupAnalyzerAddPitcherBtn].filter(Boolean).forEach((button) => {
+    button.disabled = !draft || !isAdminMode();
+  });
+  if (!draft) {
+    if (els.lineupAnalyzerStatus) els.lineupAnalyzerStatus.textContent = "Create a game before building a lineup analysis.";
+    if (els.lineupAnalyzerLineupRows) els.lineupAnalyzerLineupRows.innerHTML = `<div class="lineup-analyzer-empty">No games available.</div>`;
+    if (els.lineupAnalyzerPitcherList) els.lineupAnalyzerPitcherList.innerHTML = `<div class="lineup-analyzer-empty">No games available.</div>`;
+    if (els.lineupAnalyzerPitcherTabs) els.lineupAnalyzerPitcherTabs.innerHTML = "";
+    if (els.lineupAnalyzerMatchupBody) els.lineupAnalyzerMatchupBody.innerHTML = `<tr><td colspan="12" class="lineup-analyzer-table-empty">Select or create a game first.</td></tr>`;
+    renderLineupAnalyzerSummary({ lineupUsage: [], opponentPitchers: [], hittingMatchups: [] });
+    return;
+  }
+  const game = lineupAnalyzerGame();
+  if (els.lineupAnalyzerStatus) {
+    const base = `${formatGameDateDisplay(game.date)} | ${gameScoreLabel(game)} | ${draft.lineupUsage.length} hitters, ${draft.opponentPitchers.length} pitchers`;
+    els.lineupAnalyzerStatus.textContent = lineupAnalyzerNotice || `${base}${draft.dirty ? " | Unsaved changes" : ""}`;
+  }
+  renderLineupAnalyzerLineup(draft);
+  renderLineupAnalyzerPitchers(draft);
+  renderLineupAnalyzerMatchups(draft);
+}
+
+function markLineupAnalyzerDraftDirty() {
+  if (!lineupAnalyzerDraft) return;
+  lineupAnalyzerDraft.dirty = true;
+  lineupAnalyzerNotice = "";
+  if (els.lineupAnalyzerStatus) els.lineupAnalyzerStatus.textContent = "Unsaved lineup or matchup changes.";
+}
+
+function addLineupAnalyzerHitter() {
+  const draft = ensureLineupAnalyzerDraft();
+  if (!draft || !requireAdminAccess("Admin sign-in required to edit lineup analysis.")) return;
+  const usedIds = new Set(draft.lineupUsage.map((entry) => entry.playerId));
+  const player = state.roster.find((item) => item.active !== false && !usedIds.has(item.id));
+  if (!player) {
+    window.alert("Every active roster player is already in this game lineup.");
+    return;
+  }
+  draft.lineupUsage.push({
+    id: createId("lineup-use"),
+    order: draft.lineupUsage.length + 1,
+    playerId: player.id,
+    position: playerPrimaryPosition(player) || "DH",
+    started: true
+  });
+  markLineupAnalyzerDraftDirty();
+  renderLineupAnalyzer();
+}
+
+function handleLineupAnalyzerLineupChange(event) {
+  const input = event.target.closest("[data-lineup-analyzer-lineup-key]");
+  const row = event.target.closest("[data-lineup-analyzer-entry]");
+  const draft = ensureLineupAnalyzerDraft();
+  if (!input || !row || !draft) return;
+  const entry = draft.lineupUsage.find((item) => item.id === row.dataset.lineupAnalyzerEntry);
+  if (!entry) return;
+  const key = input.dataset.lineupAnalyzerLineupKey;
+  if (key === "playerId") {
+    const previousPlayerId = entry.playerId;
+    entry.playerId = input.value || "";
+    if (previousPlayerId && previousPlayerId !== entry.playerId && !draft.lineupUsage.some((item) => item !== entry && item.playerId === previousPlayerId)) {
+      draft.hittingMatchups = draft.hittingMatchups.filter((matchup) => matchup.playerId !== previousPlayerId);
+    }
+  } else if (key === "position") {
+    entry.position = normalizeGameStatPosition(input.value) || "DH";
+  }
+  markLineupAnalyzerDraftDirty();
+  renderLineupAnalyzer();
+}
+
+function handleLineupAnalyzerLineupClick(event) {
+  const button = event.target.closest("[data-lineup-analyzer-lineup-action]");
+  const row = event.target.closest("[data-lineup-analyzer-entry]");
+  const draft = ensureLineupAnalyzerDraft();
+  if (!button || !row || !draft) return;
+  const index = draft.lineupUsage.findIndex((entry) => entry.id === row.dataset.lineupAnalyzerEntry);
+  if (index < 0) return;
+  const action = button.dataset.lineupAnalyzerLineupAction;
+  if (action === "remove") {
+    const [removed] = draft.lineupUsage.splice(index, 1);
+    draft.hittingMatchups = draft.hittingMatchups.filter((matchup) => matchup.playerId !== removed.playerId);
+  } else {
+    const targetIndex = action === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= draft.lineupUsage.length) return;
+    [draft.lineupUsage[index], draft.lineupUsage[targetIndex]] = [draft.lineupUsage[targetIndex], draft.lineupUsage[index]];
+  }
+  draft.lineupUsage.forEach((entry, order) => { entry.order = order + 1; });
+  markLineupAnalyzerDraftDirty();
+  renderLineupAnalyzer();
+}
+
+function addLineupAnalyzerPitcher() {
+  const draft = ensureLineupAnalyzerDraft();
+  if (!draft || !requireAdminAccess("Admin sign-in required to edit pitcher matchups.")) return;
+  const pitcher = {
+    id: createId("opp-pitcher"),
+    name: "",
+    number: "",
+    throws: "R",
+    role: draft.opponentPitchers.length ? "relief" : "starter",
+    order: draft.opponentPitchers.length + 1
+  };
+  draft.opponentPitchers.push(pitcher);
+  lineupAnalyzerPitcherId = pitcher.id;
+  markLineupAnalyzerDraftDirty();
+  renderLineupAnalyzer();
+  els.lineupAnalyzerPitcherList?.querySelector(`[data-lineup-analyzer-pitcher="${pitcher.id}"] [data-lineup-analyzer-pitcher-key="name"]`)?.focus();
+}
+
+function handleLineupAnalyzerPitcherInput(event) {
+  const input = event.target.closest("[data-lineup-analyzer-pitcher-key]");
+  const row = event.target.closest("[data-lineup-analyzer-pitcher]");
+  const draft = ensureLineupAnalyzerDraft();
+  if (!input || !row || !draft) return;
+  const pitcher = draft.opponentPitchers.find((item) => item.id === row.dataset.lineupAnalyzerPitcher);
+  if (!pitcher) return;
+  const key = input.dataset.lineupAnalyzerPitcherKey;
+  pitcher[key] = input.value;
+  if (key === "throws") pitcher.throws = ["R", "L", "S"].includes(input.value) ? input.value : "R";
+  if (key === "role") pitcher.role = input.value === "relief" ? "relief" : "starter";
+  markLineupAnalyzerDraftDirty();
+  if (key !== "name" && key !== "number") renderLineupAnalyzer();
+  else {
+    const tab = els.lineupAnalyzerPitcherTabs?.querySelector(`[data-lineup-analyzer-pitcher-tab="${pitcher.id}"]`);
+    if (tab) tab.firstChild.textContent = `${pitcher.name || `Pitcher ${pitcher.order}`} `;
+  }
+}
+
+function handleLineupAnalyzerPitcherClick(event) {
+  const button = event.target.closest("[data-lineup-analyzer-pitcher-action]");
+  const row = event.target.closest("[data-lineup-analyzer-pitcher]");
+  const draft = ensureLineupAnalyzerDraft();
+  if (!button || !row || !draft) return;
+  const pitcherId = row.dataset.lineupAnalyzerPitcher;
+  draft.opponentPitchers = draft.opponentPitchers.filter((pitcher) => pitcher.id !== pitcherId);
+  draft.opponentPitchers.forEach((pitcher, index) => { pitcher.order = index + 1; });
+  draft.hittingMatchups = draft.hittingMatchups.filter((matchup) => matchup.opponentPitcherId !== pitcherId);
+  if (lineupAnalyzerPitcherId === pitcherId) lineupAnalyzerPitcherId = draft.opponentPitchers[0]?.id || "";
+  markLineupAnalyzerDraftDirty();
+  renderLineupAnalyzer();
+}
+
+function handleLineupAnalyzerPitcherTabClick(event) {
+  const button = event.target.closest("[data-lineup-analyzer-pitcher-tab]");
+  if (!button) return;
+  lineupAnalyzerPitcherId = button.dataset.lineupAnalyzerPitcherTab || "";
+  renderLineupAnalyzer();
+}
+
+function handleLineupAnalyzerMatchupInput(event) {
+  const input = event.target.closest("[data-lineup-analyzer-matchup-key]");
+  const draft = ensureLineupAnalyzerDraft();
+  if (!input || !draft) return;
+  const playerId = input.dataset.lineupAnalyzerMatchupPlayer || "";
+  const pitcherId = input.dataset.lineupAnalyzerMatchupPitcher || "";
+  const key = input.dataset.lineupAnalyzerMatchupKey || "";
+  if (!lineupAnalyzerStatFields.includes(key)) return;
+  const matchup = lineupAnalyzerMatchupRecord(draft, playerId, pitcherId);
+  matchup.stats[key] = clampNumber(input.value, 0, 99);
+  matchup.stats = normalizeLineupAnalyzerMatchupStats(matchup.stats);
+  markLineupAnalyzerDraftDirty();
+  renderLineupAnalyzerSummary(draft);
+}
+
+function lineupAnalyzerPlayerTotals(draft, playerId) {
+  return lineupAnalyzerAggregate(draft.hittingMatchups.filter((matchup) => matchup.playerId === playerId && lineupAnalyzerMatchupHasValues(matchup)));
+}
+
+function applyLineupAnalyzerMatchupsToGame(game, draft) {
+  const edits = hittingStatEditMap(game);
+  const updatedAt = new Date().toISOString();
+  draft.lineupUsage.forEach((entry) => {
+    const playerMatchups = draft.hittingMatchups.filter((matchup) => matchup.playerId === entry.playerId && lineupAnalyzerMatchupHasValues(matchup));
+    if (!playerMatchups.length) return;
+    const totals = lineupAnalyzerPlayerTotals(draft, entry.playerId);
+    const existing = edits[entry.playerId]
+      ? normalizeHittingStatEdit(edits[entry.playerId], entry.playerId, game)
+      : normalizeHittingStatEdit({ playerId: entry.playerId, gameId: game.id, stats: {} }, entry.playerId, game);
+    const existingStats = existing.stats || {};
+    edits[entry.playerId] = normalizeHittingStatEdit({
+      playerId: entry.playerId,
+      gameId: game.id,
+      position: entry.position,
+      sprays: existing.sprays || [],
+      stats: {
+        ...existingStats,
+        ab: totals.ab,
+        h: totals.h,
+        singles: Math.max(0, totals.h - totals.doubles - totals.triples - totals.hr),
+        doubles: totals.doubles,
+        triples: totals.triples,
+        hr: totals.hr,
+        bb: totals.bb,
+        hbp: totals.hbp,
+        k: totals.k,
+        rbi: totals.rbi,
+        sac: totals.sac
+      },
+      updatedAt
+    }, entry.playerId, game);
+  });
+}
+
+function lineupAnalyzerValidationError(draft) {
+  const playerIds = draft.lineupUsage.map((entry) => entry.playerId).filter(Boolean);
+  if (!playerIds.length) return "Add at least one hitter to the game lineup.";
+  if (new Set(playerIds).size !== playerIds.length) return "A player can only appear once in the game lineup.";
+  const pitchers = draft.opponentPitchers.filter((pitcher) => pitcher.name || pitcher.number);
+  if (pitchers.some((pitcher) => !pitcher.name)) return "Add a name for every opposing pitcher.";
+  const pitcherKeys = pitchers.map((pitcher) => `${pitcher.number}|${pitcher.name}`.toLowerCase());
+  if (new Set(pitcherKeys).size !== pitcherKeys.length) return "The same opposing pitcher cannot be added more than once.";
+  return "";
+}
+
+function saveLineupAnalyzerGame() {
+  if (!requireAdminAccess("Admin sign-in required to save lineup analysis.")) return;
+  const draft = ensureLineupAnalyzerDraft();
+  const game = lineupAnalyzerGame();
+  if (!draft || !game) return;
+  const validationError = lineupAnalyzerValidationError(draft);
+  if (validationError) {
+    window.alert(validationError);
+    return;
+  }
+  draft.lineupUsage = normalizeLineupAnalyzerUsage(draft.lineupUsage);
+  draft.opponentPitchers = normalizeLineupAnalyzerPitchers(draft.opponentPitchers.filter((pitcher) => pitcher.name || pitcher.number));
+  const validPlayerIds = new Set(draft.lineupUsage.map((entry) => entry.playerId));
+  const validPitcherIds = new Set(draft.opponentPitchers.map((pitcher) => pitcher.id));
+  draft.hittingMatchups = normalizeLineupAnalyzerMatchups(draft.hittingMatchups)
+    .filter((matchup) => validPlayerIds.has(matchup.playerId) && validPitcherIds.has(matchup.opponentPitcherId) && lineupAnalyzerMatchupHasValues(matchup));
+  game.lineupUsage = deepClone(draft.lineupUsage);
+  game.opponentPitchers = deepClone(draft.opponentPitchers);
+  game.hittingMatchups = deepClone(draft.hittingMatchups);
+  const existingLineupEntries = new Map(
+    gameLineupEntries(game).map((entry) => [entry.playerId, entry])
+  );
+  game.lineupEntries = draft.lineupUsage.map((entry, index) => ({
+    id: existingLineupEntries.get(entry.playerId)?.id || createId("lineup"),
+    playerId: entry.playerId,
+    role: entry.position,
+    order: index + 1,
+    active: true,
+    note: "Lineup Analyzer"
+  }));
+  if (!game.lineups) game.lineups = { away: [], home: opponentLineupEntries(game.opponentLineup || []) };
+  game.lineups.away = deepClone(game.lineupEntries);
+  applyLineupAnalyzerMatchupsToGame(game, draft);
+  markSharedGamesDirty(game.id);
+  if (gameIsFinal(game)) {
+    markGameSyncPending(game);
+    queueCompletedGameSync(game.id, { reason: "lineup-analyzer" });
+  }
+  saveStateWithOptions({ liveSyncReason: "lineup-analyzer" });
+  lineupAnalyzerDraft = null;
+  lineupAnalyzerNotice = "Lineup and pitcher matchups saved locally.";
+  render();
+  requestSharedSnapshotSync("lineup-analyzer");
+  requestCompletedGameSyncRetry("lineup-analyzer");
 }
 
 function buildOptimizedLineup() {

@@ -21942,3 +21942,342 @@ select option:checked {
     grid-template-columns: 1fr;
   }
 }
+
+/* Lineup Analyzer */
+.lineup-analyzer-page-head {
+  align-items: flex-end;
+}
+
+.lineup-analyzer-page-head .player-meta {
+  max-width: 760px;
+  margin-top: 4px;
+}
+
+.lineup-analyzer-toolbar,
+.lineup-analyzer-card,
+.lineup-analyzer-optimizer-shell {
+  border: 1px solid var(--panel-line);
+  border-radius: 8px;
+  background: rgba(9, 15, 31, 0.9);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.26);
+}
+
+.lineup-analyzer-toolbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 420px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: end;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.lineup-analyzer-toolbar label,
+.lineup-analyzer-lineup-row label,
+.lineup-analyzer-pitcher-row label {
+  display: grid;
+  gap: 5px;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 0.7rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.lineup-analyzer-game-status {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  border-left: 2px solid rgba(245, 189, 33, 0.5);
+  padding-left: 14px;
+  color: rgba(255, 255, 255, 0.76);
+  font-weight: 750;
+}
+
+.lineup-analyzer-workflow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.lineup-analyzer-card {
+  padding: 15px;
+}
+
+.lineup-analyzer-card > .player-meta {
+  margin: 3px 0 12px;
+}
+
+.lineup-analyzer-lineup-rows,
+.lineup-analyzer-pitcher-list {
+  display: grid;
+  gap: 8px;
+}
+
+.lineup-analyzer-lineup-row,
+.lineup-analyzer-pitcher-row {
+  display: grid;
+  gap: 8px;
+  align-items: end;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 9px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.lineup-analyzer-lineup-row {
+  grid-template-columns: 30px minmax(150px, 1fr) 82px auto;
+}
+
+.lineup-analyzer-pitcher-row {
+  grid-template-columns: 30px 58px minmax(130px, 1fr) 74px 96px 34px;
+}
+
+.lineup-analyzer-lineup-row select,
+.lineup-analyzer-pitcher-row input,
+.lineup-analyzer-pitcher-row select {
+  min-height: 38px;
+  padding: 7px 9px;
+}
+
+.lineup-analyzer-order {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 38px;
+  border: 1px solid rgba(245, 189, 33, 0.42);
+  border-radius: 50%;
+  color: var(--lion-gold);
+  font-weight: 950;
+}
+
+.lineup-analyzer-row-actions {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  min-height: 38px;
+}
+
+.lineup-analyzer-row-actions .icon-button,
+.lineup-analyzer-pitcher-row > .icon-button {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.lineup-analyzer-empty,
+.lineup-analyzer-table-empty {
+  padding: 20px;
+  color: rgba(255, 255, 255, 0.58);
+  text-align: center;
+}
+
+.lineup-analyzer-matchup-card {
+  margin-top: 14px;
+}
+
+.lineup-analyzer-matchup-head {
+  align-items: end;
+}
+
+.lineup-analyzer-pitcher-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.lineup-analyzer-pitcher-tab {
+  flex: 0 0 auto;
+  min-height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--white);
+  font-weight: 900;
+}
+
+.lineup-analyzer-pitcher-tab span {
+  margin-left: 6px;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.68rem;
+}
+
+.lineup-analyzer-pitcher-tab.is-active {
+  border-color: rgba(245, 189, 33, 0.72);
+  background: rgba(245, 189, 33, 0.13);
+  color: var(--lion-gold);
+}
+
+.lineup-analyzer-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.lineup-analyzer-table {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.lineup-analyzer-table th,
+.lineup-analyzer-table td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 7px 5px;
+  text-align: center;
+}
+
+.lineup-analyzer-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #0c1327;
+  color: var(--lion-gold);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+
+.lineup-analyzer-table th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  min-width: 190px;
+  text-align: left;
+  background: #0c1327;
+}
+
+.lineup-analyzer-table tbody th {
+  color: var(--white);
+}
+
+.lineup-analyzer-table tbody th strong,
+.lineup-analyzer-table tbody th span {
+  display: block;
+}
+
+.lineup-analyzer-table tbody th span {
+  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.56);
+  font-size: 0.68rem;
+}
+
+.lineup-analyzer-table input {
+  width: 52px;
+  min-height: 34px;
+  padding: 5px;
+  text-align: center;
+}
+
+.lineup-analyzer-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.lineup-analyzer-summary > div {
+  display: grid;
+  gap: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.lineup-analyzer-summary span {
+  color: rgba(255, 255, 255, 0.56);
+  font-size: 0.65rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.lineup-analyzer-summary strong {
+  color: var(--white);
+  font-size: 1.1rem;
+}
+
+.lineup-analyzer-optimizer-shell {
+  margin-top: 14px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.lineup-analyzer-optimizer-shell > summary {
+  cursor: pointer;
+  padding: 14px 16px;
+  color: var(--lion-gold);
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.lineup-analyzer-optimizer-grid {
+  padding: 0 14px 14px;
+}
+
+.lineup-analyzer-optimizer-grid .coach-card {
+  display: grid;
+  gap: 10px;
+}
+
+@media (max-width: 980px) {
+  .lineup-analyzer-workflow,
+  .lineup-analyzer-optimizer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lineup-analyzer-pitcher-row {
+    grid-template-columns: 30px 58px minmax(150px, 1fr) 74px 96px 34px;
+  }
+}
+
+@media (max-width: 700px) {
+  .lineup-analyzer-page-head,
+  .lineup-analyzer-toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .lineup-analyzer-page-head {
+    align-items: stretch;
+  }
+
+  .lineup-analyzer-page-head .primary-action {
+    width: 100%;
+  }
+
+  .lineup-analyzer-toolbar {
+    gap: 10px;
+  }
+
+  .lineup-analyzer-game-status {
+    min-height: 0;
+  }
+
+  .lineup-analyzer-lineup-row {
+    grid-template-columns: 30px minmax(0, 1fr) 76px;
+  }
+
+  .lineup-analyzer-row-actions {
+    grid-column: 2 / -1;
+    justify-content: flex-end;
+  }
+
+  .lineup-analyzer-pitcher-row {
+    grid-template-columns: 30px 58px minmax(0, 1fr) 34px;
+  }
+
+  .lineup-analyzer-pitcher-row label:nth-of-type(3),
+  .lineup-analyzer-pitcher-row label:nth-of-type(4) {
+    grid-column: span 2;
+  }
+
+  .lineup-analyzer-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

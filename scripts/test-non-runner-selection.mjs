@@ -22,7 +22,7 @@ function functionBody(source, functionName) {
 mustMatch(appJs, /NR: \{ label: "Non-runner", pa: false \}/, "Event rules should include NR without a plate appearance");
 mustMatch(appJs, /let pendingRunnerReplacementBase = ""/, "Runner replacement state should be tracked");
 mustMatch(indexHtml, /data-runner-action="non_runner"[^>]*>NR<\/button>/, "Runner action controls should expose an NR action");
-mustMatch(stylesCss, /#scoreView \.runner-action-grid \{\s*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/s, "Runner action grid should fit SB, CS, PO, and NR");
+mustMatch(stylesCss, /#scoreView \.runner-action-grid \{\s*grid-template-columns: repeat\(5, minmax\(0, 1fr\)\);/s, "Runner action grid should fit SB, CS, PO, NR, and Balk");
 
 const selectedRunnerActionConfig = functionBody(appJs, "selectedRunnerActionConfig");
 mustMatch(selectedRunnerActionConfig, /data-special-action="non_runner"/, "Selected runner panel should include an NR action");
