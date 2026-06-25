@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.111";
+const APP_VERSION = "v.1.1.112";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -1294,7 +1294,9 @@ const els = {
   desktopPitPlayerSelect: document.getElementById("desktopPitPlayerSelect"),
   leadersGrid: document.getElementById("leadersGrid"),
   hittingStatsBody: document.getElementById("hittingStatsBody"),
+  hittingPlayerGameLog: document.getElementById("hittingPlayerGameLog"),
   pitchingStatsBody: document.getElementById("pitchingStatsBody"),
+  pitchingPlayerGameLog: document.getElementById("pitchingPlayerGameLog"),
   hittingStatsEditHeader: document.getElementById("hittingStatsEditHeader"),
   pitchingStatsEditHeader: document.getElementById("pitchingStatsEditHeader"),
   mobileHitPlayerSelect: document.getElementById("mobileHitPlayerSelect"),
@@ -5343,6 +5345,8 @@ window.addEventListener("pageshow", () => {
   });
   els.mobileHitPlayerSelect?.addEventListener("change", () => {
     mobileHitPlayerFilter = els.mobileHitPlayerSelect.value || "all";
+    desktopHitPlayerFilter = mobileHitPlayerFilter;
+    mobileHitGameFilter = "all";
     renderSeasonStats();
   });
   els.mobileHitGameSelect?.addEventListener("change", () => {
@@ -5351,6 +5355,8 @@ window.addEventListener("pageshow", () => {
   });
   els.mobilePitPlayerSelect?.addEventListener("change", () => {
     mobilePitPlayerFilter = els.mobilePitPlayerSelect.value || "all";
+    desktopPitPlayerFilter = mobilePitPlayerFilter;
+    mobilePitGameFilter = "all";
     renderSeasonStats();
   });
   els.mobilePitGameSelect?.addEventListener("change", () => {
@@ -5359,12 +5365,25 @@ window.addEventListener("pageshow", () => {
   });
   els.desktopHitPlayerSelect?.addEventListener("change", () => {
     desktopHitPlayerFilter = els.desktopHitPlayerSelect.value || "all";
+    mobileHitPlayerFilter = desktopHitPlayerFilter;
+    mobileHitGameFilter = "all";
     renderSeasonStats();
   });
   els.desktopPitPlayerSelect?.addEventListener("change", () => {
     desktopPitPlayerFilter = els.desktopPitPlayerSelect.value || "all";
+    mobilePitPlayerFilter = desktopPitPlayerFilter;
+    mobilePitGameFilter = "all";
     renderSeasonStats();
   });
+  [els.hittingStatsBody, els.pitchingStatsBody, els.mobileHittingStatsList, els.mobilePitchingStatsList]
+    .filter(Boolean)
+    .forEach((container) => {
+      container.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-open-player-stats]");
+        if (!button) return;
+        openStatsPlayerGameLog(button.dataset.openPlayerStats, button.dataset.playerStatsMode);
+      });
+    });
   els.statsHittingExportBtn?.addEventListener("click", () => {
     exportStatsTable("hitting");
   });
@@ -17544,6 +17563,241 @@ function pitchingStatsEditButtonMarkup(player) {
   </button>`;
 }
 
+function statsGameLogResult(game) {
+  const lionsScore = Number(game?.score?.lions || 0);
+  const opponentScore = Number(game?.score?.opponent || 0);
+  if (gameIsFinal(game)) {
+    const key = lionsScore > opponentScore ? "win" : lionsScore < opponentScore ? "loss" : "tie";
+    const label = key === "win" ? "W" : key === "loss" ? "L" : "T";
+    return { key, label: `${label} ${lionsScore}-${opponentScore}` };
+  }
+  return {
+    key: gameLifecycle(game) === "active" ? "live" : "pending",
+    label: `${gameStatusLabel(game)} ${lionsScore}-${opponentScore}`
+  };
+}
+
+function statsGameLogOpponent(game) {
+  const prefix = lionsSide(game) === "away" ? "@" : "vs";
+  return `${prefix} ${homeOpponentName(game)}`;
+}
+
+function statsPlayerGameLogRows(playerId, mode) {
+  if (!playerId) return [];
+  const pitching = mode === "pitching";
+  return statsGamesForSeason(statsSeasonFilter)
+    .filter((game) => pitching ? playerHasPitchingGameLine(game, playerId) : playerHasHittingGameLine(game, playerId))
+    .sort(sortGamesNewestFirst)
+    .map((game) => ({
+      game,
+      result: statsGameLogResult(game),
+      stats: pitching
+        ? pitcherStats(playerId, game.id, statsSeasonFilter)
+        : statsForPlayer(playerId, statsSeasonFilter, game.id)
+    }));
+}
+
+function statsGameLogPill(label, value) {
+  return `<span class="stats-player-game-log-pill"><small>${escapeHtml(label)}</small><strong>${escapeHtml(String(value))}</strong></span>`;
+}
+
+function statsPlayerOpenButton(player, mode) {
+  const playerLabel = `#${player.number || "--"} ${player.name}`;
+  return `<button
+    type="button"
+    class="stats-player-open-button"
+    data-open-player-stats="${escapeHtml(player.id)}"
+    data-player-stats-mode="${escapeHtml(mode)}"
+    data-tooltip="Open Player Stats"
+    title="Open Player Stats"
+    aria-label="Open Player Stats for ${escapeHtml(playerLabel)}"
+  >${escapeHtml(playerLabel)}</button>`;
+}
+
+function openStatsPlayerGameLog(playerId, mode = "hitting") {
+  if (!playerId) return;
+  statsPlayerFocus = "all";
+  statsMode = mode === "pitching" ? "pitching" : "hitting";
+  if (statsMode === "pitching") {
+    desktopPitPlayerFilter = playerId;
+    mobilePitPlayerFilter = playerId;
+    mobilePitGameFilter = "all";
+  } else {
+    desktopHitPlayerFilter = playerId;
+    mobileHitPlayerFilter = playerId;
+    mobileHitGameFilter = "all";
+  }
+  renderSeasonStats();
+  const target = statsMode === "pitching" ? els.pitchingPlayerGameLog : els.hittingPlayerGameLog;
+  window.requestAnimationFrame(() => target?.scrollIntoView({ behavior: "smooth", block: "start" }));
+}
+
+function activeHittingGameLogColumns(rows) {
+  return [
+    { label: "1B", value: (hit) => hit.singles },
+    { label: "2B", value: (hit) => hit.doubles },
+    { label: "3B", value: (hit) => hit.triples },
+    { label: "HR", value: (hit) => hit.hr },
+    { label: "RBI", value: (hit) => hit.rbi },
+    { label: "BB", value: (hit) => hit.bb },
+    { label: "HBP", value: (hit) => hit.hbp },
+    { label: "K", value: (hit) => hit.k },
+    { label: "SAC", value: (hit) => hit.sac },
+    { label: "SB", value: (hit) => hit.sb },
+    { label: "CS", value: (hit) => hit.cs }
+  ].filter((column) => rows.some(({ stats }) => Number(column.value(stats) || 0) > 0));
+}
+
+function activePitchingGameLogColumns(rows) {
+  return [
+    { label: "DEC", value: (pit) => pitcherGameDecision(pit), present: (pit) => pitcherGameDecision(pit) !== "--" },
+    { label: "H", value: (pit) => pit.h },
+    { label: "R", value: (pit) => pit.runs },
+    { label: "ER", value: (pit) => pit.earnedRuns },
+    { label: "BB", value: (pit) => pit.bb },
+    { label: "HBP", value: (pit) => pit.hbp },
+    { label: "K", value: (pit) => pit.k },
+    { label: "NP", value: (pit) => pit.pitches }
+  ].filter((column) => rows.some(({ stats }) =>
+    column.present ? column.present(stats) : Number(column.value(stats) || 0) > 0
+  ));
+}
+
+function renderHittingPlayerGameLog(playerId) {
+  if (!els.hittingPlayerGameLog) return;
+  els.hittingPlayerGameLog.hidden = !playerId;
+  if (!playerId) {
+    els.hittingPlayerGameLog.innerHTML = "";
+    return;
+  }
+  const player = state.roster.find((item) => item.id === playerId);
+  const rows = statsPlayerGameLogRows(playerId, "hitting");
+  const playerLabel = player ? `#${player.number || "--"} ${player.name}` : "Selected player";
+  const detailColumns = activeHittingGameLogColumns(rows);
+  const desktopRows = rows.map(({ game, result, stats: hit }) => `<tr>
+    <td>${escapeHtml(formatGameDateWithYear(game.date))}</td>
+    <td>${escapeHtml(statsGameLogOpponent(game))}</td>
+    <td><span class="stats-player-game-result is-${escapeHtml(result.key)}">${escapeHtml(result.label)}</span></td>
+    <td>${hit.pa}</td>
+    <td>${hit.ab}</td>
+    <td>${hit.runs}</td>
+    <td>${hit.h}</td>
+    ${detailColumns.map((column) => `<td>${escapeHtml(String(column.value(hit)))}</td>`).join("")}
+    <td>${formatRate(hit.avg)}</td>
+    <td>${formatRate(hit.obp)}</td>
+    <td>${formatRate(hit.slg)}</td>
+    <td>${formatRate(hit.ops)}</td>
+  </tr>`).join("");
+  const mobileRows = rows.map(({ game, result, stats: hit }) => `<article class="stats-player-game-log-card">
+    <div class="stats-player-game-log-card-head">
+      <div>
+        <strong>${escapeHtml(statsGameLogOpponent(game))}</strong>
+        <span>${escapeHtml(formatGameDateWithYear(game.date))}</span>
+      </div>
+      <span class="stats-player-game-result is-${escapeHtml(result.key)}">${escapeHtml(result.label)}</span>
+    </div>
+    <div class="stats-player-game-log-pill-grid">
+      ${statsGameLogPill("PA", hit.pa)}
+      ${statsGameLogPill("AB", hit.ab)}
+      ${statsGameLogPill("H", hit.h)}
+      ${statsGameLogPill("R", hit.runs)}
+      ${detailColumns
+        .filter((column) => Number(column.value(hit) || 0) > 0)
+        .map((column) => statsGameLogPill(column.label, column.value(hit)))
+        .join("")}
+      ${statsGameLogPill("AVG", formatRate(hit.avg))}
+      ${statsGameLogPill("OPS", formatRate(hit.ops))}
+    </div>
+  </article>`).join("");
+  els.hittingPlayerGameLog.innerHTML = `<div class="stats-player-game-log-head">
+      <div>
+        <p class="eyebrow">Game Log</p>
+        <h4>${escapeHtml(playerLabel)} batting by game</h4>
+      </div>
+      <span>${rows.length} ${rows.length === 1 ? "game" : "games"} | ${escapeHtml(statsSeasonLabel())}</span>
+    </div>
+    ${rows.length
+      ? `<div class="stats-player-game-log-scroll">
+          <table class="stats-table stats-player-game-log-table stats-player-hitting-log-table">
+            <thead><tr>
+              <th>Date</th><th>Opponent</th><th>Result</th><th>PA</th><th>AB</th><th>R</th><th>H</th>
+              ${detailColumns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("")}
+              <th>AVG</th><th>OBP</th><th>SLG</th><th>OPS</th>
+            </tr></thead>
+            <tbody>${desktopRows}</tbody>
+          </table>
+        </div>
+        <div class="stats-player-game-log-mobile">${mobileRows}</div>`
+      : `<p class="stats-player-game-log-empty">No game-level batting stats are available for this player.</p>`}`;
+}
+
+function pitcherGameDecision(stats) {
+  if (stats.wins) return "W";
+  if (stats.losses) return "L";
+  if (stats.noDecision) return "ND";
+  return "--";
+}
+
+function renderPitchingPlayerGameLog(playerId) {
+  if (!els.pitchingPlayerGameLog) return;
+  els.pitchingPlayerGameLog.hidden = !playerId;
+  if (!playerId) {
+    els.pitchingPlayerGameLog.innerHTML = "";
+    return;
+  }
+  const player = state.roster.find((item) => item.id === playerId);
+  const rows = statsPlayerGameLogRows(playerId, "pitching");
+  const playerLabel = player ? `#${player.number || "--"} ${player.name}` : "Selected player";
+  const detailColumns = activePitchingGameLogColumns(rows);
+  const desktopRows = rows.map(({ game, result, stats: pit }) => `<tr>
+    <td>${escapeHtml(formatGameDateWithYear(game.date))}</td>
+    <td>${escapeHtml(statsGameLogOpponent(game))}</td>
+    <td><span class="stats-player-game-result is-${escapeHtml(result.key)}">${escapeHtml(result.label)}</span></td>
+    <td>${formatInnings(pit.outs)}</td>
+    ${detailColumns.map((column) => `<td>${escapeHtml(String(column.value(pit)))}</td>`).join("")}
+    <td>${formatEra(pit.era)}</td>
+    <td>${Number.isFinite(pit.whip) ? pit.whip.toFixed(2) : "--"}</td>
+  </tr>`).join("");
+  const mobileRows = rows.map(({ game, result, stats: pit }) => `<article class="stats-player-game-log-card">
+    <div class="stats-player-game-log-card-head">
+      <div>
+        <strong>${escapeHtml(statsGameLogOpponent(game))}</strong>
+        <span>${escapeHtml(formatGameDateWithYear(game.date))}</span>
+      </div>
+      <span class="stats-player-game-result is-${escapeHtml(result.key)}">${escapeHtml(result.label)}</span>
+    </div>
+    <div class="stats-player-game-log-pill-grid">
+      ${statsGameLogPill("IP", formatInnings(pit.outs))}
+      ${detailColumns
+        .filter((column) => column.present ? column.present(pit) : Number(column.value(pit) || 0) > 0)
+        .map((column) => statsGameLogPill(column.label, column.value(pit)))
+        .join("")}
+      ${statsGameLogPill("ERA", formatEra(pit.era))}
+      ${statsGameLogPill("WHIP", Number.isFinite(pit.whip) ? pit.whip.toFixed(2) : "--")}
+    </div>
+  </article>`).join("");
+  els.pitchingPlayerGameLog.innerHTML = `<div class="stats-player-game-log-head">
+      <div>
+        <p class="eyebrow">Game Log</p>
+        <h4>${escapeHtml(playerLabel)} pitching by game</h4>
+      </div>
+      <span>${rows.length} ${rows.length === 1 ? "appearance" : "appearances"} | ${escapeHtml(statsSeasonLabel())}</span>
+    </div>
+    ${rows.length
+      ? `<div class="stats-player-game-log-scroll">
+          <table class="stats-table stats-player-game-log-table stats-player-pitching-log-table">
+            <thead><tr>
+              <th>Date</th><th>Opponent</th><th>Result</th><th>IP</th>
+              ${detailColumns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("")}
+              <th>ERA</th><th>WHIP</th>
+            </tr></thead>
+            <tbody>${desktopRows}</tbody>
+          </table>
+        </div>
+        <div class="stats-player-game-log-mobile">${mobileRows}</div>`
+      : `<p class="stats-player-game-log-empty">No game-level pitching stats are available for this player.</p>`}`;
+}
+
 function renderSeasonStats() {
   populateStatsSeasonSelect();
   applyStatsPageMode();
@@ -17571,7 +17825,7 @@ function renderSeasonStats() {
   els.hittingStatsBody.innerHTML = hittingRows
     .map(({ player, hit, gp }) => {
       return `<tr>
-        <td>#${escapeHtml(player.number)} ${escapeHtml(player.name)}</td>
+        <td>${statsPlayerOpenButton(player, "hitting")}</td>
         <td>${gp}</td>
         <td>${hit.pa}</td>
         <td>${hit.ab}</td>
@@ -17603,7 +17857,7 @@ function renderSeasonStats() {
   els.pitchingStatsBody.innerHTML = pitchingRows
     .map(({ player, pit }) => {
       return `<tr>
-        <td>#${escapeHtml(player.number)} ${escapeHtml(player.name)}</td>
+        <td>${statsPlayerOpenButton(player, "pitching")}</td>
         <td>${pit.wins}</td>
         <td>${pit.losses}</td>
         <td>${pit.noDecision}</td>
@@ -17641,6 +17895,8 @@ function renderSeasonStats() {
       ? `${statsSeasonLabel()} pitching lines for ${playerDisplayName(pitchingPlayerFilter)} across completed and in-progress games.`
       : `${statsSeasonLabel()} pitching lines and run prevention for ${pitchingRows.length} arms.`;
   }
+  renderHittingPlayerGameLog(hittingPlayerFilter);
+  renderPitchingPlayerGameLog(pitchingPlayerFilter);
   renderMobileStatsFilters();
   const mobileHittingRows = getMobileHittingRows(mobileHitPlayerFilter, mobileHitGameFilter);
   const mobileLeaderMinimumGames = mobileHitGameFilter === "all"
@@ -17656,7 +17912,7 @@ function renderSeasonStats() {
         return `<article class="stats-mobile-card">
           <div class="stats-mobile-card-head">
             <div>
-              <strong>#${escapeHtml(player.number)} ${escapeHtml(player.name)}</strong>
+              ${statsPlayerOpenButton(player, "hitting")}
             </div>
             ${admin ? statsEditButtonMarkup(player) : ""}
           </div>
@@ -17689,7 +17945,7 @@ function renderSeasonStats() {
         return `<article class="stats-mobile-card">
           <div class="stats-mobile-card-head">
             <div>
-              <strong>#${escapeHtml(player.number)} ${escapeHtml(player.name)}</strong>
+              ${statsPlayerOpenButton(player, "pitching")}
             </div>
             ${admin ? pitchingStatsEditButtonMarkup(player) : ""}
           </div>
@@ -19084,17 +19340,19 @@ function gameUsesLineupForGamesPlayed(game) {
   );
 }
 
+function playerHasHittingGameLine(game, playerId) {
+  const storedLineupIds = Array.isArray(game?.lineupEntries)
+    ? game.lineupEntries
+      .filter((entry) => entry?.active !== false && entry?.playerId)
+      .map((entry) => entry.playerId)
+    : [];
+  return hasHittingStatEdit(game, playerId)
+    || offensiveEventsForStatsGame(game).some((event) => event.playerId === playerId)
+    || (gameUsesLineupForGamesPlayed(game) && storedLineupIds.includes(playerId));
+}
+
 function gamesPlayedForPlayer(playerId, season = null) {
-  return statsGamesForSeason(season).filter((game) => {
-    const storedLineupIds = Array.isArray(game.lineupEntries)
-      ? game.lineupEntries
-        .filter((entry) => entry?.active !== false && entry?.playerId)
-        .map((entry) => entry.playerId)
-      : [];
-    return hasHittingStatEdit(game, playerId)
-      || offensiveEventsForStatsGame(game).some((event) => event.playerId === playerId)
-      || (gameUsesLineupForGamesPlayed(game) && storedLineupIds.includes(playerId));
-  }).length;
+  return statsGamesForSeason(season).filter((game) => playerHasHittingGameLine(game, playerId)).length;
 }
 
 const STAT_LEADER_MIN_GAMES = 3;
@@ -19121,17 +19379,19 @@ function statLeaderEligible(row, minimumGames = 0) {
   return gamesPlayed > 0 && gamesPlayed >= Math.max(0, Number(minimumGames) || 0);
 }
 
+function playerHasPitchingGameLine(game, playerId) {
+  if (hasPitchingStatEdit(game, playerId)) return true;
+  return pitchingEventsForStatsGame(game).some((event) =>
+    event.scope === "defense"
+      && (
+        event.pitcherId === playerId
+        || (event.pitches || []).some((pitch) => pitch.pitcherId === playerId)
+      )
+  );
+}
+
 function gamesPitchedForPlayer(playerId, season = null) {
-  return statsGamesForSeason(season).filter((game) => {
-    if (hasPitchingStatEdit(game, playerId)) return true;
-    return pitchingEventsForStatsGame(game).some((event) =>
-      event.scope === "defense"
-        && (
-          event.pitcherId === playerId
-          || (event.pitches || []).some((pitch) => pitch.pitcherId === playerId)
-        )
-    );
-  }).length;
+  return statsGamesForSeason(season).filter((game) => playerHasPitchingGameLine(game, playerId)).length;
 }
 
 function updateSortIndicators() {

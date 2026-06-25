@@ -54,8 +54,8 @@ assert.match(renderLeadersBody, /minimumGames = statLeaderMinimumGames\(statsSea
 assert.match(renderLeadersBody, /gamesPitchedForPlayer\(player\.id, statsSeasonFilter\)/, "Pitching leader cards should count pitching appearances");
 assert.match(renderLeadersBody, /statLeaderEligible\(row, minimumGames\)/, "Stats leader cards should exclude players below the qualifier");
 
-const gamesPitchedBody = functionBody(appJs, "gamesPitchedForPlayer");
-assert.match(gamesPitchedBody, /hasPitchingStatEdit\(game, playerId\)/, "Manually entered pitching games should count toward qualification");
-assert.match(gamesPitchedBody, /pitchingEventsForStatsGame\(game\)/, "Scored pitching appearances should count toward qualification");
+const pitchingParticipationBody = functionBody(appJs, "playerHasPitchingGameLine");
+assert.match(pitchingParticipationBody, /hasPitchingStatEdit\(game, playerId\)/, "Manually entered pitching games should count toward qualification");
+assert.match(pitchingParticipationBody, /pitchingEventsForStatsGame\(game\)/, "Scored pitching appearances should count toward qualification");
 
 console.log("Stat leader game minimum checks passed.");

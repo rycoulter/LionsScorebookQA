@@ -10009,10 +10009,190 @@ button:focus-visible {
     linear-gradient(90deg, rgba(35, 29, 15, 0.99), rgba(24, 24, 30, 0.97));
 }
 
+#statsView .stats-player-open-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 4px 2px;
+  border: 0;
+  background: transparent;
+  color: var(--white);
+  font: inherit;
+  font-weight: 850;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    text-shadow 160ms ease;
+}
+
+#statsView .stats-player-open-button:hover,
+#statsView .stats-player-open-button:focus-visible {
+  color: var(--lion-gold);
+  text-shadow: 0 0 12px rgba(245, 189, 33, 0.22);
+}
+
+#statsView .stats-player-open-button::after {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  bottom: calc(100% + 7px);
+  width: max-content;
+  max-width: 170px;
+  padding: 6px 8px;
+  border: 1px solid rgba(245, 189, 33, 0.3);
+  border-radius: 6px;
+  background: rgba(4, 10, 22, 0.98);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  color: var(--white);
+  content: attr(data-tooltip);
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1.2;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(3px);
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease;
+}
+
+#statsView .stats-player-open-button:hover::after,
+#statsView .stats-player-open-button:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 #statsView .stats-highlight-cell {
   color: var(--lion-gold) !important;
   font-weight: 950;
   text-shadow: 0 0 12px rgba(245, 189, 33, 0.16);
+}
+
+#statsView .stats-player-game-log {
+  display: grid;
+  gap: 12px;
+  padding: 16px 14px 14px;
+  border-top: 1px solid rgba(245, 189, 33, 0.22);
+  background:
+    linear-gradient(180deg, rgba(245, 189, 33, 0.035), transparent 44%),
+    rgba(4, 10, 22, 0.34);
+}
+
+#statsView .stats-player-game-log[hidden] {
+  display: none !important;
+}
+
+#statsView .stats-player-game-log-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+#statsView .stats-player-game-log-head .eyebrow,
+#statsView .stats-player-game-log-head h4 {
+  margin: 0;
+}
+
+#statsView .stats-player-game-log-head h4 {
+  margin-top: 3px;
+  color: var(--white);
+  font-size: 1rem;
+}
+
+#statsView .stats-player-game-log-head > span {
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+#statsView .stats-player-game-log-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 10px;
+  -webkit-overflow-scrolling: touch;
+}
+
+#statsView .stats-player-game-log-table {
+  width: max-content;
+  min-width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+#statsView .stats-player-pitching-log-table {
+  min-width: 100%;
+}
+
+#statsView .stats-player-game-log-table th,
+#statsView .stats-player-game-log-table td {
+  padding: 9px 10px;
+  font-size: 0.78rem;
+}
+
+#statsView .stats-player-game-log-table th:first-child,
+#statsView .stats-player-game-log-table td:first-child {
+  min-width: 132px;
+}
+
+#statsView .stats-player-game-log-table th:nth-child(2),
+#statsView .stats-player-game-log-table td:nth-child(2) {
+  min-width: 190px;
+  text-align: left;
+}
+
+#statsView .stats-player-game-result {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 62px;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.72rem;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+#statsView .stats-player-game-result.is-win {
+  border-color: rgba(34, 197, 94, 0.38);
+  background: rgba(34, 197, 94, 0.1);
+  color: #68dc7c;
+}
+
+#statsView .stats-player-game-result.is-loss {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.1);
+  color: #ff7979;
+}
+
+#statsView .stats-player-game-result.is-tie {
+  border-color: rgba(245, 189, 33, 0.42);
+  background: rgba(245, 189, 33, 0.1);
+  color: var(--lion-gold);
+}
+
+#statsView .stats-player-game-result.is-live {
+  border-color: rgba(96, 165, 250, 0.42);
+  background: rgba(96, 165, 250, 0.1);
+  color: #91baff;
+}
+
+#statsView .stats-player-game-log-mobile {
+  display: none;
+}
+
+#statsView .stats-player-game-log-empty {
+  margin: 0;
+  padding: 18px;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.68);
+  text-align: center;
 }
 
 #scoreView .pitch-panel {
@@ -17370,6 +17550,106 @@ select option:checked {
   }
 
   #statsView .stats-table-wrap:not(.stats-spray-shell) .stats-table {
+    display: none;
+  }
+
+  #statsView .stats-player-game-log {
+    gap: 10px;
+    padding: 14px 12px 12px;
+  }
+
+  #statsView .stats-player-game-log-head {
+    align-items: start;
+  }
+
+  #statsView .stats-player-game-log-head > span {
+    max-width: 120px;
+    text-align: right;
+    white-space: normal;
+  }
+
+  #statsView .stats-player-game-log-scroll {
+    display: none;
+  }
+
+  #statsView .stats-player-game-log-mobile {
+    display: grid;
+    gap: 10px;
+  }
+
+  #statsView .stats-player-game-log-card {
+    display: grid;
+    gap: 12px;
+    padding: 13px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.045);
+  }
+
+  #statsView .stats-player-game-log-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  #statsView .stats-player-game-log-card-head > div {
+    min-width: 0;
+  }
+
+  #statsView .stats-player-game-log-card-head strong,
+  #statsView .stats-player-game-log-card-head span {
+    display: block;
+  }
+
+  #statsView .stats-player-game-log-card-head strong {
+    color: var(--white);
+    font-size: 0.92rem;
+    overflow-wrap: anywhere;
+  }
+
+  #statsView .stats-player-game-log-card-head div > span {
+    margin-top: 3px;
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 0.74rem;
+    font-weight: 750;
+  }
+
+  #statsView .stats-player-game-log-pill-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  #statsView .stats-player-game-log-pill {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+    padding: 8px 5px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    background: rgba(4, 10, 22, 0.36);
+    text-align: center;
+  }
+
+  #statsView .stats-player-game-log-pill small {
+    color: rgba(245, 189, 33, 0.84);
+    font-size: 0.58rem;
+    font-weight: 950;
+    text-transform: uppercase;
+  }
+
+  #statsView .stats-player-game-log-pill strong {
+    color: var(--white);
+    font-size: 0.86rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  #statsView .stats-mobile-card-head .stats-player-open-button {
+    font-size: 0.95rem;
+  }
+
+  #statsView .stats-player-open-button::after {
     display: none;
   }
 

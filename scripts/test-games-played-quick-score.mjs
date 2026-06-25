@@ -32,6 +32,7 @@ assert.match(
 
 const runtimeSource = [
   functionBody(appJs, "gameUsesLineupForGamesPlayed"),
+  functionBody(appJs, "playerHasHittingGameLine"),
   functionBody(appJs, "gamesPlayedForPlayer")
 ].join("\n\n");
 
