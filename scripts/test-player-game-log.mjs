@@ -45,7 +45,7 @@ assert.deepEqual(pitchingColumns, ["BB", "K"], "Pitching game logs should omit d
 
 const hittingLogBody = functionBody(appJs, "renderHittingPlayerGameLog");
 assert.match(hittingLogBody, /<th>Date<\/th><th>Opponent<\/th><th>Result<\/th>/, "Hitting game log should identify each game");
-assert.match(hittingLogBody, /<th>PA<\/th>[\s\S]*<th>AB<\/th>[\s\S]*<th>R<\/th>[\s\S]*<th>H<\/th>/, "Hitting game log should expose core counting stats");
+assert.match(hittingLogBody, /<th>PA<\/th>[\s\S]*<th>AB<\/th>[\s\S]*<th>H<\/th>[\s\S]*<th>R<\/th>/, "Hitting game log should show hits before runs");
 assert.match(hittingLogBody, /<th>AVG<\/th>[\s\S]*<th>OBP<\/th>[\s\S]*<th>SLG<\/th>[\s\S]*<th>OPS<\/th>/, "Hitting game log should expose rate stats");
 assert.match(hittingLogBody, /activeHittingGameLogColumns\(rows\)/, "Hitting game logs should determine optional columns from the selected player's games");
 assert.match(hittingLogBody, /detailColumns\.map\(\(column\) => `<th>/, "Hitting game logs should render only active detail columns");
@@ -67,6 +67,13 @@ assert.match(appJs, /desktopHitPlayerFilter = mobileHitPlayerFilter/, "Mobile hi
 assert.match(appJs, /mobileHitPlayerFilter = desktopHitPlayerFilter/, "Desktop hitter selection should synchronize the mobile player filter");
 assert.match(appJs, /data-tooltip="Open Player Stats"/, "Player stat links should expose the requested hover label");
 assert.match(appJs, /openStatsPlayerGameLog\(button\.dataset\.openPlayerStats, button\.dataset\.playerStatsMode\)/, "Player stat links should use the shared filter action");
+const openPlayerLogBody = functionBody(appJs, "openStatsPlayerGameLog");
+assert.match(openPlayerLogBody, /statsPlayerFocus = playerId/, "Opening a player from the stats sheet should use focused-player mode");
+assert.match(openPlayerLogBody, /renderStatsSprayControls\(\)/, "Focused player stats should lock and refresh the player's spray chart");
+const switchViewBody = functionBody(appJs, "switchView");
+assert.match(switchViewBody, /previousView === "stats" && nextView !== "stats"[\s\S]*resetStatsViewFilters\(\)/, "Leaving Stats should clear player and game filters");
+const resetFiltersBody = functionBody(appJs, "resetStatsViewFilters");
+assert.match(resetFiltersBody, /statsPlayerFocus = "all"[\s\S]*desktopHitPlayerFilter = "all"[\s\S]*mobilePitGameFilter = "all"/, "Stats reset should restore the full unfiltered team view");
 assert.match(stylesCss, /#statsView \.stats-player-game-log-scroll[\s\S]*overflow-x: auto/, "Desktop game logs should scroll horizontally");
 assert.match(stylesCss, /#statsView \.stats-player-game-log-mobile[\s\S]*display: grid/, "Mobile game logs should render as cards");
 assert.match(stylesCss, /#statsView \.stats-player-open-button:hover::after[\s\S]*opacity: 1/, "Desktop player links should show an Open Player Stats tooltip");

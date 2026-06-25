@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.112";
+const APP_VERSION = "v.1.1.113";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -5456,6 +5456,12 @@ function switchView(view, options = {}) {
     pendingAdminView = nextView;
     openAdminAuthModal("Admin sign-in required to open that area.");
     nextView = canAccessView(currentView) ? currentView : "home";
+  }
+  if (previousView === "stats" && nextView !== "stats") {
+    resetStatsViewFilters();
+    renderSeasonStats();
+    renderLeaders();
+    renderStatsSprayControls();
   }
   currentView = nextView;
   const allowedTabs = visibleTabViews();
@@ -14020,6 +14026,17 @@ function statsFocusedPlayerId() {
   return statsPlayerFocus !== "all" ? statsPlayerFocus : "";
 }
 
+function resetStatsViewFilters() {
+  statsPlayerFocus = "all";
+  statsMode = "hitting";
+  desktopHitPlayerFilter = "all";
+  desktopPitPlayerFilter = "all";
+  mobileHitPlayerFilter = "all";
+  mobilePitPlayerFilter = "all";
+  mobileHitGameFilter = "all";
+  mobilePitGameFilter = "all";
+}
+
 function isPlayerFocusedStatsMode() {
   return Boolean(statsFocusedPlayerId());
 }
@@ -17616,20 +17633,20 @@ function statsPlayerOpenButton(player, mode) {
 
 function openStatsPlayerGameLog(playerId, mode = "hitting") {
   if (!playerId) return;
-  statsPlayerFocus = "all";
+  statsPlayerFocus = playerId;
   statsMode = mode === "pitching" ? "pitching" : "hitting";
-  if (statsMode === "pitching") {
-    desktopPitPlayerFilter = playerId;
-    mobilePitPlayerFilter = playerId;
-    mobilePitGameFilter = "all";
-  } else {
-    desktopHitPlayerFilter = playerId;
-    mobileHitPlayerFilter = playerId;
-    mobileHitGameFilter = "all";
-  }
+  desktopHitPlayerFilter = playerId;
+  desktopPitPlayerFilter = playerId;
+  mobileHitPlayerFilter = playerId;
+  mobilePitPlayerFilter = playerId;
+  mobileHitGameFilter = "all";
+  mobilePitGameFilter = "all";
   renderSeasonStats();
-  const target = statsMode === "pitching" ? els.pitchingPlayerGameLog : els.hittingPlayerGameLog;
-  window.requestAnimationFrame(() => target?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  renderLeaders();
+  renderStatsSprayControls();
+  window.requestAnimationFrame(() => {
+    els.statsFocusBanner?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 }
 
 function activeHittingGameLogColumns(rows) {
@@ -17680,8 +17697,8 @@ function renderHittingPlayerGameLog(playerId) {
     <td><span class="stats-player-game-result is-${escapeHtml(result.key)}">${escapeHtml(result.label)}</span></td>
     <td>${hit.pa}</td>
     <td>${hit.ab}</td>
-    <td>${hit.runs}</td>
     <td>${hit.h}</td>
+    <td>${hit.runs}</td>
     ${detailColumns.map((column) => `<td>${escapeHtml(String(column.value(hit)))}</td>`).join("")}
     <td>${formatRate(hit.avg)}</td>
     <td>${formatRate(hit.obp)}</td>
@@ -17720,7 +17737,7 @@ function renderHittingPlayerGameLog(playerId) {
       ? `<div class="stats-player-game-log-scroll">
           <table class="stats-table stats-player-game-log-table stats-player-hitting-log-table">
             <thead><tr>
-              <th>Date</th><th>Opponent</th><th>Result</th><th>PA</th><th>AB</th><th>R</th><th>H</th>
+              <th>Date</th><th>Opponent</th><th>Result</th><th>PA</th><th>AB</th><th>H</th><th>R</th>
               ${detailColumns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("")}
               <th>AVG</th><th>OBP</th><th>SLG</th><th>OPS</th>
             </tr></thead>
