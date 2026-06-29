@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.113";
+const APP_VERSION = "v.1.1.114";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -8604,7 +8604,11 @@ function renderHome() {
   const overview = homeOverviewLeagueSummary(record);
   els.homeRecord.textContent = `${record.wins}-${record.losses}${record.ties ? `-${record.ties}` : ""}`;
   if (els.homeWinPct) els.homeWinPct.textContent = winPct;
-  if (els.homeLeagueStanding) els.homeLeagueStanding.textContent = overview.standing;
+  if (els.homeLeagueStanding) {
+    els.homeLeagueStanding.textContent = overview.standing;
+    els.homeLeagueStanding.classList.remove("is-standing-gold", "is-standing-silver", "is-standing-bronze");
+    if (overview.tierClass) els.homeLeagueStanding.classList.add(overview.tierClass);
+  }
   if (els.homeCurrentStreak) els.homeCurrentStreak.textContent = localCurrentStreakLabel();
   renderSiteVisitCounter();
   if (isAdminMode()) requestSiteVisitSummaryRefresh("home");
@@ -8727,7 +8731,8 @@ function renderHome() {
     els.homeLeagueStandings.innerHTML = standingsRows.length
       ? standingsRows.map((team, index) => {
         const isLions = /oakmont lions/i.test(String(team?.name || ""));
-        return `<div class="home-standings-row${isLions ? " is-lions" : ""}">
+        const tierClass = isLions ? standingsMedalClass(index + 1) : "";
+        return `<div class="home-standings-row${isLions ? " is-lions" : ""}${tierClass ? ` ${tierClass}` : ""}">
           <span class="home-standings-rank">${index + 1}</span>
           <span class="home-standings-team">
             <strong>${escapeHtml(team.name || "Team")}</strong>
@@ -8789,7 +8794,8 @@ function renderLeagueStandings() {
 
 function renderLeagueStandingsRow(row) {
   const isLions = /oakmont lions/i.test(row.teamName || "");
-  return `<tr class="${isLions ? "is-lions" : ""}">
+  const tierClass = isLions ? standingsMedalClass(row.rank) : "";
+  return `<tr class="${[isLions ? "is-lions" : "", tierClass].filter(Boolean).join(" ")}">
     <td data-label="Rank"><span class="standings-rank">${escapeHtml(row.rank || "-")}</span></td>
     <td data-label="Team">
       <span class="standings-team-name">${escapeHtml(row.teamName || "Team")}</span>
@@ -8864,13 +8870,23 @@ function homeOverviewLeagueSummary(record = seasonRecord()) {
     const row = rows[lionsIndex];
     const rank = Number(row.rank) || lionsIndex + 1;
     return {
-      standing: `${rank}${ordinalSuffix(rank)}`
+      standing: `${rank}${ordinalSuffix(rank)}`,
+      tierClass: standingsMedalClass(rank)
     };
   }
   const totalGames = Number(record.wins || 0) + Number(record.losses || 0) + Number(record.ties || 0);
   return {
-    standing: totalGames ? "--" : "Preseason"
+    standing: totalGames ? "--" : "Preseason",
+    tierClass: ""
   };
+}
+
+function standingsMedalClass(rank) {
+  const numericRank = Number(rank);
+  if (numericRank === 1) return "is-standing-gold";
+  if (numericRank === 2) return "is-standing-silver";
+  if (numericRank === 3) return "is-standing-bronze";
+  return "";
 }
 
 function seasonRecord() {
