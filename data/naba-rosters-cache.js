@@ -1,7 +1,7 @@
 window.ScorebookNabaRostersCache = {
   "season": 2026,
   "sourceLabel": "Pittsburgh NABA rosters",
-  "syncedAt": "2026-06-27T11:11:54.206Z",
+  "syncedAt": "2026-06-29T13:52:24.003Z",
   "teams": [
     {
       "teamName": "Oakmont Lions",
@@ -171,7 +171,7 @@ window.ScorebookNabaRostersCache = {
           "positions": "SS, CF, P, 2B"
         }
       ],
-      "syncedAt": "2026-06-27T11:11:54.206Z"
+      "syncedAt": "2026-06-29T13:52:24.003Z"
     },
     {
       "teamName": "Pittsburgh D2",
@@ -317,7 +317,7 @@ window.ScorebookNabaRostersCache = {
           "positions": "C, P, UTIL."
         }
       ],
-      "syncedAt": "2026-06-27T11:11:54.206Z"
+      "syncedAt": "2026-06-29T13:52:24.003Z"
     },
     {
       "teamName": "BiscuitvilleTownSquare Bandidos",
@@ -511,7 +511,7 @@ window.ScorebookNabaRostersCache = {
           "positions": "SS, CF, UTIL."
         }
       ],
-      "syncedAt": "2026-06-27T11:11:54.206Z"
+      "syncedAt": "2026-06-29T13:52:24.003Z"
     },
     {
       "teamName": "South Hills Devils",
@@ -553,28 +553,12 @@ window.ScorebookNabaRostersCache = {
           "positions": "P, 3B"
         },
         {
-          "id": "south-hills-devils-will-burford",
-          "firstName": "Will",
-          "lastName": "Burford",
-          "name": "Will Burford",
-          "number": "",
-          "positions": "P, 3B, UTIL., 1B"
-        },
-        {
           "id": "south-hills-devils-blake-burnett",
           "firstName": "Blake",
           "lastName": "Burnett",
           "name": "Blake Burnett",
           "number": "24",
           "positions": "IF, CF"
-        },
-        {
-          "id": "south-hills-devils-vincent-dacules",
-          "firstName": "Vincent",
-          "lastName": "Dacules",
-          "name": "Vincent Dacules",
-          "number": "",
-          "positions": "LF, P, OF"
         },
         {
           "id": "south-hills-devils-justin-donnick",
@@ -649,14 +633,6 @@ window.ScorebookNabaRostersCache = {
           "positions": "P, IF"
         },
         {
-          "id": "south-hills-devils-tyson-mead",
-          "firstName": "Tyson",
-          "lastName": "Mead",
-          "name": "Tyson Mead",
-          "number": "",
-          "positions": "P"
-        },
-        {
           "id": "south-hills-devils-alex-miles",
           "firstName": "Alex",
           "lastName": "Miles",
@@ -729,7 +705,7 @@ window.ScorebookNabaRostersCache = {
           "positions": "1B, P"
         }
       ],
-      "syncedAt": "2026-06-27T11:11:54.206Z"
+      "syncedAt": "2026-06-29T13:52:24.003Z"
     },
     {
       "teamName": "South Oakland Ducks",
@@ -915,7 +891,7 @@ window.ScorebookNabaRostersCache = {
           "positions": "RF, LF, OF"
         }
       ],
-      "syncedAt": "2026-06-27T11:11:54.206Z"
+      "syncedAt": "2026-06-29T13:52:24.003Z"
     },
     {
       "teamName": "South Side Eagles",
@@ -1093,7 +1069,7 @@ window.ScorebookNabaRostersCache = {
           "positions": "P, SS"
         }
       ],
-      "syncedAt": "2026-06-27T11:11:54.206Z"
+      "syncedAt": "2026-06-29T13:52:24.003Z"
     },
     {
       "teamName": "Bauerstown Turtles",
@@ -1247,7 +1223,7 @@ window.ScorebookNabaRostersCache = {
           "positions": "SS, P, LF"
         }
       ],
-      "syncedAt": "2026-06-27T11:11:54.206Z"
+      "syncedAt": "2026-06-29T13:52:24.003Z"
     },
     {
       "teamName": "Keystone Oaks",
@@ -1441,7 +1417,7 @@ window.ScorebookNabaRostersCache = {
           "positions": "3B, SS"
         }
       ],
-      "syncedAt": "2026-06-27T11:11:54.206Z"
+      "syncedAt": "2026-06-29T13:52:24.003Z"
     },
     {
       "teamName": "Butler Buccos",
@@ -1651,7 +1627,7 @@ window.ScorebookNabaRostersCache = {
           "positions": "LF, P"
         }
       ],
-      "syncedAt": "2026-06-27T11:11:54.206Z"
+      "syncedAt": "2026-06-29T13:52:24.003Z"
     },
     {
       "teamName": "Ross Raiders",
@@ -1660,7 +1636,7 @@ window.ScorebookNabaRostersCache = {
       "nabaKey": "PITTSBUR-ROSSRAIDERS",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=roster&s=baseball&u=PITTSBUR-ROSSRAIDERS",
       "players": [],
-      "syncedAt": "2026-06-27T11:11:54.206Z"
+      "syncedAt": "2026-06-29T13:52:24.003Z"
     }
   ]
 };
