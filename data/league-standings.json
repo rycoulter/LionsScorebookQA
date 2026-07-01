@@ -3,7 +3,7 @@
   "division": "AA",
   "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
   "sourceLabel": "Pittsburgh NABA AA standings",
-  "syncedAt": "2026-07-01T06:44:40.031Z",
+  "syncedAt": "2026-07-01T13:40:58.661Z",
   "rows": [
     {
       "id": "2026-aa-oakmont-lions",
@@ -21,7 +21,7 @@
       "streak": "Won 5",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-07-01T06:44:40.031Z"
+      "syncedAt": "2026-07-01T13:40:58.661Z"
     },
     {
       "id": "2026-aa-pittsburgh-d2",
@@ -39,7 +39,7 @@
       "streak": "Won 5",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-07-01T06:44:40.031Z"
+      "syncedAt": "2026-07-01T13:40:58.661Z"
     },
     {
       "id": "2026-aa-biscuitvilletownsquare-bandidos",
@@ -57,11 +57,29 @@
       "streak": "Lost 1",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-07-01T06:44:40.031Z"
+      "syncedAt": "2026-07-01T13:40:58.661Z"
+    },
+    {
+      "id": "2026-aa-south-oakland-ducks",
+      "rank": 4,
+      "teamName": "South Oakland Ducks",
+      "teamCode": "SOD",
+      "record": "8-11",
+      "points": 35,
+      "pointsLabel": "35",
+      "winPct": ".421",
+      "gb": "6",
+      "rf": 96,
+      "ra": 122,
+      "last10": "5-5",
+      "streak": "Won 1",
+      "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
+      "sourceLabel": "Pittsburgh NABA AA standings",
+      "syncedAt": "2026-07-01T13:40:58.661Z"
     },
     {
       "id": "2026-aa-south-hills-devils",
-      "rank": 4,
+      "rank": 5,
       "teamName": "South Hills Devils",
       "teamCode": "SHD",
       "record": "8-11",
@@ -75,43 +93,25 @@
       "streak": "Lost 2",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-07-01T06:44:40.031Z"
-    },
-    {
-      "id": "2026-aa-south-oakland-ducks",
-      "rank": 5,
-      "teamName": "South Oakland Ducks",
-      "teamCode": "SOD",
-      "record": "7-11",
-      "points": 32,
-      "pointsLabel": "32",
-      "winPct": ".389",
-      "gb": "6.5",
-      "rf": 90,
-      "ra": 120,
-      "last10": "4-6",
-      "streak": "Lost 3",
-      "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
-      "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-07-01T06:44:40.031Z"
+      "syncedAt": "2026-07-01T13:40:58.661Z"
     },
     {
       "id": "2026-aa-south-side-eagles",
       "rank": 6,
       "teamName": "South Side Eagles",
       "teamCode": "SSE",
-      "record": "7-10",
-      "points": 31,
-      "pointsLabel": "31",
-      "winPct": ".412",
-      "gb": "6",
-      "rf": 117,
-      "ra": 103,
+      "record": "7-11",
+      "points": 32,
+      "pointsLabel": "32",
+      "winPct": ".389",
+      "gb": "6.5",
+      "rf": 119,
+      "ra": 109,
       "last10": "3-7",
-      "streak": "Won 1",
+      "streak": "Lost 1",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-07-01T06:44:40.031Z"
+      "syncedAt": "2026-07-01T13:40:58.661Z"
     },
     {
       "id": "2026-aa-bauerstown-turtles",
@@ -129,7 +129,7 @@
       "streak": "Lost 6",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-07-01T06:44:40.031Z"
+      "syncedAt": "2026-07-01T13:40:58.661Z"
     }
   ]
 }
