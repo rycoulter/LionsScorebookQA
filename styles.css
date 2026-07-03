@@ -2586,18 +2586,20 @@ button:disabled .inline-chevron-icon {
   align-items: flex-start;
 }
 
-.news-category-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 18px;
-}
-
 .team-news-layout {
   display: grid;
-  grid-template-columns: minmax(280px, 0.92fr) minmax(0, 1.08fr);
+  grid-template-areas: "list feature";
+  grid-template-columns: minmax(220px, 0.76fr) minmax(0, 1.24fr);
   gap: 18px;
   align-items: start;
+}
+
+.news-featured-story {
+  grid-area: feature;
+}
+
+.news-list-shell {
+  grid-area: list;
 }
 
 .news-featured-story,
@@ -2675,18 +2677,6 @@ button:disabled .inline-chevron-icon {
   line-height: 1.45;
 }
 
-.news-category-pill {
-  justify-self: start;
-  border: 1px solid rgba(245, 189, 33, 0.26);
-  border-radius: 999px;
-  padding: 5px 9px;
-  background: rgba(245, 189, 33, 0.1);
-  color: var(--lion-gold);
-  font-size: 0.72rem;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
 .news-article-list {
   display: grid;
   gap: 12px;
@@ -2699,6 +2689,23 @@ button:disabled .inline-chevron-icon {
   border-radius: 8px;
   padding: 12px;
   background: rgba(7, 16, 29, 0.62);
+  cursor: pointer;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.news-article-card:hover,
+.news-article-card:focus-visible {
+  border-color: rgba(245, 189, 33, 0.34);
+  background: rgba(10, 21, 39, 0.78);
+  box-shadow: 0 0 0 1px rgba(245, 189, 33, 0.1);
+}
+
+.news-article-card:focus-visible {
+  outline: 2px solid rgba(245, 189, 33, 0.66);
+  outline-offset: 3px;
 }
 
 .news-article-card.is-active {
@@ -2737,15 +2744,8 @@ button:disabled .inline-chevron-icon {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 10px;
-}
-
-.news-read-more-btn {
-  justify-self: end;
-  min-height: 32px;
-  padding: 6px 10px;
-  font-size: 0.78rem;
 }
 
 .news-editor-layout {
@@ -2897,6 +2897,7 @@ button:disabled .inline-chevron-icon {
 @media (max-width: 900px) {
   .team-news-layout,
   .news-editor-layout {
+    grid-template-areas: none;
     grid-template-columns: 1fr;
   }
 
@@ -2910,11 +2911,6 @@ button:disabled .inline-chevron-icon {
 }
 
 @media (max-width: 640px) {
-  .news-category-row {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .news-article-card {
     grid-template-columns: 72px minmax(0, 1fr);
     padding: 10px;

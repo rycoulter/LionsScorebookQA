@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.114";
+const APP_VERSION = "v.1.1.115";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -807,7 +807,6 @@ let scheduleSeasonFilter = String(currentLeagueSeason());
 let scheduleCalendarMonth = todayValue().slice(0, 7);
 let archiveSeasonFilter = String(currentLeagueSeason());
 let statsSeasonFilter = String(currentLeagueSeason());
-let newsCategoryFilter = "all";
 let selectedNewsArticleId = "";
 let newsLayoutMode = "latest";
 let statsPlayerFocus = "all";
@@ -1376,7 +1375,6 @@ const els = {
   gameHighlightsMeta: document.getElementById("gameHighlightsMeta"),
   gameHighlightsBody: document.getElementById("gameHighlightsBody"),
   closeGameHighlightsBtn: document.getElementById("closeGameHighlightsBtn"),
-  newsCategoryFilters: document.getElementById("newsCategoryFilters"),
   newsFeaturedStory: document.getElementById("newsFeaturedStory"),
   newsArticleList: document.getElementById("newsArticleList"),
   newsArticleCount: document.getElementById("newsArticleCount"),
@@ -4525,22 +4523,17 @@ function bindEvents() {
     renderTeamNews();
     switchView("news");
   });
-  els.newsCategoryFilters?.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-news-category]");
-    if (!button) return;
-    newsCategoryFilter = button.dataset.newsCategory || "all";
-    selectedNewsArticleId = "";
-    newsLayoutMode = "latest";
-    if (els.newsFeaturedStory) els.newsFeaturedStory.scrollIntoView({ behavior: "smooth", block: "start" });
-    renderTeamNews();
-  });
   els.newsArticleList?.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-news-read]");
-    if (!button) return;
-    selectedNewsArticleId = button.dataset.newsRead || "";
-    newsLayoutMode = "article";
-    renderTeamNews();
-    els.newsFeaturedStory?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const card = event.target.closest("[data-news-read]");
+    if (!card) return;
+    openNewsArticleFromList(card.dataset.newsRead || "");
+  });
+  els.newsArticleList?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const card = event.target.closest("[data-news-read]");
+    if (!card) return;
+    event.preventDefault();
+    openNewsArticleFromList(card.dataset.newsRead || "");
   });
   els.highlightFilterChips?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-highlight-filter]");
@@ -9272,12 +9265,6 @@ function teamNewsSortValue(article) {
   return Number.isNaN(parsed) ? 0 : parsed;
 }
 
-function filteredTeamNewsArticles() {
-  const articles = teamNewsArticles();
-  if (newsCategoryFilter === "all") return articles;
-  return articles.filter((article) => article.category === newsCategoryFilter);
-}
-
 function renderHomeTeamNewsCard(articles) {
   const items = Array.isArray(articles) ? articles.slice(0, 4) : [];
   if (!items.length) return `<div class="upcoming-empty">Team news will appear here soon.</div>`;
@@ -9290,7 +9277,7 @@ function renderHomeTeamNewsItem(article) {
   return `<button class="home-team-news-item" type="button" data-home-news-id="${escapeHtml(article.id)}">
     <img class="home-team-news-thumb" src="${escapeHtml(newsArticleImage(article))}" alt="" loading="lazy" decoding="async">
     <span class="home-team-news-copy">
-      <span class="home-team-news-meta">${escapeHtml(article.category)} | ${escapeHtml(formatShortMonthDay(article.date))}</span>
+      <span class="home-team-news-meta">${escapeHtml(formatShortMonthDay(article.date))}</span>
       <strong>${escapeHtml(article.title)}</strong>
     </span>
     ${inlineChevronIcon("right", "home-team-news-arrow")}
@@ -9299,31 +9286,32 @@ function renderHomeTeamNewsItem(article) {
 
 function renderTeamNews() {
   if (!els.newsFeaturedStory || !els.newsArticleList) return;
-  const articles = filteredTeamNewsArticles();
+  const articles = teamNewsArticles();
   const featured = articles.find((article) => article.id === selectedNewsArticleId) || articles[0] || null;
   selectedNewsArticleId = featured?.id || "";
   els.newsFeaturedStory.closest(".team-news-layout")?.classList.toggle("is-latest-first", newsLayoutMode !== "article");
   els.newsFeaturedStory.innerHTML = featured
     ? renderFeaturedNewsStory(featured)
-    : `<div class="upcoming-empty">No articles in this category yet.</div>`;
+    : `<div class="upcoming-empty">No articles yet.</div>`;
   els.newsArticleList.innerHTML = articles.length
     ? articles.map((article) => renderNewsArticleCard(article, article.id === selectedNewsArticleId)).join("")
-    : `<div class="upcoming-empty">No articles in this category yet.</div>`;
+    : `<div class="upcoming-empty">No articles yet.</div>`;
   if (els.newsArticleCount) {
     els.newsArticleCount.textContent = `${articles.length} ${articles.length === 1 ? "article" : "articles"}`;
   }
-  els.newsCategoryFilters?.querySelectorAll("[data-news-category]").forEach((button) => {
-    const active = button.dataset.newsCategory === newsCategoryFilter;
-    button.classList.toggle("is-active", active);
-    button.setAttribute("aria-selected", active ? "true" : "false");
-  });
+}
+
+function openNewsArticleFromList(articleId = "") {
+  selectedNewsArticleId = articleId;
+  newsLayoutMode = "article";
+  renderTeamNews();
+  els.newsFeaturedStory?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function renderFeaturedNewsStory(article) {
   return `<article class="news-feature-card">
     <img class="news-feature-image" src="${escapeHtml(newsArticleImage(article))}" alt="" loading="lazy" decoding="async">
     <div class="news-feature-copy">
-      <span class="news-category-pill">${escapeHtml(article.category)}</span>
       <h3>${escapeHtml(article.title)}</h3>
       <span class="news-feature-date">${escapeHtml(newsArticleDateLabel(article))}</span>
       ${article.bodyHtml ? `<div class="news-article-body">${sanitizeNewsBodyHtml(article.bodyHtml)}</div>` : ""}
@@ -9337,16 +9325,14 @@ function newsArticleDateLabel(article) {
 }
 
 function renderNewsArticleCard(article, active = false) {
-  return `<article class="news-article-card${active ? " is-active" : ""}">
+  const activeAttribute = active ? ` aria-current="true"` : "";
+  return `<article class="news-article-card${active ? " is-active" : ""}" role="button" tabindex="0" data-news-read="${escapeHtml(article.id)}" aria-label="Open article: ${escapeHtml(article.title)}"${activeAttribute}>
     <img class="news-article-thumb" src="${escapeHtml(newsArticleImage(article))}" alt="" loading="lazy" decoding="async">
     <div class="news-article-copy">
       <h3>${escapeHtml(article.title)}</h3>
       <p>${escapeHtml(article.summary)}</p>
       <div class="news-article-card-footer">
         <span class="player-meta">${escapeHtml(formatGameDateDisplay(article.date))}</span>
-        <button class="secondary-action compact-action news-read-more-btn" type="button" data-news-read="${escapeHtml(article.id)}">
-          Read More
-        </button>
       </div>
     </div>
   </article>`;
@@ -9418,7 +9404,6 @@ function renderNewsEditorListItem(article) {
   return `<article class="news-editor-list-item">
     <img class="news-editor-list-thumb" src="${escapeHtml(newsArticleImage(article))}" alt="" loading="lazy" decoding="async">
     <div class="news-editor-list-copy">
-      <span class="news-category-pill">${escapeHtml(article.category)}</span>
       <h3>${escapeHtml(article.title)}</h3>
       <p>${escapeHtml(article.summary)}</p>
       <span class="player-meta">${escapeHtml(game ? gameMatchupLabel(game) : "No linked game")}</span>

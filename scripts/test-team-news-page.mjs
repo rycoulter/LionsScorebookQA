@@ -40,7 +40,7 @@ mustMatch(indexHtml, /id="homeTeamNewsLink"[\s\S]*View All News/, "Home card sho
 mustMatch(indexHtml, /id="homeTeamNewsBody"/, "Home should render Team News items instead of the recent games body");
 mustMatch(indexHtml, /id="newsView"[\s\S]*data-panel="news"/, "Team News page should be present");
 mustMatch(indexHtml, /id="newsFeaturedStory"/, "Team News page should include a featured story area");
-mustMatch(indexHtml, /id="newsCategoryFilters"[\s\S]*Game Recap[\s\S]*Player News[\s\S]*Team News/, "Team News page should include category filters");
+assert.doesNotMatch(indexHtml, /id="newsCategoryFilters"|data-news-category/, "Team News page should not show category filters or sort chips");
 mustMatch(indexHtml, /id="newsArticleList"/, "Team News page should include a full article list");
 mustMatch(indexHtml, /id="newsEditorView"[\s\S]*data-panel="newsEditor"/, "Admin News Editor page should be present");
 mustMatch(indexHtml, /id="newsMigrateImagesBtn"[\s\S]*Migrate News Images/, "News Editor should include an admin image migration helper");
@@ -57,15 +57,21 @@ assert.doesNotMatch(renderHomeBody, /homeRecentGamesBody[\s\S]*renderHomeRecentG
 
 mustMatch(functionBody(appJs, "bindEvents"), /homeTeamNewsLink[\s\S]*selectedNewsArticleId = ""[\s\S]*newsLayoutMode = "latest"[\s\S]*renderTeamNews\(\)[\s\S]*switchView\("news"\)/, "View All News should open Team News with Latest first on mobile");
 mustMatch(functionBody(appJs, "bindEvents"), /homeTeamNewsBody[\s\S]*selectedNewsArticleId = button\.dataset\.homeNewsId[\s\S]*newsLayoutMode = "article"[\s\S]*renderTeamNews\(\)[\s\S]*switchView\("news"\)/, "Home news article clicks should select and render that article first");
-mustMatch(functionBody(appJs, "bindEvents"), /newsArticleList[\s\S]*data-news-read[\s\S]*selectedNewsArticleId = button\.dataset\.newsRead[\s\S]*newsLayoutMode = "article"[\s\S]*scrollIntoView/, "All Articles Read More should pull the full article into view");
+mustMatch(functionBody(appJs, "bindEvents"), /newsArticleList[\s\S]*click[\s\S]*data-news-read[\s\S]*openNewsArticleFromList\(card\.dataset\.newsRead \|\| ""\)/, "All Articles cards should pull the full article into view when clicked");
+mustMatch(functionBody(appJs, "bindEvents"), /newsArticleList[\s\S]*keydown[\s\S]*event\.key !== "Enter"[\s\S]*event\.key !== " "[\s\S]*openNewsArticleFromList\(card\.dataset\.newsRead \|\| ""\)/, "All Articles cards should support keyboard selection");
+mustMatch(functionBody(appJs, "openNewsArticleFromList"), /selectedNewsArticleId = articleId[\s\S]*newsLayoutMode = "article"[\s\S]*scrollIntoView/, "Opening an article card should render it in the full article pane");
 mustMatch(functionBody(appJs, "teamNewsArticles"), /normalizeNewsArticles\(state\.newsArticles/, "Team News should render manual articles from app state");
 assert.doesNotMatch(functionBody(appJs, "teamNewsArticles"), /completedGames\(Infinity\)|fallbackTeamNewsArticles|category: "Game Recap"/, "Team News should not auto-generate public articles");
+assert.doesNotMatch(appJs, /newsCategoryFilter|newsCategoryFilters|filteredTeamNewsArticles|data-news-category/, "Team News should not keep category-filter state or handlers");
 mustMatch(functionBody(appJs, "renderTeamNews"), /articles\.find\(\(article\) => article\.id === selectedNewsArticleId\)[\s\S]*renderFeaturedNewsStory\(featured\)[\s\S]*renderNewsArticleCard\(article, article\.id === selectedNewsArticleId\)/, "Team News should render the selected full article and compact article list");
+mustMatch(functionBody(appJs, "renderTeamNews"), /const articles = teamNewsArticles\(\)/, "Team News should always show the full article list");
 mustMatch(functionBody(appJs, "renderTeamNews"), /classList\.toggle\("is-latest-first", newsLayoutMode !== "article"\)/, "Team News layout should let mobile put Latest first for general browsing");
 mustMatch(functionBody(appJs, "renderFeaturedNewsStory"), /<h3>\$\{escapeHtml\(article\.title\)\}<\/h3>[\s\S]*news-feature-date[\s\S]*newsArticleDateLabel\(article\)[\s\S]*news-article-body/, "Full article view should show the date under the title before the story starts");
 assert.doesNotMatch(functionBody(appJs, "renderFeaturedNewsStory"), /<p>\$\{escapeHtml\(article\.summary\)\}<\/p>/, "Full article view should not repeat the card summary");
+assert.doesNotMatch(functionBody(appJs, "renderFeaturedNewsStory"), /news-category-pill|article\.category/, "Full article view should not show article tags");
 mustMatch(functionBody(appJs, "newsArticleDateLabel"), /article\?\.gameId \? "Game Date" : "Date"/, "Linked articles should label the story date as Game Date");
-mustMatch(functionBody(appJs, "renderNewsArticleCard"), /news-article-thumb[\s\S]*<h3>\$\{escapeHtml\(article\.title\)\}<\/h3>[\s\S]*<p>\$\{escapeHtml\(article\.summary\)\}<\/p>[\s\S]*data-news-read/, "All Articles cards should show thumbnail, title, summary, and Read More");
+mustMatch(functionBody(appJs, "renderNewsArticleCard"), /role="button"[\s\S]*tabindex="0"[\s\S]*data-news-read="\$\{escapeHtml\(article\.id\)\}"[\s\S]*news-article-thumb[\s\S]*<h3>\$\{escapeHtml\(article\.title\)\}<\/h3>[\s\S]*<p>\$\{escapeHtml\(article\.summary\)\}<\/p>/, "All Articles cards should show thumbnail, title, summary, and act as the article selector");
+assert.doesNotMatch(functionBody(appJs, "renderNewsArticleCard"), /Read More|news-read-more-btn|<button/, "All Articles cards should not render a separate Read More button");
 assert.doesNotMatch(functionBody(appJs, "renderNewsArticleCard"), /news-article-body|news-category-pill/, "All Articles cards should not render full body content or category clutter");
 mustMatch(functionBody(appJs, "newsArticleDraftFromGame"), /category: "Game Recap"/, "Generate from Game should produce editable recap copy");
 mustMatch(functionBody(appJs, "newsArticleDraftFromGame"), /category: "Game Preview"/, "Generate from Game should produce editable preview copy");
@@ -80,18 +86,20 @@ mustMatch(functionBody(appJs, "migrateLegacyNewsImages"), /fetchNewsArticles\(\{
 mustMatch(functionBody(appJs, "migrateLegacyNewsImages"), /catch \(error\)[\s\S]*failed \+= 1/, "Migration helper should leave failed article rows untouched and report failures");
 mustMatch(functionBody(appJs, "newsArticleImage"), /thumbnailUrl[\s\S]*imageUrl[\s\S]*legacyImageDataUrl/, "News rendering should prefer thumbnail URLs, then image URLs, then legacy data URLs");
 mustMatch(functionBody(appJs, "sanitizeNewsBodyHtml"), /allowedTags[\s\S]*script, style, iframe, object, embed/, "Rich text body should be sanitized before display/save");
-mustMatch(functionBody(appJs, "renderTeamNews"), /newsCategoryFilter/, "Team News page should honor category filtering");
 mustMatch(functionBody(appJs, "hasMeaningfulSupabaseSnapshot"), /Array\.isArray\(snapshot\.newsArticles\) && snapshot\.newsArticles\.length/, "Supabase snapshot detection should include news article table rows");
 mustMatch(appJs, /data\.newsArticlesMissingTable \? undefined : data\.newsArticles/, "Refresh should merge news table rows when the table is available");
 mustMatch(functionBody(appJs, "syncSharedNewsArticle"), /supabaseStorage\.upsertNewsArticle\(article\)/, "Saving news should upsert the dedicated news_articles row");
 mustMatch(functionBody(appJs, "deleteSharedNewsArticle"), /supabaseStorage\.deleteNewsArticle\(articleId\)/, "Deleting news should delete the dedicated news_articles row");
 assert.doesNotMatch(functionBody(appJs, "persistNewsArticles"), /syncSharedSnapshot/, "News edits should not sync the full app_state snapshot");
 
-mustMatch(stylesCss, /\.team-news-layout[\s\S]*grid-template-columns: minmax\(280px, 0\.92fr\) minmax\(0, 1\.08fr\)/, "Team News page should use a two-column desktop layout");
+mustMatch(stylesCss, /\.team-news-layout[\s\S]*grid-template-areas: "list feature"[\s\S]*grid-template-columns: minmax\(220px, 0\.76fr\) minmax\(0, 1\.24fr\)/, "Team News page should put the article list left and the wider full article pane right");
+mustMatch(stylesCss, /\.news-featured-story[\s\S]*grid-area: feature[\s\S]*\.news-list-shell[\s\S]*grid-area: list/, "Team News desktop layout should swap the visual order without changing mobile source order");
 mustMatch(stylesCss, /\.home-team-news-item[\s\S]*grid-template-columns: 58px minmax\(0, 1fr\) 18px/, "Home news items should include thumbnail/title layout");
 mustMatch(stylesCss, /\.news-article-card\.is-active[\s\S]*border-color: rgba\(245, 189, 33, 0\.42\)/, "Selected news list item should have an active state");
-mustMatch(stylesCss, /\.news-article-card[\s\S]*grid-template-columns: 88px minmax\(0, 1fr\)/, "Compact news cards should keep thumbnails in the All Articles list");
-mustMatch(stylesCss, /\.news-article-card-footer[\s\S]*justify-content: space-between/, "Compact news cards should align date and Read More cleanly");
+mustMatch(stylesCss, /\.news-article-card[\s\S]*grid-template-columns: 88px minmax\(0, 1fr\)[\s\S]*cursor: pointer/, "Compact news cards should keep thumbnails and feel clickable in the All Articles list");
+mustMatch(stylesCss, /\.news-article-card:hover[\s\S]*\.news-article-card:focus-visible[\s\S]*border-color: rgba\(245, 189, 33, 0\.34\)/, "Clickable news cards should have hover and keyboard focus states");
+assert.doesNotMatch(stylesCss, /news-read-more-btn/, "Unused Read More button styles should be removed");
+assert.doesNotMatch(stylesCss, /news-category-row|news-category-pill/, "Unused category filter and tag styles should be removed");
 mustMatch(stylesCss, /\.news-feature-copy[\s\S]*background:[\s\S]*rgba\(7, 16, 29, 0\.92\)/, "Full article copy should sit on a readable dark fill");
 mustMatch(stylesCss, /\.news-feature-date[\s\S]*text-transform: uppercase/, "Full article date should be styled under the title");
 mustMatch(stylesCss, /@media \(max-width: 900px\)[\s\S]*\.team-news-layout\.is-latest-first \.news-list-shell[\s\S]*order: 1[\s\S]*\.team-news-layout\.is-latest-first \.news-featured-story[\s\S]*order: 2/, "Mobile Team News should put Latest above the article when browsing all news");
