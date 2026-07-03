@@ -102,7 +102,8 @@ assert.doesNotMatch(stylesCss, /news-read-more-btn/, "Unused Read More button st
 assert.doesNotMatch(stylesCss, /news-category-row|news-category-pill/, "Unused category filter and tag styles should be removed");
 mustMatch(stylesCss, /\.news-feature-copy[\s\S]*background:[\s\S]*rgba\(7, 16, 29, 0\.92\)/, "Full article copy should sit on a readable dark fill");
 mustMatch(stylesCss, /\.news-feature-date[\s\S]*text-transform: uppercase/, "Full article date should be styled under the title");
-mustMatch(stylesCss, /@media \(max-width: 900px\)[\s\S]*\.team-news-layout\.is-latest-first \.news-list-shell[\s\S]*order: 1[\s\S]*\.team-news-layout\.is-latest-first \.news-featured-story[\s\S]*order: 2/, "Mobile Team News should put Latest above the article when browsing all news");
+mustMatch(stylesCss, /@media \(max-width: 900px\)[\s\S]*\.team-news-layout[\s\S]*grid-template-areas:[\s\S]*"feature"[\s\S]*"list"[\s\S]*grid-template-columns: minmax\(0, 1fr\)[\s\S]*\.team-news-layout\.is-latest-first[\s\S]*grid-template-areas:[\s\S]*"list"[\s\S]*"feature"/, "Mobile Team News should explicitly switch between article-first and Latest-first one-column layouts");
+mustMatch(stylesCss, /@media \(max-width: 640px\)[\s\S]*\.news-featured-story,[\s\S]*\.news-list-shell[\s\S]*padding: 12px[\s\S]*\.news-article-card[\s\S]*grid-template-columns: 64px minmax\(0, 1fr\)[\s\S]*align-items: center/, "Mobile Team News cards should stay compact and aligned");
 mustMatch(stylesCss, /\.news-editor-layout[\s\S]*grid-template-columns: minmax\(320px, 0\.9fr\) minmax\(0, 1\.1fr\)/, "News Editor should keep a simple two-column desktop layout");
 mustMatch(supabaseStorageJs, /function newsArticleFromRow/, "Supabase storage should map news_articles rows into app articles");
 mustMatch(supabaseStorageJs, /function buildNewsArticleRow/, "Supabase storage should map app articles into news_articles rows");
