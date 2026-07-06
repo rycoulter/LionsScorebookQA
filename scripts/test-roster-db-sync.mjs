@@ -55,7 +55,9 @@ mustMatch(appJs, /supabaseStorage\.upsertRosterPlayers\(snapshot\.roster, snapsh
 mustMatch(appJs, /function sharedRosterSyncUnavailableError/, "Roster writes should check Supabase/admin readiness before claiming sync");
 mustMatch(appJs, /async function syncSharedRosterChange/, "Roster edits should have an awaited shared sync path");
 mustMatch(appJs, /rosterPlayersMissingTable: Boolean\(rosterPlayersResponse\.missingTable\)/, "Shared sync should expose roster missing-table status");
-mustMatch(appJs, /await syncSharedRosterChangeOrAlert\(existingPlayer \? "edit-player" : "add-player"\)/, "Add/edit player should await roster sync and surface failures");
+mustMatch(appJs, /let syncReason = existingPlayer \? "edit-player" : "add-player"/, "Add/edit player should choose the correct roster sync reason");
+mustMatch(appJs, /syncReason = "reactivate-player"/, "Recreated inactive players should sync as a roster reactivation");
+mustMatch(appJs, /await syncSharedRosterChangeOrAlert\(syncReason\)/, "Add/edit player should await roster sync and surface failures");
 mustMatch(appJs, /await syncSharedRosterChangeOrAlert\("remove-roster-player"\)/, "Remove player should await roster sync and surface failures");
 mustMatch(appJs, /await syncSharedRosterChangeOrAlert\("toggle-player-active"\)/, "Roster active toggle should await roster sync and surface failures");
 

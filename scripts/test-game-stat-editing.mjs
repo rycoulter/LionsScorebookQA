@@ -13,7 +13,9 @@ function mustMatch(source, pattern, label) {
 }
 
 function functionBody(source, functionName) {
-  const start = source.indexOf(`function ${functionName}`);
+  const exactFunction = new RegExp(`function ${functionName}\\s*\\(`);
+  const match = exactFunction.exec(source);
+  const start = match?.index ?? -1;
   assert.notEqual(start, -1, `${functionName} should exist`);
   const nextFunction = source.indexOf("\nfunction ", start + 1);
   return nextFunction === -1 ? source.slice(start) : source.slice(start, nextFunction);
@@ -139,7 +141,7 @@ mustMatch(availableBody, /gameIsFinal\(game\)/, "Any completed game should be se
 mustMatch(availableBody, /playerHasStatsInGame\(playerId, game\)/, "In-progress games should still require an existing player line");
 
 const gamesPlayedBody = functionBody(appJs, "gamesPlayedForPlayer");
-mustMatch(gamesPlayedBody, /hasHittingStatEdit\(game, playerId\)/, "A saved game-level stat edit should count as a game played");
+mustMatch(gamesPlayedBody, /playerHasHittingGameLine\(game, playerId\)/, "A saved game-level stat edit should count as a game played");
 
 mustMatch(stylesCss, /\.stat-edit-grid[\s\S]*grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/, "Game stat editor inputs should use a compact grid");
 mustMatch(stylesCss, /\.stat-edit-spray-chart[\s\S]*min-height: 0 !important[\s\S]*aspect-ratio: 4 \/ 3/, "Game stat editor field should override the large generic spray chart height");

@@ -67,8 +67,8 @@ mustMatch(functionBody(appJs, "restorePlayHistorySnapshot"), /restoredGame\.play
 mustMatch(appJs, /pitcherId,\s*[\r\n]\s*inPlay:/, "Recorded pitch objects should carry the current pitcher id");
 mustMatch(appJs, /\.filter\(\(pitch\) => !pitch\.pitcherId \|\| pitch\.pitcherId === pitcherId\)/, "Current-at-bat pitch counts should follow the active pitcher");
 const pitcherStatsBody = functionBody(appJs, "pitcherStats");
-mustMatch(pitcherStatsBody, /\(event\.pitches \|\| \[\]\)\.some\(\(pitch\) => pitch\.pitcherId === playerId\)/, "Pitcher stats should include tagged pitches even when another pitcher finishes the PA");
-mustMatch(pitcherStatsBody, /const isPitcherOfRecord = event\.pitcherId === playerId/, "Only the event pitcher should get batter/out/run line stats");
+mustMatch(pitcherStatsBody, /\(event\.pitches \|\| \[\]\)\.some\(\(pitch\) => playerIdMatches\(playerIds, pitch\.pitcherId\)\)/, "Pitcher stats should include tagged pitches even when another pitcher finishes the PA");
+mustMatch(pitcherStatsBody, /const isPitcherOfRecord = playerIdMatches\(playerIds, event\.pitcherId\)/, "Only the event pitcher should get batter/out/run line stats");
 mustMatch(pitcherStatsBody, /else if \(!isPitcherOfRecord\)[\s\S]*return;/, "Untagged legacy pitches should stay with the event pitcher only");
 
 mustMatch(stylesCss, /scoring-dock-change-pitcher-btn[\s\S]*border: 1px solid rgba\(245, 189, 33, 0\.38\)/, "Change button should have compact visible button styling");

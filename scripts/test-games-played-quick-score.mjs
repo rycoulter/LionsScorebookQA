@@ -26,7 +26,7 @@ assert.match(
 );
 assert.match(
   functionBody(appJs, "clearStatEditGameStats"),
-  /delete hittingStatEditMap\(game\)\[player\.id\]/,
+  /removeEquivalentHittingStatEdits\(game, player\.id\)/,
   "Clearing a saved game line should remove that player's manual hitting stat edit"
 );
 
@@ -92,6 +92,10 @@ const result = JSON.parse(runInNewContext(`
   function offensiveEventsForStatsGame(game) {
     const manualEvents = Object.keys(game?.hittingStatEdits || {}).map((playerId) => ({ playerId, result: "GO", manualStatEdit: true }));
     return [...(game?.events || []), ...manualEvents];
+  }
+  function playerIdAliasSet(playerId) { return new Set([playerId]); }
+  function playerIdMatches(playerIds, candidateId) {
+    return playerIds instanceof Set ? playerIds.has(candidateId) : playerIds === candidateId;
   }
 
   ${runtimeSource}

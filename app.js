@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.116";
+const APP_VERSION = "v.1.1.117";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -2493,6 +2493,83 @@ function normalizeRoster(roster = []) {
     active: player.active !== false,
     grades: { ...defaultPlayerGrades(), ...(player.grades || {}) }
   }));
+}
+
+function normalizeRosterIdentityText(value = "") {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeRosterIdentityNumber(value = "") {
+  const normalized = String(value ?? "").trim().replace(/^#/, "");
+  return normalized && normalized !== "--" ? normalized.toLowerCase() : "";
+}
+
+function rosterIdentityKey(player = {}) {
+  const name = normalizeRosterIdentityText(player.name);
+  const number = normalizeRosterIdentityNumber(player.number);
+  return name && number ? `${number}|${name}` : "";
+}
+
+function playerIdAliasSet(playerId = "") {
+  const requestedId = String(playerId || "");
+  if (!requestedId) return new Set();
+  const player = state.roster.find((item) => item.id === requestedId);
+  const key = rosterIdentityKey(player);
+  if (!key) return new Set([requestedId]);
+  return new Set(state.roster
+    .filter((item) => item.id === requestedId || rosterIdentityKey(item) === key)
+    .map((item) => item.id)
+    .filter(Boolean));
+}
+
+function playerIdMatches(playerIdOrSet, candidateId = "") {
+  if (!candidateId) return false;
+  if (playerIdOrSet instanceof Set) return playerIdOrSet.has(candidateId);
+  return String(playerIdOrSet || "") === candidateId;
+}
+
+function rosterStatPlayerRows(roster = state.roster) {
+  const grouped = new Map();
+  const standalone = [];
+  roster.forEach((player) => {
+    const key = rosterIdentityKey(player);
+    if (!key) {
+      standalone.push(player);
+      return;
+    }
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push(player);
+  });
+  const canonical = [...standalone];
+  grouped.forEach((players) => {
+    canonical.push(
+      players.find((player) => player.active !== false && state.lineup.includes(player.id))
+      || players.find((player) => player.active !== false)
+      || players[0]
+    );
+  });
+  return canonical;
+}
+
+function canonicalRosterPlayerForId(playerId = "") {
+  const aliases = playerIdAliasSet(playerId);
+  return rosterStatPlayerRows().find((player) => aliases.has(player.id))
+    || state.roster.find((player) => player.id === playerId)
+    || null;
+}
+
+function findRosterMatchByIdentity(name = "", number = "", options = {}) {
+  const key = rosterIdentityKey({ name, number });
+  if (!key) return null;
+  return state.roster.find((player) =>
+    rosterIdentityKey(player) === key
+      && (options.active === undefined || (player.active !== false) === options.active)
+  ) || null;
 }
 
 function resetGameAwayLineupToRoster(game, nextState = state) {
@@ -8023,18 +8100,18 @@ function defaultStatsSeasonForPlayer(playerId) {
 }
 
 function openPlayerStats(playerId) {
-  const player = state.roster.find((item) => item.id === playerId);
+  const player = canonicalRosterPlayerForId(playerId);
   if (!player) return;
-  statsSeasonFilter = defaultStatsSeasonForPlayer(playerId);
-  statsPlayerFocus = playerId;
-  desktopHitPlayerFilter = playerId;
-  desktopPitPlayerFilter = playerId;
-  mobileHitPlayerFilter = playerId;
-  mobilePitPlayerFilter = playerId;
+  statsSeasonFilter = defaultStatsSeasonForPlayer(player.id);
+  statsPlayerFocus = player.id;
+  desktopHitPlayerFilter = player.id;
+  desktopPitPlayerFilter = player.id;
+  mobileHitPlayerFilter = player.id;
+  mobilePitPlayerFilter = player.id;
   mobileHitGameFilter = "all";
   mobilePitGameFilter = "all";
-  const hitting = statsForPlayer(playerId, statsSeasonFilter);
-  const pitching = pitcherStats(playerId, null, statsSeasonFilter);
+  const hitting = statsForPlayer(player.id, statsSeasonFilter);
+  const pitching = pitcherStats(player.id, null, statsSeasonFilter);
   statsMode = hitting.pa > 0 || !hasPitchingStats(pitching) ? "hitting" : "pitching";
   renderSeasonStats();
   renderLeaders();
@@ -8424,41 +8501,58 @@ async function addPlayer() {
   const existingPlayer = editingRosterPlayerId
     ? state.roster.find((player) => player.id === editingRosterPlayerId)
     : null;
-  if (existingPlayer) {
-    existingPlayer.name = name;
-    existingPlayer.number = els.playerNumber.value.trim() || "--";
-    existingPlayer.positions = String(els.playerPositions.value.trim() || "UTL")
+  const applyRosterFormToPlayer = (player) => {
+    player.name = name;
+    player.number = els.playerNumber.value.trim() || "--";
+    player.positions = String(els.playerPositions.value.trim() || "UTL")
       .split(",")
       .map((position) => position.trim())
       .filter(Boolean);
-    existingPlayer.primaryPosition = String(els.playerPrimaryPosition?.value || existingPlayer.positions[0] || "UTL").trim().toUpperCase();
-    existingPlayer.bats = els.playerBats.value || "R";
-    existingPlayer.throws = els.playerThrows?.value || existingPlayer.bats || "R";
-    existingPlayer.height = els.playerHeight?.value.trim() || "";
-    existingPlayer.weight = normalizeWeight(els.playerWeight?.value.trim() || "");
+    player.primaryPosition = String(els.playerPrimaryPosition?.value || player.positions[0] || "UTL").trim().toUpperCase();
+    player.bats = els.playerBats.value || "R";
+    player.throws = els.playerThrows?.value || player.bats || "R";
+    player.height = els.playerHeight?.value.trim() || "";
+    player.weight = normalizeWeight(els.playerWeight?.value.trim() || "");
+    player.active = true;
+  };
+  let syncReason = existingPlayer ? "edit-player" : "add-player";
+  if (existingPlayer) {
+    applyRosterFormToPlayer(existingPlayer);
   } else {
-    const player = makePlayer(
-      uuid(),
-      name,
-      els.playerNumber.value.trim() || "--",
-      els.playerPositions.value.trim() || "UTL",
-      els.playerBats.value,
-      defaultPlayerGrades(),
-      {
-        primaryPosition: els.playerPrimaryPosition?.value || "UTL",
-        throws: els.playerThrows?.value || els.playerBats.value || "R",
-        height: els.playerHeight?.value.trim() || "",
-        weight: els.playerWeight?.value.trim() || ""
-      }
-    );
-    state.roster.push(player);
-    state.lineup.push(player.id);
+    const inactiveMatch = findRosterMatchByIdentity(name, els.playerNumber.value.trim() || "--", { active: false });
+    const activeMatch = findRosterMatchByIdentity(name, els.playerNumber.value.trim() || "--", { active: true });
+    if (inactiveMatch) {
+      applyRosterFormToPlayer(inactiveMatch);
+      if (!state.lineup.includes(inactiveMatch.id)) state.lineup.push(inactiveMatch.id);
+      syncReason = "reactivate-player";
+    } else if (activeMatch) {
+      window.alert(`${activeMatch.name} (#${activeMatch.number || "--"}) is already on the active roster. Edit that player instead of adding a duplicate.`);
+      beginPlayerEdit(activeMatch.id);
+      return;
+    } else {
+      const player = makePlayer(
+        uuid(),
+        name,
+        els.playerNumber.value.trim() || "--",
+        els.playerPositions.value.trim() || "UTL",
+        els.playerBats.value,
+        defaultPlayerGrades(),
+        {
+          primaryPosition: els.playerPrimaryPosition?.value || "UTL",
+          throws: els.playerThrows?.value || els.playerBats.value || "R",
+          height: els.playerHeight?.value.trim() || "",
+          weight: els.playerWeight?.value.trim() || ""
+        }
+      );
+      state.roster.push(player);
+      state.lineup.push(player.id);
+    }
   }
   markSharedAppStateDirty();
   resetPlayerForm();
   saveState();
   render();
-  await syncSharedRosterChangeOrAlert(existingPlayer ? "edit-player" : "add-player");
+  await syncSharedRosterChangeOrAlert(syncReason);
 }
 
 function updatePlayerFormUi() {
@@ -8671,7 +8765,7 @@ function renderHome() {
 
   const leaderSeason = String(currentLeagueSeason());
   const leaderMinimumGames = statLeaderMinimumGames(leaderSeason);
-  const hitterRows = state.roster
+  const hitterRows = rosterStatPlayerRows()
     .map((player) => ({
       player,
       stats: statsForPlayer(player.id, leaderSeason),
@@ -8679,7 +8773,7 @@ function renderHome() {
       gp: gamesPlayedForPlayer(player.id, leaderSeason)
     }))
     .filter((row) => statLeaderEligible(row, leaderMinimumGames));
-  const pitcherRows = state.roster
+  const pitcherRows = rosterStatPlayerRows()
     .map((player) => ({
       player,
       stats: pitcherStats(player.id, null, leaderSeason),
@@ -12304,6 +12398,7 @@ function lionsEarnedRunsByEvent(game) {
 }
 
 function pitcherStats(playerId, gameId = null, season = null) {
+  const playerIds = playerIdAliasSet(playerId);
   const stats = {
     wins: 0,
     losses: 0,
@@ -12327,7 +12422,9 @@ function pitcherStats(playerId, gameId = null, season = null) {
   games
     .filter(gameIsFinal)
     .forEach((game) => {
-      const manualDecision = normalizePitchingStatEdit(pitchingStatEditMap(game)[playerId], playerId, game).stats.decision;
+      const manualDecision = [...playerIds]
+        .map((id) => normalizePitchingStatEdit(pitchingStatEditMap(game)[id], id, game).stats.decision)
+        .find(Boolean);
       if (manualDecision === "win") {
         stats.wins += 1;
         return;
@@ -12340,21 +12437,21 @@ function pitcherStats(playerId, gameId = null, season = null) {
         stats.noDecision += 1;
         return;
       }
-      if (hasPitchingStatEdit(game, playerId)) return;
+      if ([...playerIds].some((id) => hasPitchingStatEdit(game, id))) return;
       const decision = lionsPitchingDecision(game);
-      if (decision.winPitcherId === playerId) stats.wins += 1;
-      if (decision.lossPitcherId === playerId) stats.losses += 1;
-      if (decision.noDecisionPitcherIds.includes(playerId)) stats.noDecision += 1;
+      if (playerIdMatches(playerIds, decision.winPitcherId)) stats.wins += 1;
+      if (playerIdMatches(playerIds, decision.lossPitcherId)) stats.losses += 1;
+      if (decision.noDecisionPitcherIds.some((id) => playerIdMatches(playerIds, id))) stats.noDecision += 1;
     });
   games
     .flatMap((game) => pitchingEventsForStatsGame(game).map((event) => ({ event, game })))
     .filter(({ event }) => event.scope === "defense" && (
-      event.pitcherId === playerId ||
-      (event.pitches || []).some((pitch) => pitch.pitcherId === playerId)
+      playerIdMatches(playerIds, event.pitcherId) ||
+      (event.pitches || []).some((pitch) => playerIdMatches(playerIds, pitch.pitcherId))
     ))
     .forEach(({ event, game }) => {
       const rule = eventRules[event.result] || {};
-      const isPitcherOfRecord = event.pitcherId === playerId;
+      const isPitcherOfRecord = playerIdMatches(playerIds, event.pitcherId);
       if (isPitcherOfRecord) {
         stats.batters += rule.pa ? 1 : 0;
         stats.outs += Math.max(0, (event.outsAfter ?? event.outsBefore ?? 0) - (event.outsBefore ?? 0)) || (rule.out ? 1 : 0);
@@ -12368,7 +12465,7 @@ function pitcherStats(playerId, gameId = null, season = null) {
       }
       (event.pitches || []).forEach((pitch) => {
         if (pitch.pitcherId) {
-          if (pitch.pitcherId !== playerId) return;
+          if (!playerIdMatches(playerIds, pitch.pitcherId)) return;
         } else if (!isPitcherOfRecord) {
           return;
         }
@@ -13862,13 +13959,13 @@ function statsGamesForSeason(season = null) {
 }
 
 function getSeasonHittingRows() {
-  return state.roster
+  return rosterStatPlayerRows()
     .map((player) => ({ player, hit: statsForPlayer(player.id, statsSeasonFilter), gp: gamesPlayedForPlayer(player.id, statsSeasonFilter) }))
     .sort((a, b) => compareHittingRows(a, b));
 }
 
 function getSeasonPitchingRows() {
-  return state.roster
+  return rosterStatPlayerRows()
     .map((player) => ({ player, pit: pitcherStats(player.id, null, statsSeasonFilter) }))
     .filter(({ player, pit }) => hasPitchingStats(pit) || playerHasPosition(player, "P"))
     .sort((a, b) => comparePitchingRows(a, b));
@@ -13920,7 +14017,7 @@ function statsGameOptionLabel(game) {
 }
 
 function getMobileHittingRows(playerId = "all", gameId = "all") {
-  return state.roster
+  return rosterStatPlayerRows()
     .map((player) => ({
       player,
       hit: statsForPlayer(player.id, statsSeasonFilter, gameId === "all" ? null : gameId),
@@ -13931,7 +14028,7 @@ function getMobileHittingRows(playerId = "all", gameId = "all") {
 }
 
 function getMobilePitchingRows(playerId = "all", gameId = "all") {
-  return state.roster
+  return rosterStatPlayerRows()
     .map((player) => ({
       player,
       pit: pitcherStats(player.id, gameId === "all" ? null : gameId, statsSeasonFilter),
@@ -13948,10 +14045,11 @@ function renderMobileStatsFilters() {
     ...statsGamesWithDataForSeason(statsSeasonFilter).map((game) => `<option value="${escapeHtml(game.id)}">${escapeHtml(statsGameOptionLabel(game))}</option>`)
   ].join("");
 
-  const hittingPlayers = state.roster.filter((player) =>
+  const statPlayers = rosterStatPlayerRows();
+  const hittingPlayers = statPlayers.filter((player) =>
     getMobileHittingRows("all", mobileHitGameFilter).some((row) => row.player.id === player.id)
   );
-  const pitchingPlayers = state.roster.filter((player) =>
+  const pitchingPlayers = statPlayers.filter((player) =>
     getMobilePitchingRows("all", mobilePitGameFilter).some((row) => row.player.id === player.id)
   );
 
@@ -17633,13 +17731,14 @@ function statsPlayerOpenButton(player, mode) {
 }
 
 function openStatsPlayerGameLog(playerId, mode = "hitting") {
-  if (!playerId) return;
-  statsPlayerFocus = playerId;
+  const player = canonicalRosterPlayerForId(playerId);
+  if (!player) return;
+  statsPlayerFocus = player.id;
   statsMode = mode === "pitching" ? "pitching" : "hitting";
-  desktopHitPlayerFilter = playerId;
-  desktopPitPlayerFilter = playerId;
-  mobileHitPlayerFilter = playerId;
-  mobilePitPlayerFilter = playerId;
+  desktopHitPlayerFilter = player.id;
+  desktopPitPlayerFilter = player.id;
+  mobileHitPlayerFilter = player.id;
+  mobilePitPlayerFilter = player.id;
   mobileHitGameFilter = "all";
   mobilePitGameFilter = "all";
   renderSeasonStats();
@@ -18038,13 +18137,14 @@ function renderStatsMode() {
 
 function renderStatsSprayControls() {
   const focusedPlayerId = statsFocusedPlayerId();
+  const statPlayers = rosterStatPlayerRows();
   if (els.statsSprayModal) els.statsSprayModal.hidden = !statsSprayExpanded;
   if (els.statsSprayPanel) els.statsSprayPanel.classList.add("is-visible");
   if (els.toggleStatsSprayBtn) {
     els.toggleStatsSprayBtn.innerHTML = `<span>Open Spray Chart</span>${inlineChevronIcon("right")}`;
   }
   const preferredPlayer = focusedPlayerId;
-  const selectedPlayer = preferredPlayer || els.statsSprayPlayerSelect.value || state.roster[0]?.id || "";
+  const selectedPlayer = preferredPlayer || els.statsSprayPlayerSelect.value || statPlayers[0]?.id || "";
   const sprayPlayerLabel = els.statsSprayPlayerSelect?.closest("label");
   if (focusedPlayerId) {
     const focusedPlayer = state.roster.find((player) => player.id === focusedPlayerId);
@@ -18055,7 +18155,7 @@ function renderStatsSprayControls() {
     els.statsSprayPlayerSelect.disabled = true;
     if (sprayPlayerLabel) sprayPlayerLabel.hidden = true;
   } else {
-    els.statsSprayPlayerSelect.innerHTML = state.roster
+    els.statsSprayPlayerSelect.innerHTML = statPlayers
       .map((player) => `<option value="${player.id}" ${player.id === selectedPlayer ? "selected" : ""}>#${escapeHtml(player.number)} ${escapeHtml(player.name)}</option>`)
       .join("");
     if (selectedPlayer) els.statsSprayPlayerSelect.value = selectedPlayer;
@@ -18075,13 +18175,14 @@ function renderStatsSprayControls() {
 }
 
 function renderStatsSprayChart() {
-  const playerId = statsFocusedPlayerId() || els.statsSprayPlayerSelect.value || state.roster[0]?.id;
+  const playerId = statsFocusedPlayerId() || els.statsSprayPlayerSelect.value || rosterStatPlayerRows()[0]?.id;
+  const playerIds = playerIdAliasSet(playerId);
   const gameId = els.statsSprayGameSelect.value || "all";
   const resultFilter = els.statsSprayResultFilter?.value || "all";
   const events = statsGamesForSeason(statsSeasonFilter)
     .flatMap((game) => sprayEventsForGame(game))
     .filter(({ event, game }) => {
-      if (!event.spray || event.playerId !== playerId || (gameId !== "all" && game.id !== gameId)) return false;
+      if (!event.spray || !playerIdMatches(playerIds, event.playerId) || (gameId !== "all" && game.id !== gameId)) return false;
       const rule = eventRules[event.result] || {};
       if (resultFilter === "hits") return Boolean(rule.hit);
       if (resultFilter === "outs") return Boolean(rule.out);
@@ -18114,8 +18215,8 @@ function bulkStatRosterPlayers(game) {
     ...Object.keys(hittingStatEditMap(game)),
     ...Object.keys(pitchingStatEditMap(game))
   ]);
-  return state.roster
-    .filter((player) => player?.active !== false || editedIds.has(player.id))
+  return rosterStatPlayerRows()
+    .filter((player) => player?.active !== false || [...playerIdAliasSet(player.id)].some((id) => editedIds.has(id)))
     .sort(comparePlayersForBulkStats);
 }
 
@@ -18173,7 +18274,7 @@ function bulkStatInputValue(value) {
 }
 
 function bulkHittingStatDraft(playerId, game) {
-  const existing = hittingStatEditMap(game)[playerId];
+  const existing = equivalentHittingStatEdit(game, playerId);
   return normalizeHittingStatEdit(existing || { playerId, gameId: game?.id || "", stats: {}, sprays: [] }, playerId, game);
 }
 
@@ -18205,7 +18306,7 @@ function renderBulkHittingPositionSelect(player, game, position = "") {
 }
 
 function bulkPitchingStatDraft(playerId, game) {
-  const existing = pitchingStatEditMap(game)[playerId];
+  const existing = equivalentPitchingStatEdit(game, playerId);
   return normalizePitchingStatEdit(existing || { playerId, gameId: game?.id || "", stats: {} }, playerId, game);
 }
 
@@ -18233,23 +18334,25 @@ const PLAYER_SPOTLIGHT_GAME_LIMIT = 3;
 const PLAYER_SPOTLIGHT_MIN_PA = 5;
 
 function gamesPlayedForPlayerInGames(playerId, games = []) {
+  const playerIds = playerIdAliasSet(playerId);
   return games.filter((game) => {
     const storedLineupIds = Array.isArray(game.lineupEntries)
       ? game.lineupEntries
         .filter((entry) => entry?.active !== false && entry?.playerId)
         .map((entry) => entry.playerId)
       : [];
-    return hasHittingStatEdit(game, playerId)
-      || offensiveEventsForStatsGame(game).some((event) => event.playerId === playerId)
-      || (gameUsesLineupForGamesPlayed(game) && storedLineupIds.includes(playerId));
+    return [...playerIds].some((id) => hasHittingStatEdit(game, id))
+      || offensiveEventsForStatsGame(game).some((event) => playerIdMatches(playerIds, event.playerId))
+      || (gameUsesLineupForGamesPlayed(game) && storedLineupIds.some((id) => playerIdMatches(playerIds, id)));
   }).length;
 }
 
 function statsForPlayerInGames(playerId, games = []) {
   const stats = emptyStats();
+  const playerIds = playerIdAliasSet(playerId);
   games
     .flatMap((game) => offensiveEventsForStatsGame(game))
-    .filter((event) => event.playerId === playerId)
+    .filter((event) => playerIdMatches(playerIds, event.playerId))
     .forEach((event) => applyEventToStats(stats, event));
   stats.runs = runsScoredForPlayerInGames(playerId, games);
   finishStats(stats);
@@ -18257,12 +18360,12 @@ function statsForPlayerInGames(playerId, games = []) {
 }
 
 function runsScoredForPlayerInGames(playerId, games = []) {
-  return runsScoredFromEvents(games.flatMap((game) => offensiveEventsForStatsGame(game)), playerId);
+  return runsScoredFromEvents(games.flatMap((game) => offensiveEventsForStatsGame(game)), playerIdAliasSet(playerId));
 }
 
 function recentHittingRowsForSpotlight(limit = PLAYER_SPOTLIGHT_GAME_LIMIT) {
   const recentGames = statsGamesWithDataForSeason(statsSeasonFilter).slice(0, limit);
-  return state.roster.map((player) => ({
+  return rosterStatPlayerRows().map((player) => ({
     player,
     hit: statsForPlayerInGames(player.id, recentGames),
     gp: gamesPlayedForPlayerInGames(player.id, recentGames),
@@ -18626,7 +18729,8 @@ function applyBulkHittingStatRows(game, rows) {
   const updatedAt = new Date().toISOString();
   bulkStatRosterPlayers(game).forEach((player) => {
     const raw = rows.get(player.id) || {};
-    const existing = edits[player.id] ? normalizeHittingStatEdit(edits[player.id], player.id, game) : null;
+    const existingRaw = equivalentHittingStatEdit(game, player.id);
+    const existing = existingRaw ? normalizeHittingStatEdit(existingRaw, player.id, game) : null;
     const stats = normalizeManualHittingStats(raw);
     const hasStats = manualHittingStatLineHasValues(stats);
     const sprays = existing?.sprays || [];
@@ -18635,12 +18739,14 @@ function applyBulkHittingStatRows(game, rows) {
     const hasPosition = Boolean(position);
     if (!bulkRowHasInput(raw) || (!hasStats && !hasPosition)) {
       if (existing && sprays.length) {
+        removeEquivalentHittingStatEdits(game, player.id, player.id);
         edits[player.id] = normalizeHittingStatEdit({ playerId: player.id, gameId: game.id, position, stats: {}, sprays, updatedAt }, player.id, game);
       } else if (existing) {
-        delete edits[player.id];
+        removeEquivalentHittingStatEdits(game, player.id);
       }
       return;
     }
+    removeEquivalentHittingStatEdits(game, player.id, player.id);
     edits[player.id] = normalizeHittingStatEdit({
       playerId: player.id,
       gameId: game.id,
@@ -18657,12 +18763,13 @@ function applyBulkPitchingStatRows(game, rows) {
   const updatedAt = new Date().toISOString();
   bulkStatRosterPlayers(game).forEach((player) => {
     const raw = rows.get(player.id) || {};
-    const existing = edits[player.id];
+    const existing = equivalentPitchingStatEdit(game, player.id);
     const stats = normalizeManualPitchingStats(raw);
     if (!bulkRowHasInput(raw) || !manualPitchingStatLineHasValues(stats)) {
-      if (existing) delete edits[player.id];
+      if (existing) removeEquivalentPitchingStatEdits(game, player.id);
       return;
     }
+    removeEquivalentPitchingStatEdits(game, player.id, player.id);
     edits[player.id] = normalizePitchingStatEdit({
       playerId: player.id,
       gameId: game.id,
@@ -18720,12 +18827,13 @@ function statEditGame() {
 
 function playerHasStatsInGame(playerId, game) {
   if (!playerId || !game) return false;
-  if (hasHittingStatEdit(game, playerId)) return true;
-  if (gameLineupPlayerIds(game).includes(playerId)) return true;
-  if (offensiveEventsForStatsGame(game).some((event) => event.playerId === playerId)) return true;
-  if (sprayEventsForGame(game).some(({ event }) => event.playerId === playerId)) return true;
+  const playerIds = playerIdAliasSet(playerId);
+  if ([...playerIds].some((id) => hasHittingStatEdit(game, id))) return true;
+  if (gameLineupPlayerIds(game).some((id) => playerIdMatches(playerIds, id))) return true;
+  if (offensiveEventsForStatsGame(game).some((event) => playerIdMatches(playerIds, event.playerId))) return true;
+  if (sprayEventsForGame(game).some(({ event }) => playerIdMatches(playerIds, event.playerId))) return true;
   return allOffensiveEvents(null, game.id).some((event) =>
-    (event.runnerAdvancements || []).some((advancement) => advancement?.runnerId === playerId)
+    (event.runnerAdvancements || []).some((advancement) => playerIdMatches(playerIds, advancement?.runnerId))
   );
 }
 
@@ -18775,7 +18883,7 @@ function renderStatEditGameSelectModal() {
   const games = hittingStatEditGames(player.id);
   els.statEditGameSelectList.innerHTML = games.length
     ? games.map((game) => {
-      const edited = hasHittingStatEdit(game, player.id);
+      const edited = Boolean(equivalentHittingStatEdit(game, player.id));
       const playerHasLine = playerHasStatsInGame(player.id, game);
       return `<button type="button" class="stat-edit-game-option${edited ? " is-edited" : ""}" data-stat-edit-game-id="${escapeHtml(game.id)}">
         <span class="stat-edit-game-date">${escapeHtml(formatGameDateWithYear(game.date))}</span>
@@ -18793,8 +18901,9 @@ function renderStatEditGameSelectModal() {
 }
 
 function gameSpraysForEditDraft(playerId, game) {
+  const playerIds = playerIdAliasSet(playerId);
   return sprayEventsForGame(game)
-    .filter(({ event }) => event.playerId === playerId && event.spray)
+    .filter(({ event }) => playerIdMatches(playerIds, event.playerId) && event.spray)
     .map(({ event }, index) => {
       const rule = eventRules[event.result] || {};
       return {
@@ -18810,10 +18919,11 @@ function gameSpraysForEditDraft(playerId, game) {
 }
 
 function hittingStatEditDraft(playerId, game) {
-  const existing = hittingStatEditMap(game)[playerId];
+  const existing = equivalentHittingStatEdit(game, playerId);
   if (existing) return normalizeHittingStatEdit(existing, playerId, game);
   const hit = statsForPlayer(playerId, statsSeasonFilter, game.id);
-  const gameEvents = offensiveEventsForStatsGame(game).filter((event) => event.playerId === playerId);
+  const playerIds = playerIdAliasSet(playerId);
+  const gameEvents = offensiveEventsForStatsGame(game).filter((event) => playerIdMatches(playerIds, event.playerId));
   const resultCount = (result) => gameEvents.filter((event) => event.result === result).length;
   return normalizeHittingStatEdit({
     playerId,
@@ -18866,7 +18976,7 @@ function openStatEditGameModal(playerId, gameId) {
     els.statEditGameMeta.textContent = `#${player.number || "--"} ${player.name} | ${formatGameDateWithYear(game.date)} | ${gameMatchupLabel(game)}`;
   }
   if (els.clearStatEditGameBtn) {
-    const hasSavedEdit = hasHittingStatEdit(game, playerId);
+    const hasSavedEdit = Boolean(equivalentHittingStatEdit(game, playerId));
     els.clearStatEditGameBtn.hidden = !hasSavedEdit;
     els.clearStatEditGameBtn.disabled = !hasSavedEdit;
   }
@@ -18997,6 +19107,7 @@ function saveStatEditGameStats(event) {
     sprays: statEditSprays,
     updatedAt: new Date().toISOString()
   }, player.id, game);
+  removeEquivalentHittingStatEdits(game, player.id, player.id);
   hittingStatEditMap(game)[player.id] = edit;
   markSharedGamesDirty(game.id);
   if (gameIsFinal(game)) {
@@ -19014,10 +19125,10 @@ function clearStatEditGameStats() {
   if (!requireAdminAccess("Admin sign-in required to clear game stats.")) return;
   const game = statEditGame();
   const player = statEditPlayer();
-  if (!game || !player || !hasHittingStatEdit(game, player.id)) return;
+  if (!game || !player || !equivalentHittingStatEdit(game, player.id)) return;
   const ok = window.confirm(`Clear saved manual stats for #${player.number || "--"} ${player.name} in ${gameMatchupLabel(game)}?`);
   if (!ok) return;
-  delete hittingStatEditMap(game)[player.id];
+  removeEquivalentHittingStatEdits(game, player.id);
   markSharedGamesDirty(game.id);
   if (gameIsFinal(game)) {
     markGameSyncPending(game);
@@ -19040,12 +19151,13 @@ function pitchingStatEditGame() {
 
 function playerHasPitchingStatsInGame(playerId, game) {
   if (!playerId || !game) return false;
-  if (hasPitchingStatEdit(game, playerId)) return true;
-  if (game?.pitcherId === playerId || game?.current?.pitcherId === playerId) return true;
-  if ((game?.lineupEntries || []).some((entry) => entry?.playerId === playerId && entry?.role === "P")) return true;
+  const playerIds = playerIdAliasSet(playerId);
+  if ([...playerIds].some((id) => hasPitchingStatEdit(game, id))) return true;
+  if (playerIdMatches(playerIds, game?.pitcherId) || playerIdMatches(playerIds, game?.current?.pitcherId)) return true;
+  if ((game?.lineupEntries || []).some((entry) => playerIdMatches(playerIds, entry?.playerId) && entry?.role === "P")) return true;
   return (game?.events || []).some((event) =>
     event.scope === "defense"
-      && (event.pitcherId === playerId || (event.pitches || []).some((pitch) => pitch.pitcherId === playerId))
+      && (playerIdMatches(playerIds, event.pitcherId) || (event.pitches || []).some((pitch) => playerIdMatches(playerIds, pitch.pitcherId)))
   );
 }
 
@@ -19067,18 +19179,21 @@ function pitchingStatEditGameLine(playerId, game) {
 }
 
 function pitchingDecisionForEdit(playerId, game) {
-  const existing = normalizePitchingStatEdit(pitchingStatEditMap(game)[playerId], playerId, game).stats.decision;
+  const playerIds = playerIdAliasSet(playerId);
+  const existing = [...playerIds]
+    .map((id) => normalizePitchingStatEdit(pitchingStatEditMap(game)[id], id, game).stats.decision)
+    .find(Boolean);
   if (existing) return existing;
   if (!gameIsFinal(game)) return "";
   const decision = lionsPitchingDecision(game);
-  if (decision.winPitcherId === playerId) return "win";
-  if (decision.lossPitcherId === playerId) return "loss";
-  if (decision.noDecisionPitcherIds.includes(playerId)) return "noDecision";
+  if (playerIdMatches(playerIds, decision.winPitcherId)) return "win";
+  if (playerIdMatches(playerIds, decision.lossPitcherId)) return "loss";
+  if (decision.noDecisionPitcherIds.some((id) => playerIdMatches(playerIds, id))) return "noDecision";
   return "";
 }
 
 function pitchingStatEditDraft(playerId, game) {
-  const existing = pitchingStatEditMap(game)[playerId];
+  const existing = equivalentPitchingStatEdit(game, playerId);
   if (existing) return normalizePitchingStatEdit(existing, playerId, game);
   const pit = pitcherStats(playerId, game.id, statsSeasonFilter);
   return normalizePitchingStatEdit({
@@ -19130,7 +19245,7 @@ function renderPitchingStatEditGameSelectModal() {
   const games = pitchingStatEditGames(player.id);
   els.pitchingStatEditGameSelectList.innerHTML = games.length
     ? games.map((game) => {
-      const edited = hasPitchingStatEdit(game, player.id);
+      const edited = Boolean(equivalentPitchingStatEdit(game, player.id));
       const playerHasLine = playerHasPitchingStatsInGame(player.id, game);
       return `<button type="button" class="stat-edit-game-option${edited ? " is-edited" : ""}" data-pitching-stat-edit-game-id="${escapeHtml(game.id)}">
         <span class="stat-edit-game-date">${escapeHtml(formatGameDateWithYear(game.date))}</span>
@@ -19209,6 +19324,7 @@ function savePitchingStatEditGameStats(event) {
     stats: collectPitchingStatEditInputs(),
     updatedAt: new Date().toISOString()
   }, player.id, game);
+  removeEquivalentPitchingStatEdits(game, player.id, player.id);
   pitchingStatEditMap(game)[player.id] = edit;
   markSharedGamesDirty(game.id);
   if (gameIsFinal(game)) {
@@ -19225,12 +19341,12 @@ function savePitchingStatEditGameStats(event) {
 function renderLeaders() {
   const focusedPlayerId = statsPlayerFocus !== "all" ? statsPlayerFocus : "";
   const minimumGames = statLeaderMinimumGames(statsSeasonFilter);
-  const hitterRows = state.roster
+  const hitterRows = rosterStatPlayerRows()
     .map((player) => ({ player, stats: statsForPlayer(player.id, statsSeasonFilter), gp: gamesPlayedForPlayer(player.id, statsSeasonFilter) }))
     .filter((row) => !focusedPlayerId || row.player.id === focusedPlayerId)
     .filter((row) => playerHasHittingLine({ player: row.player, hit: row.stats, gp: row.gp }))
     .filter((row) => statLeaderEligible(row, minimumGames));
-  const pitcherRows = state.roster
+  const pitcherRows = rosterStatPlayerRows()
     .map((player) => ({
       player,
       stats: pitcherStats(player.id, null, statsSeasonFilter),
@@ -19359,14 +19475,15 @@ function gameUsesLineupForGamesPlayed(game) {
 }
 
 function playerHasHittingGameLine(game, playerId) {
+  const playerIds = playerIdAliasSet(playerId);
   const storedLineupIds = Array.isArray(game?.lineupEntries)
     ? game.lineupEntries
       .filter((entry) => entry?.active !== false && entry?.playerId)
       .map((entry) => entry.playerId)
     : [];
-  return hasHittingStatEdit(game, playerId)
-    || offensiveEventsForStatsGame(game).some((event) => event.playerId === playerId)
-    || (gameUsesLineupForGamesPlayed(game) && storedLineupIds.includes(playerId));
+  return [...playerIds].some((id) => hasHittingStatEdit(game, id))
+    || offensiveEventsForStatsGame(game).some((event) => playerIdMatches(playerIds, event.playerId))
+    || (gameUsesLineupForGamesPlayed(game) && storedLineupIds.some((id) => playerIdMatches(playerIds, id)));
 }
 
 function gamesPlayedForPlayer(playerId, season = null) {
@@ -19398,12 +19515,13 @@ function statLeaderEligible(row, minimumGames = 0) {
 }
 
 function playerHasPitchingGameLine(game, playerId) {
-  if (hasPitchingStatEdit(game, playerId)) return true;
+  const playerIds = playerIdAliasSet(playerId);
+  if ([...playerIds].some((id) => hasPitchingStatEdit(game, id))) return true;
   return pitchingEventsForStatsGame(game).some((event) =>
     event.scope === "defense"
       && (
-        event.pitcherId === playerId
-        || (event.pitches || []).some((pitch) => pitch.pitcherId === playerId)
+        playerIdMatches(playerIds, event.pitcherId)
+        || (event.pitches || []).some((pitch) => playerIdMatches(playerIds, pitch.pitcherId))
       )
   );
 }
@@ -20233,6 +20351,18 @@ function hasHittingStatEdit(game, playerId) {
   return Boolean(game && playerId && Object.prototype.hasOwnProperty.call(hittingStatEditMap(game), playerId));
 }
 
+function equivalentHittingStatEdit(game, playerId) {
+  const edits = hittingStatEditMap(game);
+  return [...playerIdAliasSet(playerId)].map((id) => edits[id]).find(Boolean) || null;
+}
+
+function removeEquivalentHittingStatEdits(game, playerId, keepPlayerId = "") {
+  const edits = hittingStatEditMap(game);
+  playerIdAliasSet(playerId).forEach((id) => {
+    if (id !== keepPlayerId) delete edits[id];
+  });
+}
+
 function pitchingStatEditMap(game) {
   if (!game) return {};
   if (!game.pitchingStatEdits || typeof game.pitchingStatEdits !== "object" || Array.isArray(game.pitchingStatEdits)) {
@@ -20243,6 +20373,18 @@ function pitchingStatEditMap(game) {
 
 function hasPitchingStatEdit(game, playerId) {
   return Boolean(game && playerId && Object.prototype.hasOwnProperty.call(pitchingStatEditMap(game), playerId));
+}
+
+function equivalentPitchingStatEdit(game, playerId) {
+  const edits = pitchingStatEditMap(game);
+  return [...playerIdAliasSet(playerId)].map((id) => edits[id]).find(Boolean) || null;
+}
+
+function removeEquivalentPitchingStatEdits(game, playerId, keepPlayerId = "") {
+  const edits = pitchingStatEditMap(game);
+  playerIdAliasSet(playerId).forEach((id) => {
+    if (id !== keepPlayerId) delete edits[id];
+  });
 }
 
 function manualStatValue(input = {}, ...keys) {
@@ -20649,6 +20791,9 @@ function pitchingEventsForStatsGame(game) {
   if (!game) return [];
   const edits = pitchingStatEditMap(game);
   const editedPlayerIds = new Set(Object.keys(edits));
+  Object.keys(edits).forEach((playerId) => {
+    playerIdAliasSet(playerId).forEach((aliasId) => editedPlayerIds.add(aliasId));
+  });
   const baseEvents = (Array.isArray(game.events) ? game.events : [])
     .filter((event) => {
       if (event.scope !== "defense") return false;
@@ -20668,6 +20813,9 @@ function pitchingEventEarnedRuns(event, earnedRunMap = new Map()) {
 function offensiveEventsForStatsGame(game) {
   const edits = hittingStatEditMap(game);
   const editedPlayerIds = new Set(Object.keys(edits));
+  Object.keys(edits).forEach((playerId) => {
+    playerIdAliasSet(playerId).forEach((aliasId) => editedPlayerIds.add(aliasId));
+  });
   const baseEvents = (Array.isArray(game?.events) ? game.events : [])
     .filter((event) => {
       if (event.scope === "defense") return false;
@@ -20683,6 +20831,9 @@ function sprayEventsForGame(game) {
   if (!game) return [];
   const edits = hittingStatEditMap(game);
   const editedPlayerIds = new Set(Object.keys(edits));
+  Object.keys(edits).forEach((playerId) => {
+    playerIdAliasSet(playerId).forEach((aliasId) => editedPlayerIds.add(aliasId));
+  });
   const baseEvents = (Array.isArray(game.events) ? game.events : [])
     .map((event) => ({ event, game }))
     .filter(({ event }) => event.spray && event.scope !== "defense" && !editedPlayerIds.has(event.playerId));
@@ -20700,9 +20851,10 @@ function allOffensiveEvents(season = null, gameId = null) {
 function statsForPlayer(playerId, season = null, gameId = null) {
   const stats = emptyStats();
   const events = allOffensiveEvents(season, gameId);
-  events.filter((event) => event.playerId === playerId)
+  const playerIds = playerIdAliasSet(playerId);
+  events.filter((event) => playerIdMatches(playerIds, event.playerId))
     .forEach((event) => applyEventToStats(stats, event));
-  stats.runs = runsScoredFromEvents(events, playerId);
+  stats.runs = runsScoredFromEvents(events, playerIds);
   finishStats(stats);
   return stats;
 }
@@ -20719,7 +20871,7 @@ function teamStats(season = null) {
 function runsScoredFromEvents(events = [], playerId = null) {
   return events.reduce((total, event) => {
     const scoredOnAdvancement = (event.runnerAdvancements || []).filter((advancement) =>
-      (!playerId || advancement?.runnerId === playerId)
+      (!playerId || playerIdMatches(playerId, advancement?.runnerId))
         && advancement.to === "home"
         && !advancement.out
         && !advancement.remove
@@ -20729,7 +20881,7 @@ function runsScoredFromEvents(events = [], playerId = null) {
 }
 
 function runsScoredForPlayer(playerId, season = null, gameId = null) {
-  return runsScoredFromEvents(allOffensiveEvents(season, gameId), playerId);
+  return runsScoredFromEvents(allOffensiveEvents(season, gameId), playerIdAliasSet(playerId));
 }
 
 function emptyStats() {

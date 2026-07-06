@@ -68,7 +68,8 @@ assert.match(appJs, /mobileHitPlayerFilter = desktopHitPlayerFilter/, "Desktop h
 assert.match(appJs, /data-tooltip="Open Player Stats"/, "Player stat links should expose the requested hover label");
 assert.match(appJs, /openStatsPlayerGameLog\(button\.dataset\.openPlayerStats, button\.dataset\.playerStatsMode\)/, "Player stat links should use the shared filter action");
 const openPlayerLogBody = functionBody(appJs, "openStatsPlayerGameLog");
-assert.match(openPlayerLogBody, /statsPlayerFocus = playerId/, "Opening a player from the stats sheet should use focused-player mode");
+assert.match(openPlayerLogBody, /const player = canonicalRosterPlayerForId\(playerId\)/, "Opening a player from the stats sheet should resolve recreated players to one roster record");
+assert.match(openPlayerLogBody, /statsPlayerFocus = player\.id/, "Opening a player from the stats sheet should use focused-player mode");
 assert.match(openPlayerLogBody, /renderStatsSprayControls\(\)/, "Focused player stats should lock and refresh the player's spray chart");
 const switchViewBody = functionBody(appJs, "switchView");
 assert.match(switchViewBody, /previousView === "stats" && nextView !== "stats"[\s\S]*resetStatsViewFilters\(\)/, "Leaving Stats should clear player and game filters");

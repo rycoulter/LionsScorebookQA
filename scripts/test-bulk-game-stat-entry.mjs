@@ -69,7 +69,7 @@ mustMatch(applyHittingBody, /normalizeGameStatPosition\(rawPosition\)/, "Bulk hi
 mustMatch(applyHittingBody, /position,/, "Bulk hitting save should persist the selected game position");
 mustMatch(applyHittingBody, /const sprays = existing\?\.sprays \|\| \[\]/, "Bulk hitting save should preserve existing spray dots");
 mustMatch(applyHittingBody, /hittingStatEditMap\(game\)/, "Bulk hitting save should stay on the same storage path as individual edits");
-mustMatch(applyHittingBody, /delete edits\[player\.id\]/, "Blank bulk hitting rows should clear existing stat lines when safe");
+mustMatch(applyHittingBody, /removeEquivalentHittingStatEdits\(game, player\.id\)/, "Blank bulk hitting rows should clear existing equivalent stat lines when safe");
 
 const openSprayBody = functionBody(appJs, "openBulkStatSprayEditor");
 mustMatch(openSprayBody, /persistBulkHittingDraftForSpray\(game\)/, "Opening spray from bulk should save the current hitting draft first");
@@ -84,6 +84,7 @@ const applyPitchingBody = functionBody(appJs, "applyBulkPitchingStatRows");
 mustMatch(applyPitchingBody, /const edits = pitchingStatEditMap\(game\)/, "Bulk pitching save should use game-level pitching edit storage");
 mustMatch(applyPitchingBody, /normalizeManualPitchingStats\(raw\)/, "Bulk pitching save should normalize raw row values");
 mustMatch(applyPitchingBody, /manualPitchingStatLineHasValues\(stats\)/, "Blank pitching rows should not create empty pitching edits");
+mustMatch(applyPitchingBody, /removeEquivalentPitchingStatEdits\(game, player\.id\)/, "Blank bulk pitching rows should clear existing equivalent stat lines when safe");
 
 const saveBody = functionBody(appJs, "saveBulkStatEditGameStats");
 mustMatch(saveBody, /applyBulkPitchingStatRows\(game, rows\)/, "Bulk save should handle pitching mode");

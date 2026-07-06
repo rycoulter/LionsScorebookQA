@@ -39,7 +39,7 @@ assert.match(renderSeasonStatsBody, /mobileStatPill\("R", hit\.runs, mobileStatI
 const emptyStatsBody = functionBody(appJs, "emptyStats");
 assert.match(emptyStatsBody, /runs: 0/, "Hitting stat objects should initialize runs so the table never renders undefined");
 const statsForPlayerBody = functionBody(appJs, "statsForPlayer");
-assert.match(statsForPlayerBody, /stats\.runs = runsScoredFromEvents\(events, playerId\)/, "Player hitting stats should include runner-attributed runs scored");
+assert.match(statsForPlayerBody, /stats\.runs = runsScoredFromEvents\(events, playerIds\)/, "Player hitting stats should include runner-attributed runs scored");
 const teamStatsBody = functionBody(appJs, "teamStats");
 assert.match(teamStatsBody, /stats\.runs = runsScoredFromEvents\(events\)/, "Team offensive profile should include total runs scored");
 
