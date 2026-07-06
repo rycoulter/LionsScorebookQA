@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.117";
+const APP_VERSION = "v.1.1.118";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -807,6 +807,7 @@ let scheduleSeasonFilter = String(currentLeagueSeason());
 let scheduleCalendarMonth = todayValue().slice(0, 7);
 let archiveSeasonFilter = String(currentLeagueSeason());
 let statsSeasonFilter = String(currentLeagueSeason());
+let statsGameTypeFilter = "all";
 let selectedNewsArticleId = "";
 let newsLayoutMode = "latest";
 let statsPlayerFocus = "all";
@@ -1121,6 +1122,7 @@ const els = {
   gameDateInput: document.getElementById("gameDateInput"),
   gameTimeInput: document.getElementById("gameTimeInput"),
   gameLocationInput: document.getElementById("gameLocationInput"),
+  gameTypeInput: document.getElementById("gameTypeInput"),
   gameNotesInput: document.getElementById("gameNotesInput"),
   batterSelect: document.getElementById("batterSelect"),
   resultSelect: document.getElementById("resultSelect"),
@@ -1289,6 +1291,7 @@ const els = {
   statsPitchingMeta: document.getElementById("statsPitchingMeta"),
   statsHittingExportBtn: document.getElementById("statsHittingExportBtn"),
   statsPitchingExportBtn: document.getElementById("statsPitchingExportBtn"),
+  statsGameTypeSelect: document.getElementById("statsGameTypeSelect"),
   desktopHitPlayerSelect: document.getElementById("desktopHitPlayerSelect"),
   desktopPitPlayerSelect: document.getElementById("desktopPitPlayerSelect"),
   leadersGrid: document.getElementById("leadersGrid"),
@@ -1314,6 +1317,7 @@ const els = {
   editDateInput: document.getElementById("editDateInput"),
   editTimeInput: document.getElementById("editTimeInput"),
   editLocationInput: document.getElementById("editLocationInput"),
+  editGameTypeInput: document.getElementById("editGameTypeInput"),
   editNotesInput: document.getElementById("editNotesInput"),
   saveGameEditBtn: document.getElementById("saveGameEditBtn"),
   closeGameEditBtn: document.getElementById("closeGameEditBtn"),
@@ -2201,6 +2205,35 @@ function selectedGameDate(input) {
   return input?.value || todayValue();
 }
 
+function normalizeGameType(value = "regular") {
+  const type = String(value || "").trim().toLowerCase();
+  if (["postseason", "playoff", "playoffs"].includes(type)) return "postseason";
+  return "regular";
+}
+
+function gameIsPostseason(game) {
+  return normalizeGameType(game?.gameType || (game?.isPlayoff ? "postseason" : "regular")) === "postseason";
+}
+
+function gameTypeLabel(game) {
+  return gameIsPostseason(game) ? "Postseason" : "Regular Season";
+}
+
+function gameTypePill(game) {
+  return gameIsPostseason(game) ? `<span class="game-type-pill">Postseason</span>` : "";
+}
+
+function normalizeStatsGameTypeFilter(value = "all") {
+  const type = String(value || "").trim().toLowerCase();
+  return ["all", "regular", "postseason"].includes(type) ? type : "all";
+}
+
+function gameMatchesStatsGameType(game, filter = "all") {
+  const normalizedFilter = normalizeStatsGameTypeFilter(filter);
+  if (normalizedFilter === "all") return true;
+  return normalizedFilter === (gameIsPostseason(game) ? "postseason" : "regular");
+}
+
 function createGame(options = {}) {
   const config = typeof options === "string" ? { opponent: options } : options;
   const opponent = config.opponent || "Wildcats";
@@ -2219,6 +2252,7 @@ function createGame(options = {}) {
     location: location.name,
     locationAddress: location.address,
     notes: config.notes || "",
+    gameType: normalizeGameType(config.gameType || (config.isPlayoff ? "postseason" : "regular")),
     status: config.status || "active",
     lionsSide: gameLionsSide,
     teams: teamsForGame(opponent, gameLionsSide),
@@ -2625,6 +2659,7 @@ function normalizeGame(game, nextState = state) {
     location: location.name,
     locationAddress: location.address,
     notes: game.notes || "",
+    gameType: normalizeGameType(game.gameType || (game.isPlayoff ? "postseason" : "regular")),
     status: game.quickScored === true ? "completed" : game.status || "active",
     lionsSide: normalizedLionsSide,
     teams: teamsForGame(game.opponent || game.teams?.home?.name || "Opponent", normalizedLionsSide),
@@ -4858,6 +4893,7 @@ function bindEvents() {
   els.saveGameEditBtn.addEventListener("click", saveGameEdits);
   els.editOpponentInput?.addEventListener("input", renderGameEditorPreview);
   els.editLionsSideInput?.addEventListener("change", renderGameEditorPreview);
+  els.editGameTypeInput?.addEventListener("change", renderGameEditorPreview);
 
   els.lineupBuilderRows?.addEventListener("change", (event) => {
     const row = event.target.closest("[data-lineup-entry]");
@@ -5016,12 +5052,12 @@ function bindEvents() {
     });
   });
 
-  [els.opponentInput, els.gameLionsSideInput, els.gameDateInput, els.gameTimeInput, els.gameLocationInput, els.gameNotesInput]
+  [els.opponentInput, els.gameLionsSideInput, els.gameDateInput, els.gameTimeInput, els.gameLocationInput, els.gameTypeInput, els.gameNotesInput]
     .filter(Boolean)
     .forEach((input) => {
       ["input", "change"].forEach((eventName) => input.addEventListener(eventName, () => {
         input.dataset.dirty = "true";
-        if (input === els.opponentInput) renderGameSetupPreview();
+        if ([els.opponentInput, els.gameLionsSideInput, els.gameTypeInput].includes(input)) renderGameSetupPreview();
       }));
     });
 
@@ -5249,6 +5285,14 @@ window.addEventListener("pageshow", () => {
   });
   els.statsSeasonSelect?.addEventListener("change", (event) => {
     statsSeasonFilter = normalizeStatsSeasonFilter(event.target.value);
+    renderSeasonStats();
+    renderLeaders();
+    renderStatsSprayControls();
+  });
+  els.statsGameTypeSelect?.addEventListener("change", (event) => {
+    statsGameTypeFilter = normalizeStatsGameTypeFilter(event.target.value);
+    mobileHitGameFilter = "all";
+    mobilePitGameFilter = "all";
     renderSeasonStats();
     renderLeaders();
     renderStatsSprayControls();
@@ -7806,12 +7850,13 @@ async function scheduleGame() {
   }
   const opponent = els.opponentInput.value.trim() || "Opponent";
   const date = selectedGameDate(els.gameDateInput);
-  const game = makeUniqueGame({ opponent, lionsSide: els.gameLionsSideInput.value || "home" });
+  const game = makeUniqueGame({ opponent, lionsSide: els.gameLionsSideInput.value || "home", gameType: els.gameTypeInput?.value || "regular" });
   const location = selectedFieldLocation(els.gameLocationInput);
   game.date = date;
   game.time = els.gameTimeInput.value || "";
   game.location = location.name;
   game.locationAddress = location.address;
+  game.gameType = normalizeGameType(els.gameTypeInput?.value || "regular");
   game.notes = "";
   game.status = "scheduled";
   syncGameTeams(game, game.lionsSide);
@@ -7850,7 +7895,8 @@ function renderGameSetupPreview() {
   const side = normalizeLionsSide(els.gameLionsSideInput?.value || "home");
   const away = side === "away" ? "Lions" : opponent;
   const home = side === "home" ? "Lions" : opponent;
-  els.gameSetupTeamIndicator.innerHTML = `<span>Away: ${escapeHtml(away)}</span><strong>Home: ${escapeHtml(home)}</strong>`;
+  const gameType = normalizeGameType(els.gameTypeInput?.value || "regular");
+  els.gameSetupTeamIndicator.innerHTML = `<span>Away: ${escapeHtml(away)}</span><strong>Home: ${escapeHtml(home)}</strong>${gameType === "postseason" ? gameTypePill({ gameType }) : ""}`;
 }
 
 function resetGameCreationForm() {
@@ -7860,8 +7906,9 @@ function resetGameCreationForm() {
   configureGameDateInputs();
   els.gameTimeInput.value = "";
   els.gameLocationInput.value = "";
+  if (els.gameTypeInput) els.gameTypeInput.value = "regular";
   if (els.gameNotesInput) els.gameNotesInput.value = "";
-  [els.opponentInput, els.gameLionsSideInput, els.gameDateInput, els.gameTimeInput, els.gameLocationInput, els.gameNotesInput]
+  [els.opponentInput, els.gameLionsSideInput, els.gameDateInput, els.gameTimeInput, els.gameLocationInput, els.gameTypeInput, els.gameNotesInput]
     .filter(Boolean)
     .forEach((input) => {
       delete input.dataset.dirty;
@@ -12397,7 +12444,7 @@ function lionsEarnedRunsByEvent(game) {
   return earnedRuns;
 }
 
-function pitcherStats(playerId, gameId = null, season = null) {
+function pitcherStats(playerId, gameId = null, season = null, gameTypeFilter = "all") {
   const playerIds = playerIdAliasSet(playerId);
   const stats = {
     wins: 0,
@@ -12417,7 +12464,7 @@ function pitcherStats(playerId, gameId = null, season = null) {
     runs: 0,
     earnedRuns: 0
   };
-  const games = statsGamesForSeason(season).filter((game) => !gameId || game.id === gameId);
+  const games = statsGamesForSeason(season, gameId ? "all" : gameTypeFilter).filter((game) => !gameId || game.id === gameId);
   const earnedRunMaps = new Map(games.map((game) => [game.id, lionsEarnedRunsByEvent(game)]));
   games
     .filter(gameIsFinal)
@@ -13844,6 +13891,7 @@ function renderScheduleFeaturedGameCard(game) {
   const quickScoreAction = renderQuickScoreAction(game, "schedule-quick-score-feature");
   const heroMeta = [
     renderScheduleMetaItem("calendar", `${dateLabel}${timeLabel ? ` | ${timeLabel}` : ""}`),
+    gameTypePill(game),
     renderScheduleMetaItem("location", location || "Location TBD"),
     renderScheduleWeatherItem(game)
   ].filter(Boolean).join("");
@@ -13949,24 +13997,38 @@ function populateStatsSeasonSelect() {
   syncSeasonChipLabel(els.statsSeasonSelect);
 }
 
-function statsGamesForSeason(season = null) {
+function populateStatsGameTypeSelect() {
+  if (!els.statsGameTypeSelect) return;
+  statsGameTypeFilter = normalizeStatsGameTypeFilter(statsGameTypeFilter);
+  els.statsGameTypeSelect.innerHTML = [
+    `<option value="all">All Games</option>`,
+    `<option value="regular">Regular Season</option>`,
+    `<option value="postseason">Postseason</option>`
+  ].join("");
+  els.statsGameTypeSelect.value = statsGameTypeFilter;
+  syncSeasonChipLabel(els.statsGameTypeSelect);
+}
+
+function statsGamesForSeason(season = null, gameTypeFilter = "all") {
   const activeSeason = season ? normalizeStatsSeasonFilter(season) : "";
+  const activeGameType = normalizeStatsGameTypeFilter(gameTypeFilter);
   return state.games.filter((game) => {
     if (!game || game.status === "scheduled") return false;
     if (activeSeason && !String(game?.date || "").startsWith(`${activeSeason}-`)) return false;
+    if (!gameMatchesStatsGameType(game, activeGameType)) return false;
     return true;
   });
 }
 
 function getSeasonHittingRows() {
   return rosterStatPlayerRows()
-    .map((player) => ({ player, hit: statsForPlayer(player.id, statsSeasonFilter), gp: gamesPlayedForPlayer(player.id, statsSeasonFilter) }))
+    .map((player) => ({ player, hit: statsForPlayer(player.id, statsSeasonFilter, null, statsGameTypeFilter), gp: gamesPlayedForPlayer(player.id, statsSeasonFilter, statsGameTypeFilter) }))
     .sort((a, b) => compareHittingRows(a, b));
 }
 
 function getSeasonPitchingRows() {
   return rosterStatPlayerRows()
-    .map((player) => ({ player, pit: pitcherStats(player.id, null, statsSeasonFilter) }))
+    .map((player) => ({ player, pit: pitcherStats(player.id, null, statsSeasonFilter, statsGameTypeFilter) }))
     .filter(({ player, pit }) => hasPitchingStats(pit) || playerHasPosition(player, "P"))
     .sort((a, b) => comparePitchingRows(a, b));
 }
@@ -14007,7 +14069,7 @@ function renderDesktopStatsFilters(hittingRows, pitchingRows) {
 }
 
 function statsGamesWithDataForSeason(season = statsSeasonFilter) {
-  return statsGamesForSeason(season)
+  return statsGamesForSeason(season, statsGameTypeFilter)
     .filter((game) => (Array.isArray(game?.events) && game.events.length) || Object.keys(hittingStatEditMap(game)).length)
     .sort((a, b) => String(b?.date || "").localeCompare(String(a?.date || "")));
 }
@@ -14020,8 +14082,8 @@ function getMobileHittingRows(playerId = "all", gameId = "all") {
   return rosterStatPlayerRows()
     .map((player) => ({
       player,
-      hit: statsForPlayer(player.id, statsSeasonFilter, gameId === "all" ? null : gameId),
-      gp: gamesPlayedForPlayer(player.id, statsSeasonFilter)
+      hit: statsForPlayer(player.id, statsSeasonFilter, gameId === "all" ? null : gameId, gameId === "all" ? statsGameTypeFilter : "all"),
+      gp: gamesPlayedForPlayer(player.id, statsSeasonFilter, statsGameTypeFilter)
     }))
     .filter(({ player, hit, gp }) => (playerId === "all" || player.id === playerId) && (hit.pa > 0 || gp > 0))
     .sort((a, b) => compareHittingRows(a, b));
@@ -14031,8 +14093,8 @@ function getMobilePitchingRows(playerId = "all", gameId = "all") {
   return rosterStatPlayerRows()
     .map((player) => ({
       player,
-      pit: pitcherStats(player.id, gameId === "all" ? null : gameId, statsSeasonFilter),
-      gp: gameId === "all" ? gamesPitchedForPlayer(player.id, statsSeasonFilter) : 0
+      pit: pitcherStats(player.id, gameId === "all" ? null : gameId, statsSeasonFilter, gameId === "all" ? statsGameTypeFilter : "all"),
+      gp: gameId === "all" ? gamesPitchedForPlayer(player.id, statsSeasonFilter, statsGameTypeFilter) : 0
     }))
     .filter(({ player, pit }) => (playerId === "all" || player.id === playerId) && (hasPitchingStats(pit) || playerHasPosition(player, "P")))
     .sort((a, b) => comparePitchingRows(a, b));
@@ -14113,7 +14175,11 @@ function renderMobileStatsFilters() {
 }
 
 function statsSeasonLabel(season = statsSeasonFilter) {
-  return `${normalizeStatsSeasonFilter(season)} Season`;
+  const normalizedSeason = normalizeStatsSeasonFilter(season);
+  const gameType = normalizeStatsGameTypeFilter(statsGameTypeFilter);
+  if (gameType === "postseason") return `${normalizedSeason} Postseason`;
+  if (gameType === "regular") return `${normalizedSeason} Regular Season`;
+  return `${normalizedSeason} Season`;
 }
 
 function playerDisplayName(playerId) {
@@ -14128,6 +14194,7 @@ function statsFocusedPlayerId() {
 function resetStatsViewFilters() {
   statsPlayerFocus = "all";
   statsMode = "hitting";
+  statsGameTypeFilter = "all";
   desktopHitPlayerFilter = "all";
   desktopPitPlayerFilter = "all";
   mobileHitPlayerFilter = "all";
@@ -14252,7 +14319,9 @@ function exportStatsTable(mode) {
   const csv = [headers, ...dataRows]
     .map((row) => row.map((value) => `"${String(value ?? "").replace(/"/g, '""')}"`).join(","))
     .join("\r\n");
-  const filename = `oakmont-lions-${normalizeStatsSeasonFilter(statsSeasonFilter)}-${mode}-stats.csv`;
+  const split = normalizeStatsGameTypeFilter(statsGameTypeFilter);
+  const splitSuffix = split === "all" ? "" : `-${split}`;
+  const filename = `oakmont-lions-${normalizeStatsSeasonFilter(statsSeasonFilter)}${splitSuffix}-${mode}-stats.csv`;
   downloadTextFile(filename, csv, "text/csv;charset=utf-8");
 }
 
@@ -14260,7 +14329,7 @@ function totalTeamRuns(scopedGames = []) {
   return scopedGames.reduce((total, game) => total + (Number(game?.score?.lions) || 0), 0);
 }
 
-function teamPitchingStats(season = null) {
+function teamPitchingStats(season = null, gameTypeFilter = "all") {
   const stats = {
     wins: 0,
     losses: 0,
@@ -14279,7 +14348,7 @@ function teamPitchingStats(season = null) {
     runs: 0,
     earnedRuns: 0
   };
-  const games = statsGamesForSeason(season);
+  const games = statsGamesForSeason(season, gameTypeFilter);
   const earnedRunMaps = new Map(games.map((game) => [game.id, lionsEarnedRunsByEvent(game)]));
   games
     .filter(gameIsFinal)
@@ -14496,6 +14565,7 @@ function renderScheduleUpcomingRow(game) {
       <h4>${escapeHtml(gameMatchupLabel(game))}</h4>
       <div class="schedule-upcoming-row-meta">
         ${renderScheduleMetaItem("calendar", `${dateLabel}${timeLabel ? ` | ${timeLabel}` : ""}`)}
+        ${gameTypePill(game)}
         ${renderScheduleMetaItem("location", gameLocationLabel(game) || "Location TBD")}
         ${renderScheduleWeatherInlineItem(game)}
       </div>
@@ -14519,7 +14589,7 @@ function renderScheduleResultRow(game) {
       <div class="schedule-result-headline">
         <span class="schedule-result-matchup-label">${escapeHtml(scheduleCompletedMatchupLabel(game))}</span>
       </div>
-      <div class="schedule-result-meta">Final | ${escapeHtml(formatShortMonthDay(game.date))} | ${escapeHtml(gameLocationLabel(game) || "Location TBD")}</div>
+      <div class="schedule-result-meta">Final | ${escapeHtml(formatShortMonthDay(game.date))} | ${escapeHtml(gameLocationLabel(game) || "Location TBD")}${gameIsPostseason(game) ? " | Postseason" : ""}</div>
     </div>
     <div class="schedule-result-score-wrap">
       <span class="schedule-result-outcome schedule-result-outcome-${escapeHtml(result.toLowerCase())}">${escapeHtml(result)}</span>
@@ -15251,6 +15321,7 @@ function renderScheduleGameCard(game, activeId = "") {
     <img class="game-card-matchup" src="${escapeHtml(matchupImage)}" alt="${escapeHtml(gameMatchupLabel(game))} matchup">
     <div>
       <span class="game-status-tag">${escapeHtml(statusTag)}</span>
+      ${gameTypePill(game)}
       <span class="player-meta">${escapeHtml(gameTeamMeta(game))}</span>
       <h3>${escapeHtml(score)}</h3>
       <span class="player-meta">${escapeHtml(game.date || "No date")} ${game.time ? `| ${escapeHtml(game.time)}` : ""} ${location ? `| ${escapeHtml(location)}` : ""}</span>
@@ -15325,6 +15396,7 @@ function openGameEditor(gameId) {
   configureGameDateInputs();
   els.editTimeInput.value = game.time || "";
   setSelectValueWithLegacy(els.editLocationInput, gameLocationName(game));
+  if (els.editGameTypeInput) els.editGameTypeInput.value = normalizeGameType(game.gameType || (game.isPlayoff ? "postseason" : "regular"));
   els.editNotesInput.value = game.notes || "";
   renderGameEditor();
 }
@@ -15345,7 +15417,8 @@ function renderGameEditorPreview() {
   const side = normalizeLionsSide(els.editLionsSideInput.value || lionsSide(game));
   const away = side === "away" ? "Lions" : opponent;
   const home = side === "home" ? "Lions" : opponent;
-  els.editTeamIndicator.innerHTML = `<span>Away: ${escapeHtml(away)}</span><strong>Home: ${escapeHtml(home)}</strong>`;
+  const gameType = normalizeGameType(els.editGameTypeInput?.value || game.gameType || "regular");
+  els.editTeamIndicator.innerHTML = `<span>Away: ${escapeHtml(away)}</span><strong>Home: ${escapeHtml(home)}</strong>${gameType === "postseason" ? gameTypePill({ gameType }) : ""}`;
 }
 
 async function saveGameEdits() {
@@ -15363,11 +15436,12 @@ async function saveGameEdits() {
   syncGameTeams(game, els.editLionsSideInput.value || lionsSide(game));
   game.date = date;
   game.time = els.editTimeInput.value || "";
-    game.location = location.name;
-    game.locationAddress = location.address;
-    game.notes = els.editNotesInput.value.trim();
-    markSharedGamesDirty(game.id);
-    saveState();
+  game.location = location.name;
+  game.locationAddress = location.address;
+  game.gameType = normalizeGameType(els.editGameTypeInput?.value || "regular");
+  game.notes = els.editNotesInput.value.trim();
+  markSharedGamesDirty(game.id);
+  saveState();
   render();
   requestSharedSnapshotSync("save-game-edits");
 }
@@ -17701,7 +17775,7 @@ function statsGameLogOpponent(game) {
 function statsPlayerGameLogRows(playerId, mode) {
   if (!playerId) return [];
   const pitching = mode === "pitching";
-  return statsGamesForSeason(statsSeasonFilter)
+  return statsGamesForSeason(statsSeasonFilter, statsGameTypeFilter)
     .filter((game) => pitching ? playerHasPitchingGameLine(game, playerId) : playerHasHittingGameLine(game, playerId))
     .sort(sortGamesNewestFirst)
     .map((game) => ({
@@ -17917,6 +17991,7 @@ function renderPitchingPlayerGameLog(playerId) {
 
 function renderSeasonStats() {
   populateStatsSeasonSelect();
+  populateStatsGameTypeSelect();
   applyStatsPageMode();
   const admin = isAdminMode();
   syncStatsAdminVisibility(admin);
@@ -17933,7 +18008,7 @@ function renderSeasonStats() {
   const recentHittingRows = recentHittingRowsForSpotlight();
   renderPlayerSpotlight(recentHittingRows);
   renderHotBats(recentHittingRows);
-  renderStatsProfiles(teamStats(statsSeasonFilter), teamPitchingStats(statsSeasonFilter));
+  renderStatsProfiles(teamStats(statsSeasonFilter, statsGameTypeFilter), teamPitchingStats(statsSeasonFilter, statsGameTypeFilter));
   renderStatsSprayDashboard();
   renderDesktopStatsFilters(allHittingRows, allPitchingRows);
   const hittingPlayerFilter = focusedPlayerId || (desktopHitPlayerFilter !== "all" ? desktopHitPlayerFilter : "");
@@ -18017,7 +18092,7 @@ function renderSeasonStats() {
   renderMobileStatsFilters();
   const mobileHittingRows = getMobileHittingRows(mobileHitPlayerFilter, mobileHitGameFilter);
   const mobileLeaderMinimumGames = mobileHitGameFilter === "all"
-    ? statLeaderMinimumGames(statsSeasonFilter)
+    ? statLeaderMinimumGames(statsSeasonFilter, statsGameTypeFilter)
     : 0;
   const mobileHittingLeaders = mobileHittingLeaderMap(
     getMobileHittingRows("all", mobileHitGameFilter),
@@ -18050,7 +18125,7 @@ function renderSeasonStats() {
   }
   const mobilePitchingRows = getMobilePitchingRows(mobilePitPlayerFilter, mobilePitGameFilter);
   const mobilePitchingLeaderMinimumGames = mobilePitGameFilter === "all"
-    ? statLeaderMinimumGames(statsSeasonFilter)
+    ? statLeaderMinimumGames(statsSeasonFilter, statsGameTypeFilter)
     : 0;
   const mobilePitchingLeaders = mobilePitchingLeaderMap(
     getMobilePitchingRows("all", mobilePitGameFilter),
@@ -18083,9 +18158,9 @@ function renderSeasonStats() {
 }
 function renderStatsSnapshot() {
   if (!els.statsSnapshotGrid) return;
-  const hitting = teamStats(statsSeasonFilter);
-  const pitching = teamPitchingStats(statsSeasonFilter);
-  const scopedGames = statsGamesForSeason(statsSeasonFilter);
+  const hitting = teamStats(statsSeasonFilter, statsGameTypeFilter);
+  const pitching = teamPitchingStats(statsSeasonFilter, statsGameTypeFilter);
+  const scopedGames = statsGamesForSeason(statsSeasonFilter, statsGameTypeFilter);
   const battingMetrics = [
     { label: "AVG", value: formatRate(hitting.avg), detail: "Team Average", tone: "gold" },
     { label: "OPS", value: formatRate(hitting.ops), detail: "On Base + Slugging", tone: "gold" },
@@ -18165,7 +18240,7 @@ function renderStatsSprayControls() {
   const selectedGame = els.statsSprayGameSelect.value || "all";
   els.statsSprayGameSelect.innerHTML = [
     `<option value="all">All games</option>`,
-    ...statsGamesForSeason(statsSeasonFilter)
+    ...statsGamesForSeason(statsSeasonFilter, statsGameTypeFilter)
       .filter((game) => sprayEventsForGame(game).length)
       .sort((a, b) => b.date.localeCompare(a.date))
       .map((game) => `<option value="${game.id}" ${game.id === selectedGame ? "selected" : ""}>${escapeHtml(game.date)} ${escapeHtml(gameMatchupLabel(game))}</option>`)
@@ -18179,7 +18254,7 @@ function renderStatsSprayChart() {
   const playerIds = playerIdAliasSet(playerId);
   const gameId = els.statsSprayGameSelect.value || "all";
   const resultFilter = els.statsSprayResultFilter?.value || "all";
-  const events = statsGamesForSeason(statsSeasonFilter)
+  const events = statsGamesForSeason(statsSeasonFilter, statsGameTypeFilter)
     .flatMap((game) => sprayEventsForGame(game))
     .filter(({ event, game }) => {
       if (!event.spray || !playerIdMatches(playerIds, event.playerId) || (gameId !== "all" && game.id !== gameId)) return false;
@@ -18194,7 +18269,7 @@ function renderStatsSprayChart() {
 }
 
 function bulkStatEditGames() {
-  return statsGamesForSeason(statsSeasonFilter).sort(sortGamesNewestFirst);
+  return statsGamesForSeason(statsSeasonFilter, statsGameTypeFilter).sort(sortGamesNewestFirst);
 }
 
 function bulkStatEditGame() {
@@ -18528,14 +18603,14 @@ function sprayTendencyLane(event) {
   return "center";
 }
 
-function teamSprayDashboardEvents(season = statsSeasonFilter) {
-  return statsGamesForSeason(season)
+function teamSprayDashboardEvents(season = statsSeasonFilter, gameTypeFilter = statsGameTypeFilter) {
+  return statsGamesForSeason(season, gameTypeFilter)
     .flatMap((game) => sprayEventsForGame(game))
     .filter(({ event }) => event?.spray);
 }
 
 function renderStatsSprayDashboard() {
-  const events = teamSprayDashboardEvents(statsSeasonFilter);
+  const events = teamSprayDashboardEvents(statsSeasonFilter, statsGameTypeFilter);
   if (els.statsSpraySummary) {
     els.statsSpraySummary.textContent = events.length
       ? `${events.length} tracked balls in play from the ${statsSeasonLabel()}.`
@@ -18844,7 +18919,7 @@ function gameAvailableForHittingStatEdit(playerId, game) {
 }
 
 function hittingStatEditGames(playerId) {
-  return statsGamesForSeason(statsSeasonFilter)
+  return statsGamesForSeason(statsSeasonFilter, statsGameTypeFilter)
     .filter((game) => gameAvailableForHittingStatEdit(playerId, game))
     .sort((a, b) => String(b?.date || "").localeCompare(String(a?.date || "")) || String(b?.time || "").localeCompare(String(a?.time || "")));
 }
@@ -19168,7 +19243,7 @@ function gameAvailableForPitchingStatEdit(playerId, game) {
 }
 
 function pitchingStatEditGames(playerId) {
-  return statsGamesForSeason(statsSeasonFilter)
+  return statsGamesForSeason(statsSeasonFilter, statsGameTypeFilter)
     .filter((game) => gameAvailableForPitchingStatEdit(playerId, game))
     .sort((a, b) => String(b?.date || "").localeCompare(String(a?.date || "")) || String(b?.time || "").localeCompare(String(a?.time || "")));
 }
@@ -19340,17 +19415,17 @@ function savePitchingStatEditGameStats(event) {
 
 function renderLeaders() {
   const focusedPlayerId = statsPlayerFocus !== "all" ? statsPlayerFocus : "";
-  const minimumGames = statLeaderMinimumGames(statsSeasonFilter);
+  const minimumGames = statLeaderMinimumGames(statsSeasonFilter, statsGameTypeFilter);
   const hitterRows = rosterStatPlayerRows()
-    .map((player) => ({ player, stats: statsForPlayer(player.id, statsSeasonFilter), gp: gamesPlayedForPlayer(player.id, statsSeasonFilter) }))
+    .map((player) => ({ player, stats: statsForPlayer(player.id, statsSeasonFilter, null, statsGameTypeFilter), gp: gamesPlayedForPlayer(player.id, statsSeasonFilter, statsGameTypeFilter) }))
     .filter((row) => !focusedPlayerId || row.player.id === focusedPlayerId)
     .filter((row) => playerHasHittingLine({ player: row.player, hit: row.stats, gp: row.gp }))
     .filter((row) => statLeaderEligible(row, minimumGames));
   const pitcherRows = rosterStatPlayerRows()
     .map((player) => ({
       player,
-      stats: pitcherStats(player.id, null, statsSeasonFilter),
-      gp: gamesPitchedForPlayer(player.id, statsSeasonFilter)
+      stats: pitcherStats(player.id, null, statsSeasonFilter, statsGameTypeFilter),
+      gp: gamesPitchedForPlayer(player.id, statsSeasonFilter, statsGameTypeFilter)
     }))
     .filter((row) => !focusedPlayerId || row.player.id === focusedPlayerId)
     .filter((row) => hasPitchingStats(row.stats))
@@ -19486,18 +19561,18 @@ function playerHasHittingGameLine(game, playerId) {
     || (gameUsesLineupForGamesPlayed(game) && storedLineupIds.some((id) => playerIdMatches(playerIds, id)));
 }
 
-function gamesPlayedForPlayer(playerId, season = null) {
-  return statsGamesForSeason(season).filter((game) => playerHasHittingGameLine(game, playerId)).length;
+function gamesPlayedForPlayer(playerId, season = null, gameTypeFilter = "all") {
+  return statsGamesForSeason(season, gameTypeFilter).filter((game) => playerHasHittingGameLine(game, playerId)).length;
 }
 
 const STAT_LEADER_MIN_GAMES = 3;
 
-function statLeaderMinimumGames(season = null) {
-  return Math.min(STAT_LEADER_MIN_GAMES, statLeaderSeasonGames(season).length);
+function statLeaderMinimumGames(season = null, gameTypeFilter = "all") {
+  return Math.min(STAT_LEADER_MIN_GAMES, statLeaderSeasonGames(season, gameTypeFilter).length);
 }
 
-function statLeaderSeasonGames(season = null) {
-  return statsGamesForSeason(season).filter((game) => {
+function statLeaderSeasonGames(season = null, gameTypeFilter = "all") {
+  return statsGamesForSeason(season, gameTypeFilter).filter((game) => {
     if (gameIsFinal(game)) return true;
     const hasRecordedEvents = Array.isArray(game?.events) && game.events.length > 0;
     const hasPlateAppearanceData = (Array.isArray(game?.plateAppearances) ? game.plateAppearances : []).some((appearance) =>
@@ -19526,8 +19601,8 @@ function playerHasPitchingGameLine(game, playerId) {
   );
 }
 
-function gamesPitchedForPlayer(playerId, season = null) {
-  return statsGamesForSeason(season).filter((game) => playerHasPitchingGameLine(game, playerId)).length;
+function gamesPitchedForPlayer(playerId, season = null, gameTypeFilter = "all") {
+  return statsGamesForSeason(season, gameTypeFilter).filter((game) => playerHasPitchingGameLine(game, playerId)).length;
 }
 
 function updateSortIndicators() {
@@ -20842,15 +20917,15 @@ function sprayEventsForGame(game) {
   return [...baseEvents, ...editEvents];
 }
 
-function allOffensiveEvents(season = null, gameId = null) {
-  return statsGamesForSeason(season)
+function allOffensiveEvents(season = null, gameId = null, gameTypeFilter = "all") {
+  return statsGamesForSeason(season, gameId ? "all" : gameTypeFilter)
     .filter((game) => !gameId || game.id === gameId)
     .flatMap((game) => offensiveEventsForStatsGame(game));
 }
 
-function statsForPlayer(playerId, season = null, gameId = null) {
+function statsForPlayer(playerId, season = null, gameId = null, gameTypeFilter = "all") {
   const stats = emptyStats();
-  const events = allOffensiveEvents(season, gameId);
+  const events = allOffensiveEvents(season, gameId, gameTypeFilter);
   const playerIds = playerIdAliasSet(playerId);
   events.filter((event) => playerIdMatches(playerIds, event.playerId))
     .forEach((event) => applyEventToStats(stats, event));
@@ -20859,9 +20934,9 @@ function statsForPlayer(playerId, season = null, gameId = null) {
   return stats;
 }
 
-function teamStats(season = null) {
+function teamStats(season = null, gameTypeFilter = "all") {
   const stats = emptyStats();
-  const events = allOffensiveEvents(season);
+  const events = allOffensiveEvents(season, null, gameTypeFilter);
   events.forEach((event) => applyEventToStats(stats, event));
   stats.runs = runsScoredFromEvents(events);
   finishStats(stats);
@@ -20880,8 +20955,8 @@ function runsScoredFromEvents(events = [], playerId = null) {
   }, 0);
 }
 
-function runsScoredForPlayer(playerId, season = null, gameId = null) {
-  return runsScoredFromEvents(allOffensiveEvents(season, gameId), playerIdAliasSet(playerId));
+function runsScoredForPlayer(playerId, season = null, gameId = null, gameTypeFilter = "all") {
+  return runsScoredFromEvents(allOffensiveEvents(season, gameId, gameTypeFilter), playerIdAliasSet(playerId));
 }
 
 function emptyStats() {

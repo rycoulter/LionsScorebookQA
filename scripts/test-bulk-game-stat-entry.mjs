@@ -35,7 +35,7 @@ mustMatch(renderStatsBody, /const admin = isAdminMode\(\)/, "Stats rendering sho
 mustMatch(renderStatsBody, /syncStatsAdminVisibility\(admin\)/, "Bulk stat entry should use the shared admin visibility guard");
 
 const gamesBody = functionBody(appJs, "bulkStatEditGames");
-mustMatch(gamesBody, /statsGamesForSeason\(statsSeasonFilter\)/, "Bulk game picker should use the completed-or-scored stats game list");
+mustMatch(gamesBody, /statsGamesForSeason\(statsSeasonFilter, statsGameTypeFilter\)/, "Bulk game picker should use the completed-or-scored stats game list for the selected split");
 mustMatch(gamesBody, /sort\(sortGamesNewestFirst\)/, "Bulk game picker should show newest games first");
 
 const hittingTableBody = functionBody(appJs, "renderBulkHittingStatTable");

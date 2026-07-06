@@ -32,10 +32,10 @@ mustMatch(addPlayerBody, /findRosterMatchByIdentity\(name, els\.playerNumber\.va
 mustMatch(addPlayerBody, /applyRosterFormToPlayer\(inactiveMatch\)[\s\S]*state\.lineup\.push\(inactiveMatch\.id\)[\s\S]*syncReason = "reactivate-player"/, "Adding a matching deleted player should reactivate the original ID");
 mustMatch(addPlayerBody, /findRosterMatchByIdentity\(name, els\.playerNumber\.value\.trim\(\) \|\| "--", \{ active: true \}\)[\s\S]*already on the active roster/, "Adding an active duplicate should be blocked");
 
-mustMatch(functionBody(appJs, "getSeasonHittingRows"), /rosterStatPlayerRows\(\)[\s\S]*statsForPlayer\(player\.id, statsSeasonFilter\)/, "Desktop hitting stats should render canonical player rows");
-mustMatch(functionBody(appJs, "getSeasonPitchingRows"), /rosterStatPlayerRows\(\)[\s\S]*pitcherStats\(player\.id, null, statsSeasonFilter\)/, "Desktop pitching stats should render canonical player rows");
-mustMatch(functionBody(appJs, "getMobileHittingRows"), /rosterStatPlayerRows\(\)[\s\S]*statsForPlayer\(player\.id, statsSeasonFilter/, "Mobile hitting stats should render canonical player rows");
-mustMatch(functionBody(appJs, "getMobilePitchingRows"), /rosterStatPlayerRows\(\)[\s\S]*pitcherStats\(player\.id, gameId === "all" \? null : gameId, statsSeasonFilter\)/, "Mobile pitching stats should render canonical player rows");
+mustMatch(functionBody(appJs, "getSeasonHittingRows"), /rosterStatPlayerRows\(\)[\s\S]*statsForPlayer\(player\.id, statsSeasonFilter, null, statsGameTypeFilter\)/, "Desktop hitting stats should render canonical player rows");
+mustMatch(functionBody(appJs, "getSeasonPitchingRows"), /rosterStatPlayerRows\(\)[\s\S]*pitcherStats\(player\.id, null, statsSeasonFilter, statsGameTypeFilter\)/, "Desktop pitching stats should render canonical player rows");
+mustMatch(functionBody(appJs, "getMobileHittingRows"), /rosterStatPlayerRows\(\)[\s\S]*statsForPlayer\(player\.id, statsSeasonFilter[\s\S]*statsGameTypeFilter/, "Mobile hitting stats should render canonical player rows");
+mustMatch(functionBody(appJs, "getMobilePitchingRows"), /rosterStatPlayerRows\(\)[\s\S]*pitcherStats\(player\.id, gameId === "all" \? null : gameId, statsSeasonFilter[\s\S]*statsGameTypeFilter/, "Mobile pitching stats should render canonical player rows");
 
 mustMatch(functionBody(appJs, "statsForPlayer"), /const playerIds = playerIdAliasSet\(playerId\)[\s\S]*playerIdMatches\(playerIds, event\.playerId\)[\s\S]*runsScoredFromEvents\(events, playerIds\)/, "Hitting stats should include equivalent old and new player IDs");
 mustMatch(functionBody(appJs, "pitcherStats"), /const playerIds = playerIdAliasSet\(playerId\)[\s\S]*playerIdMatches\(playerIds, event\.pitcherId\)[\s\S]*playerIdMatches\(playerIds, pitch\.pitcherId\)/, "Pitching stats should include equivalent old and new pitcher IDs");

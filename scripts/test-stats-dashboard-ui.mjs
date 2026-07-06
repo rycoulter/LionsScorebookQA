@@ -27,7 +27,7 @@ assert.match(indexHtml, /class="stats-spray-copy"[\s\S]*class="stats-spray-legen
 const renderSeasonStatsBody = functionBody(appJs, "renderSeasonStats");
 assert.match(renderSeasonStatsBody, /const recentHittingRows = recentHittingRowsForSpotlight\(\)/, "Spotlight and Hot Bats should share the recent-game stat window");
 assert.match(renderSeasonStatsBody, /renderPlayerSpotlight\(recentHittingRows\)[\s\S]*renderHotBats\(recentHittingRows\)/, "Hot Bats should use the same recent rows as Player Spotlight");
-assert.match(renderSeasonStatsBody, /renderStatsProfiles\(teamStats\(statsSeasonFilter\), teamPitchingStats\(statsSeasonFilter\)\)/, "Season stats should render profile cards from current season team stats");
+assert.match(renderSeasonStatsBody, /renderStatsProfiles\(teamStats\(statsSeasonFilter, statsGameTypeFilter\), teamPitchingStats\(statsSeasonFilter, statsGameTypeFilter\)\)/, "Season stats should render profile cards from current season team stats");
 assert.match(renderSeasonStatsBody, /renderStatsSprayDashboard\(\)/, "Season stats should refresh spray chart preview and tendencies");
 assert.match(renderSeasonStatsBody, /statsThresholdClass\("avg", hit\.avg, hit\.ab > 0\)/, "AVG table cells should get threshold formatting");
 assert.match(renderSeasonStatsBody, /statsThresholdClass\("ops", hit\.ops, hit\.pa > 0\)/, "OPS table cells should get threshold formatting");

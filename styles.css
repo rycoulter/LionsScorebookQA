@@ -1862,6 +1862,7 @@ main {
   color: var(--text-soft);
   font-size: 0.95rem;
   font-weight: 500;
+  transition: color 180ms ease, text-shadow 180ms ease;
 }
 
 .home-dashboard-link {
@@ -1877,7 +1878,14 @@ main {
   transition: color 180ms ease, filter 180ms ease, text-shadow 180ms ease;
 }
 
-.home-dashboard-link:hover {
+.home-dashboard-link:hover,
+.home-dashboard-link:focus-visible {
+  color: var(--lion-gold);
+  text-shadow: 0 0 12px rgba(245, 189, 33, 0.24);
+}
+
+.home-dashboard-link:hover span,
+.home-dashboard-link:focus-visible span {
   color: var(--lion-gold);
 }
 
@@ -3709,11 +3717,26 @@ button:disabled .inline-chevron-icon {
   font-size: 0.96rem;
   font-weight: 850;
   cursor: pointer;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease,
+    text-shadow 180ms ease;
+}
+
+.stats-game-type-chip {
+  min-width: 170px;
 }
 
 .schedule-season-chip:focus-within {
   border-color: rgba(245, 189, 33, 0.72);
   box-shadow: 0 0 0 3px rgba(245, 189, 33, 0.14);
+}
+
+.schedule-season-chip:hover,
+.schedule-season-chip:focus-within {
+  color: var(--lion-gold);
+  text-shadow: 0 0 12px rgba(245, 189, 33, 0.22);
 }
 
 .schedule-season-chip-label {
@@ -3729,6 +3752,15 @@ button:disabled .inline-chevron-icon {
   align-items: center;
   justify-content: center;
   color: rgba(255, 255, 255, 0.72);
+  transition: color 180ms ease, filter 180ms ease;
+}
+
+.schedule-season-chip:hover .schedule-season-chip-icon,
+.schedule-season-chip:hover .schedule-season-chip-caret,
+.schedule-season-chip:focus-within .schedule-season-chip-icon,
+.schedule-season-chip:focus-within .schedule-season-chip-caret {
+  color: var(--lion-gold);
+  filter: drop-shadow(0 0 5px rgba(245, 189, 33, 0.45));
 }
 
 .schedule-season-chip-icon svg {
@@ -4001,6 +4033,26 @@ button:disabled .inline-chevron-icon {
 
 .schedule-meta-item-weather-inline strong {
   color: var(--white);
+}
+
+.game-type-pill {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 24px;
+  border: 1px solid rgba(245, 189, 33, 0.5);
+  border-radius: 999px;
+  padding: 3px 9px;
+  background: rgba(245, 189, 33, 0.12);
+  color: var(--lion-gold);
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.team-side-card .game-type-pill {
+  margin-top: 8px;
 }
 
 .schedule-weather-inline-icon {

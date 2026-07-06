@@ -18,7 +18,7 @@ assert.match(appJs, /const STAT_LEADER_MIN_GAMES = 3;/, "Stat leaders should use
 const minimumBody = functionBody(appJs, "statLeaderMinimumGames");
 assert.match(
   minimumBody,
-  /Math\.min\(STAT_LEADER_MIN_GAMES, statLeaderSeasonGames\(season\)\.length\)/,
+  /Math\.min\(STAT_LEADER_MIN_GAMES, statLeaderSeasonGames\(season, gameTypeFilter\)\.length\)/,
   "The required games should be capped by games played in the selected season"
 );
 
@@ -50,8 +50,8 @@ assert.match(homeBody, /gamesPitchedForPlayer\(player\.id, leaderSeason\)/, "Hom
 assert.match(homeBody, /\.filter\(\(row\) => statLeaderEligible\(row, leaderMinimumGames\)\)/, "Homepage leaders should apply the dynamic qualifier");
 
 const renderLeadersBody = functionBody(appJs, "renderLeaders");
-assert.match(renderLeadersBody, /minimumGames = statLeaderMinimumGames\(statsSeasonFilter\)/, "Stats leader cards should use the selected season's qualifier");
-assert.match(renderLeadersBody, /gamesPitchedForPlayer\(player\.id, statsSeasonFilter\)/, "Pitching leader cards should count pitching appearances");
+assert.match(renderLeadersBody, /minimumGames = statLeaderMinimumGames\(statsSeasonFilter, statsGameTypeFilter\)/, "Stats leader cards should use the selected season's qualifier");
+assert.match(renderLeadersBody, /gamesPitchedForPlayer\(player\.id, statsSeasonFilter, statsGameTypeFilter\)/, "Pitching leader cards should count pitching appearances");
 assert.match(renderLeadersBody, /statLeaderEligible\(row, minimumGames\)/, "Stats leader cards should exclude players below the qualifier");
 
 const pitchingParticipationBody = functionBody(appJs, "playerHasPitchingGameLine");
