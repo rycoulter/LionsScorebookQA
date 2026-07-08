@@ -1,7 +1,7 @@
 {
   "season": 2026,
   "sourceLabel": "Pittsburgh NABA rosters",
-  "syncedAt": "2026-07-06T13:05:40.059Z",
+  "syncedAt": "2026-07-08T11:24:47.624Z",
   "teams": [
     {
       "teamName": "Oakmont Lions",
@@ -171,7 +171,7 @@
           "positions": "SS, CF, P, 2B"
         }
       ],
-      "syncedAt": "2026-07-06T13:05:40.059Z"
+      "syncedAt": "2026-07-08T11:24:47.624Z"
     },
     {
       "teamName": "Pittsburgh D2",
@@ -317,7 +317,7 @@
           "positions": "C, P, UTIL."
         }
       ],
-      "syncedAt": "2026-07-06T13:05:40.059Z"
+      "syncedAt": "2026-07-08T11:24:47.624Z"
     },
     {
       "teamName": "BiscuitvilleTownSquare Bandidos",
@@ -511,7 +511,7 @@
           "positions": "SS, CF, UTIL."
         }
       ],
-      "syncedAt": "2026-07-06T13:05:40.059Z"
+      "syncedAt": "2026-07-08T11:24:47.624Z"
     },
     {
       "teamName": "South Hills Devils",
@@ -550,6 +550,14 @@
           "lastName": "Bucci",
           "name": "Joe Bucci",
           "number": "31",
+          "positions": "P, 3B"
+        },
+        {
+          "id": "south-hills-devils-will-burford",
+          "firstName": "Will",
+          "lastName": "Burford",
+          "name": "Will Burford",
+          "number": "3",
           "positions": "P, 3B"
         },
         {
@@ -713,7 +721,7 @@
           "positions": "1B, P"
         }
       ],
-      "syncedAt": "2026-07-06T13:05:40.059Z"
+      "syncedAt": "2026-07-08T11:24:47.624Z"
     },
     {
       "teamName": "South Oakland Ducks",
@@ -899,7 +907,7 @@
           "positions": "RF, LF, OF"
         }
       ],
-      "syncedAt": "2026-07-06T13:05:40.059Z"
+      "syncedAt": "2026-07-08T11:24:47.624Z"
     },
     {
       "teamName": "South Side Eagles",
@@ -1077,7 +1085,7 @@
           "positions": "P, SS"
         }
       ],
-      "syncedAt": "2026-07-06T13:05:40.059Z"
+      "syncedAt": "2026-07-08T11:24:47.624Z"
     },
     {
       "teamName": "Bauerstown Turtles",
@@ -1231,7 +1239,7 @@
           "positions": "SS, P, LF"
         }
       ],
-      "syncedAt": "2026-07-06T13:05:40.059Z"
+      "syncedAt": "2026-07-08T11:24:47.624Z"
     },
     {
       "teamName": "Keystone Oaks",
@@ -1425,7 +1433,7 @@
           "positions": "3B, SS"
         }
       ],
-      "syncedAt": "2026-07-06T13:05:40.059Z"
+      "syncedAt": "2026-07-08T11:24:47.624Z"
     },
     {
       "teamName": "Butler Buccos",
@@ -1635,7 +1643,7 @@
           "positions": "LF, P"
         }
       ],
-      "syncedAt": "2026-07-06T13:05:40.059Z"
+      "syncedAt": "2026-07-08T11:24:47.624Z"
     },
     {
       "teamName": "Ross Raiders",
@@ -1644,7 +1652,7 @@
       "nabaKey": "PITTSBUR-ROSSRAIDERS",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=roster&s=baseball&u=PITTSBUR-ROSSRAIDERS",
       "players": [],
-      "syncedAt": "2026-07-06T13:05:40.059Z"
+      "syncedAt": "2026-07-08T11:24:47.624Z"
     }
   ]
 }
