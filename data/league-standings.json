@@ -3,7 +3,7 @@
   "division": "AA",
   "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
   "sourceLabel": "Pittsburgh NABA AA standings",
-  "syncedAt": "2026-07-08T20:37:20.803Z",
+  "syncedAt": "2026-07-10T04:14:41.380Z",
   "rows": [
     {
       "id": "2026-aa-oakmont-lions",
@@ -21,7 +21,7 @@
       "streak": "Lost 2",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-07-08T20:37:20.803Z"
+      "syncedAt": "2026-07-10T04:14:41.380Z"
     },
     {
       "id": "2026-aa-pittsburgh-d2",
@@ -39,7 +39,7 @@
       "streak": "Lost 2",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-07-08T20:37:20.803Z"
+      "syncedAt": "2026-07-10T04:14:41.380Z"
     },
     {
       "id": "2026-aa-biscuitvilletownsquare-bandidos",
@@ -57,7 +57,7 @@
       "streak": "Won 3",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-07-08T20:37:20.803Z"
+      "syncedAt": "2026-07-10T04:14:41.380Z"
     },
     {
       "id": "2026-aa-south-hills-devils",
@@ -75,11 +75,29 @@
       "streak": "Won 2",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-07-08T20:37:20.803Z"
+      "syncedAt": "2026-07-10T04:14:41.380Z"
+    },
+    {
+      "id": "2026-aa-south-side-eagles",
+      "rank": 5,
+      "teamName": "South Side Eagles",
+      "teamCode": "SSE",
+      "record": "8-13",
+      "points": 37,
+      "pointsLabel": "37",
+      "winPct": ".381",
+      "gb": "6.5",
+      "rf": 132,
+      "ra": 126,
+      "last10": "4-6",
+      "streak": "Lost 2",
+      "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
+      "sourceLabel": "Pittsburgh NABA AA standings",
+      "syncedAt": "2026-07-10T04:14:41.380Z"
     },
     {
       "id": "2026-aa-south-oakland-ducks",
-      "rank": 5,
+      "rank": 6,
       "teamName": "South Oakland Ducks",
       "teamCode": "SOD",
       "record": "8-12",
@@ -93,43 +111,25 @@
       "streak": "Lost 1",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-07-08T20:37:20.803Z"
-    },
-    {
-      "id": "2026-aa-south-side-eagles",
-      "rank": 6,
-      "teamName": "South Side Eagles",
-      "teamCode": "SSE",
-      "record": "8-12",
-      "points": 36,
-      "pointsLabel": "36",
-      "winPct": ".400",
-      "gb": "6",
-      "rf": 128,
-      "ra": 121,
-      "last10": "4-6",
-      "streak": "Lost 1",
-      "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
-      "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-07-08T20:37:20.803Z"
+      "syncedAt": "2026-07-10T04:14:41.380Z"
     },
     {
       "id": "2026-aa-bauerstown-turtles",
       "rank": 7,
       "teamName": "Bauerstown Turtles",
       "teamCode": "BT",
-      "record": "2-16",
-      "points": 22,
-      "pointsLabel": "22",
-      "winPct": ".111",
-      "gb": "11",
-      "rf": 63,
-      "ra": 142,
-      "last10": "2-8",
-      "streak": "Lost 1",
+      "record": "3-16",
+      "points": 25,
+      "pointsLabel": "25",
+      "winPct": ".158",
+      "gb": "10.5",
+      "rf": 68,
+      "ra": 146,
+      "last10": "3-7",
+      "streak": "Won 1",
       "sourceUrl": "https://www.pittsburghnaba.org/teams/default.asp?p=standings&s=baseball&u=PITTSBURGHNABA",
       "sourceLabel": "Pittsburgh NABA AA standings",
-      "syncedAt": "2026-07-08T20:37:20.803Z"
+      "syncedAt": "2026-07-10T04:14:41.380Z"
     }
   ]
 }
