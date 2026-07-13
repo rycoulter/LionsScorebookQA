@@ -1862,7 +1862,7 @@ main {
   color: var(--text-soft);
   font-size: 0.95rem;
   font-weight: 500;
-  transition: color 180ms ease, text-shadow 180ms ease;
+  transition: color 180ms ease;
 }
 
 .home-dashboard-link {
@@ -1875,13 +1875,12 @@ main {
   color: rgba(255, 255, 255, 0.82);
   font-size: 0.95rem;
   font-weight: 500;
-  transition: color 180ms ease, filter 180ms ease, text-shadow 180ms ease;
+  transition: color 180ms ease;
 }
 
 .home-dashboard-link:hover,
 .home-dashboard-link:focus-visible {
   color: var(--lion-gold);
-  text-shadow: 0 0 12px rgba(245, 189, 33, 0.24);
 }
 
 .home-dashboard-link:hover span,
@@ -2535,7 +2534,6 @@ main {
   stroke-linejoin: round;
   transition:
     color 180ms ease,
-    filter 180ms ease,
     opacity 180ms ease,
     transform 180ms ease;
 }
@@ -2548,13 +2546,6 @@ main {
   opacity: 0.52;
   stroke-width: 1.25;
   transition: opacity 180ms ease;
-}
-
-button:hover .inline-chevron-icon,
-button:focus-visible .inline-chevron-icon,
-a:hover .inline-chevron-icon,
-a:focus-visible .inline-chevron-icon {
-  filter: drop-shadow(0 0 5px currentColor);
 }
 
 button:hover .inline-chevron-icon--right,
@@ -2579,7 +2570,6 @@ a:focus-visible .inline-chevron-icon-claw {
 }
 
 button:disabled .inline-chevron-icon {
-  filter: none;
   transform: none;
 }
 
@@ -3720,8 +3710,7 @@ button:disabled .inline-chevron-icon {
   transition:
     border-color 180ms ease,
     box-shadow 180ms ease,
-    color 180ms ease,
-    text-shadow 180ms ease;
+    color 180ms ease;
 }
 
 .stats-game-type-chip {
@@ -3736,7 +3725,6 @@ button:disabled .inline-chevron-icon {
 .schedule-season-chip:hover,
 .schedule-season-chip:focus-within {
   color: var(--lion-gold);
-  text-shadow: 0 0 12px rgba(245, 189, 33, 0.22);
 }
 
 .schedule-season-chip-label {
@@ -3752,7 +3740,7 @@ button:disabled .inline-chevron-icon {
   align-items: center;
   justify-content: center;
   color: rgba(255, 255, 255, 0.72);
-  transition: color 180ms ease, filter 180ms ease;
+  transition: color 180ms ease;
 }
 
 .schedule-season-chip:hover .schedule-season-chip-icon,
@@ -3760,7 +3748,6 @@ button:disabled .inline-chevron-icon {
 .schedule-season-chip:focus-within .schedule-season-chip-icon,
 .schedule-season-chip:focus-within .schedule-season-chip-caret {
   color: var(--lion-gold);
-  filter: drop-shadow(0 0 5px rgba(245, 189, 33, 0.45));
 }
 
 .schedule-season-chip-icon svg {
