@@ -96,9 +96,11 @@ mustMatch(saveBody, /render\(\)/, "Bulk save should refresh dependent stat UI");
 
 mustMatch(appJs, /function manualHittingStatLineHasValues/, "Bulk hitting clear behavior should use an explicit manual hitting value check");
 mustMatch(stylesCss, /\.bulk-stat-edit-modal[\s\S]*width: min\(calc\(100vw - 32px\), 1180px\)/, "Bulk stat modal should have a compact desktop layout");
+assert.doesNotMatch(stylesCss, /\.bulk-stat-table-wrap\s*\{[^}]*box-shadow:/, "Bulk stat scroll container should avoid heavy inset shadows");
 mustMatch(stylesCss, /\.bulk-stat-table th:first-child,[\s\S]*position: sticky/, "Bulk stat table should keep the player column sticky");
 mustMatch(stylesCss, /\.bulk-stat-table input,[\s\S]*min-height: 30px/, "Bulk stat inputs should be compact and theme-matched");
 mustMatch(stylesCss, /\.bulk-stat-table \.bulk-stat-position-select[\s\S]*min-width: 68px/, "Bulk stat position selector should stay compact");
 mustMatch(stylesCss, /\.bulk-stat-spray-button[\s\S]*color: var\(--lion-gold\)/, "Bulk spray action should match the Lions stat editor theme");
+mustMatch(stylesCss, /@media \(hover: hover\)\s*\{[\s\S]*\.bulk-stat-table tbody tr:hover td/, "Bulk table hover highlighting should be limited to hover-capable devices");
 
 console.log("Bulk game stat entry checks passed.");

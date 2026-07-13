@@ -32,6 +32,16 @@ assert.match(
   /\.topbar \.tab::after\s*\{[\s\S]*background:\s*var\(--lion-gold\);/,
   "Desktop tabs should use a gold active underline"
 );
+assert.doesNotMatch(
+  stylesCss,
+  /\.topbar\s*\{[^}]*backdrop-filter:/,
+  "Top navigation should avoid live backdrop blur for smoother scrolling and tab changes"
+);
+assert.doesNotMatch(
+  stylesCss,
+  /\.mobile-bottom-nav\s*\{[^}]*backdrop-filter:/,
+  "Mobile navigation should avoid live backdrop blur for smoother touch navigation"
+);
 assert.match(
   stylesCss,
   /\.topbar \.tab\.is-active::after\s*\{[\s\S]*opacity:\s*1;[\s\S]*transform:\s*scaleX\(1\);/,
