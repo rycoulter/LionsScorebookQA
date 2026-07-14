@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.132";
+const APP_VERSION = "v.1.1.134";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -3487,6 +3487,7 @@ function overlaySessionSharedChanges(baseState, localState = state) {
     nextState.roster = deepClone(currentLocalState.roster || []);
     nextState.lineup = deepClone(currentLocalState.lineup || []);
     nextState.rosterVersion = currentLocalState.rosterVersion ?? nextState.rosterVersion;
+    nextState.playoffBracket = deepClone(currentLocalState.playoffBracket || null);
   }
 
   if (!pendingSharedGameIds.size && !pendingDeletedSharedGameIds.size) {
@@ -5546,17 +5547,13 @@ window.addEventListener("pageshow", () => {
   });
   els.statsSeasonSelect?.addEventListener("change", (event) => {
     statsSeasonFilter = normalizeStatsSeasonFilter(event.target.value);
-    renderSeasonStats();
-    renderLeaders();
-    renderStatsSprayControls();
+    renderStatsSurface();
   });
   els.statsGameTypeSelect?.addEventListener("change", (event) => {
     statsGameTypeFilter = normalizeStatsGameTypeFilter(event.target.value);
     mobileHitGameFilter = "all";
     mobilePitGameFilter = "all";
-    renderSeasonStats();
-    renderLeaders();
-    renderStatsSprayControls();
+    renderStatsSurface();
   });
   els.clearStatsFocusBtn?.addEventListener("click", () => {
     statsPlayerFocus = "all";
@@ -5567,9 +5564,7 @@ window.addEventListener("pageshow", () => {
     mobilePitPlayerFilter = "all";
     mobileHitGameFilter = "all";
     mobilePitGameFilter = "all";
-    renderSeasonStats();
-    renderLeaders();
-    renderStatsSprayControls();
+    renderStatsSurface();
   });
   els.statsModeTabs?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-stats-mode]");
@@ -5834,9 +5829,6 @@ function switchView(view, options = {}) {
   }
   if (previousView === "stats" && nextView !== "stats") {
     resetStatsViewFilters();
-    renderSeasonStats();
-    renderLeaders();
-    renderStatsSprayControls();
   }
   currentView = nextView;
   const allowedTabs = visibleTabViews();
@@ -5851,6 +5843,7 @@ function switchView(view, options = {}) {
     tab.classList.toggle("is-active", visible && tab.dataset.view === nextView);
   });
   els.views.forEach((panel) => panel.classList.toggle("is-visible", panel.dataset.panel === nextView));
+  if (nextView === "stats") renderStatsSurface();
   if (updateRoute) updateBrowserRouteForView(nextView, { replace: replaceRoute });
   if (nextView === "standings") refreshScoutingData({ silent: true });
   if (previousView !== nextView) {
@@ -8396,14 +8389,12 @@ function openGameStats(gameId) {
   mobilePitPlayerFilter = "all";
   mobileHitGameFilter = game.id;
   mobilePitGameFilter = game.id;
-  renderSeasonStats();
+  switchView("stats");
   const select = els.statsSprayGameSelect;
   if (select) {
-    renderStatsSprayControls();
     if ([...select.options].some((option) => option.value === game.id)) select.value = game.id;
     renderStatsSprayChart();
   }
-  switchView("stats");
 }
 
 function defaultStatsSeasonForPlayer(playerId) {
@@ -8430,9 +8421,6 @@ function openPlayerStats(playerId) {
   const hitting = statsForPlayer(player.id, statsSeasonFilter);
   const pitching = pitcherStats(player.id, null, statsSeasonFilter);
   statsMode = hitting.pa > 0 || !hasPitchingStats(pitching) ? "hitting" : "pitching";
-  renderSeasonStats();
-  renderLeaders();
-  renderStatsSprayControls();
   switchView("stats");
 }
 
@@ -8976,13 +8964,11 @@ function render() {
   renderPlayoffBracketEditor();
   renderGameEditor();
   renderGameSummary();
-  renderSeasonStats();
-  renderLeaders();
+  if (currentView === "stats") renderStatsSurface();
   renderHighlightsPage();
   renderHighlightsManager();
   renderGameHighlightsModal();
   renderLineupBuilder();
-  renderStatsSprayControls();
   renderScoutingReport();
   renderTraditionalScorebook();
   renderLineupAnalyzer();
@@ -8990,6 +8976,11 @@ function render() {
   renderOptimizedLineup();
   if (!scoreGame || gameIsScoreLocked(scoreGame) || !isAdminMode()) setScoreGameLocked(true, scoreGame);
   else setScoreGameLocked(false, scoreGame);
+}
+function renderStatsSurface() {
+  const statsRows = renderSeasonStats();
+  renderLeaders(statsRows);
+  renderStatsSprayControls();
 }
 
 function renderScoreEmptyState(scoreGame = activeScoreGame()) {
@@ -15054,6 +15045,7 @@ function savePlayoffBracket() {
   playoffBracketDraft = deepClone(normalized);
   playoffBracketPreviewDraft = null;
   playoffBracketNotice = "Bracket saved.";
+  markSharedAppStateDirty();
   saveStateWithOptions({ markLiveGamesDirty: false, capturePendingScoring: false });
   render();
   requestSharedSnapshotSync("playoff-bracket");
@@ -15517,20 +15509,24 @@ function getMobilePitchingRows(playerId = "all", gameId = "all") {
     .sort((a, b) => comparePitchingRows(a, b));
 }
 
-function renderMobileStatsFilters() {
+function renderMobileStatsFilters(options = {}) {
   const focusedPlayerId = statsFocusedPlayerId();
+  const allHittingRows = Array.isArray(options.hittingRows)
+    ? options.hittingRows
+    : getMobileHittingRows("all", mobileHitGameFilter);
+  const allPitchingRows = Array.isArray(options.pitchingRows)
+    ? options.pitchingRows
+    : getMobilePitchingRows("all", mobilePitGameFilter);
   const gameOptions = [
     `<option value="all">All games</option>`,
     ...statsGamesWithDataForSeason(statsSeasonFilter).map((game) => `<option value="${escapeHtml(game.id)}">${escapeHtml(statsGameOptionLabel(game))}</option>`)
   ].join("");
 
   const statPlayers = rosterStatPlayerRows();
-  const hittingPlayers = statPlayers.filter((player) =>
-    getMobileHittingRows("all", mobileHitGameFilter).some((row) => row.player.id === player.id)
-  );
-  const pitchingPlayers = statPlayers.filter((player) =>
-    getMobilePitchingRows("all", mobilePitGameFilter).some((row) => row.player.id === player.id)
-  );
+  const hittingPlayerIds = new Set(allHittingRows.map((row) => row.player.id));
+  const pitchingPlayerIds = new Set(allPitchingRows.map((row) => row.player.id));
+  const hittingPlayers = statPlayers.filter((player) => hittingPlayerIds.has(player.id));
+  const pitchingPlayers = statPlayers.filter((player) => pitchingPlayerIds.has(player.id));
 
   if (els.mobileHitPlayerSelect) {
     const hitPlayerLabel = els.mobileHitPlayerSelect.closest("label");
@@ -19248,9 +19244,7 @@ function openStatsPlayerGameLog(playerId, mode = "hitting") {
   mobilePitPlayerFilter = player.id;
   mobileHitGameFilter = "all";
   mobilePitGameFilter = "all";
-  renderSeasonStats();
-  renderLeaders();
-  renderStatsSprayControls();
+  renderStatsSurface();
   window.requestAnimationFrame(() => {
     els.statsFocusBanner?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
@@ -19522,13 +19516,27 @@ function renderSeasonStats() {
   }
   renderHittingPlayerGameLog(hittingPlayerFilter);
   renderPitchingPlayerGameLog(pitchingPlayerFilter);
-  renderMobileStatsFilters();
-  const mobileHittingRows = getMobileHittingRows(mobileHitPlayerFilter, mobileHitGameFilter);
+  const allMobileHittingRows = mobileHitGameFilter === "all"
+    ? allHittingRows.filter(({ hit, gp }) => hit.pa > 0 || gp > 0)
+    : getMobileHittingRows("all", mobileHitGameFilter);
+  const allMobilePitchingRows = mobilePitGameFilter === "all"
+    ? allPitchingRows.map(({ player, pit }) => ({
+      player,
+      pit,
+      gp: gamesPitchedForPlayer(player.id, statsSeasonFilter, statsGameTypeFilter)
+    }))
+    : getMobilePitchingRows("all", mobilePitGameFilter);
+  renderMobileStatsFilters({
+    hittingRows: allMobileHittingRows,
+    pitchingRows: allMobilePitchingRows
+  });
+  const mobileHittingRows = allMobileHittingRows
+    .filter(({ player }) => mobileHitPlayerFilter === "all" || player.id === mobileHitPlayerFilter);
   const mobileLeaderMinimumGames = mobileHitGameFilter === "all"
     ? statLeaderMinimumGames(statsSeasonFilter, statsGameTypeFilter)
     : 0;
   const mobileHittingLeaders = mobileHittingLeaderMap(
-    getMobileHittingRows("all", mobileHitGameFilter),
+    allMobileHittingRows,
     mobileLeaderMinimumGames
   );
   if (els.mobileHittingStatsList) {
@@ -19556,12 +19564,13 @@ function renderSeasonStats() {
       }).join("")
       : `<p class="stats-mobile-empty">No batting stats yet.</p>`;
   }
-  const mobilePitchingRows = getMobilePitchingRows(mobilePitPlayerFilter, mobilePitGameFilter);
+  const mobilePitchingRows = allMobilePitchingRows
+    .filter(({ player }) => mobilePitPlayerFilter === "all" || player.id === mobilePitPlayerFilter);
   const mobilePitchingLeaderMinimumGames = mobilePitGameFilter === "all"
     ? statLeaderMinimumGames(statsSeasonFilter, statsGameTypeFilter)
     : 0;
   const mobilePitchingLeaders = mobilePitchingLeaderMap(
-    getMobilePitchingRows("all", mobilePitGameFilter),
+    allMobilePitchingRows,
     mobilePitchingLeaderMinimumGames
   );
   if (els.mobilePitchingStatsList) {
@@ -19588,6 +19597,10 @@ function renderSeasonStats() {
       }).join("")
       : `<p class="stats-mobile-empty">No pitching stats yet.</p>`;
   }
+  return {
+    hittingRows: allHittingRows,
+    pitchingRows: allPitchingRows
+  };
 }
 function renderStatsSnapshot() {
   if (!els.statsSnapshotGrid) return;
@@ -20099,9 +20112,7 @@ function focusStatsPlayerFromSpotlight(playerId) {
   mobilePitPlayerFilter = player.id;
   mobileHitGameFilter = "all";
   mobilePitGameFilter = "all";
-  renderSeasonStats();
-  renderLeaders();
-  renderStatsSprayControls();
+  renderStatsSurface();
   window.requestAnimationFrame(() => els.statsHittingSection?.scrollIntoView({ behavior: "smooth", block: "start" }));
 }
 
@@ -20846,20 +20857,28 @@ function savePitchingStatEditGameStats(event) {
   requestCompletedGameSyncRetry("pitching-stat-edit");
 }
 
-function renderLeaders() {
+function renderLeaders(statsRows = {}) {
   const focusedPlayerId = statsPlayerFocus !== "all" ? statsPlayerFocus : "";
   const minimumGames = statLeaderMinimumGames(statsSeasonFilter, statsGameTypeFilter);
-  const hitterRows = rosterStatPlayerRows()
-    .map((player) => ({ player, stats: statsForPlayer(player.id, statsSeasonFilter, null, statsGameTypeFilter), gp: gamesPlayedForPlayer(player.id, statsSeasonFilter, statsGameTypeFilter) }))
+  const hitterRows = (Array.isArray(statsRows.hittingRows)
+    ? statsRows.hittingRows.map(({ player, hit, gp }) => ({ player, stats: hit, gp }))
+    : rosterStatPlayerRows()
+      .map((player) => ({ player, stats: statsForPlayer(player.id, statsSeasonFilter, null, statsGameTypeFilter), gp: gamesPlayedForPlayer(player.id, statsSeasonFilter, statsGameTypeFilter) })))
     .filter((row) => !focusedPlayerId || row.player.id === focusedPlayerId)
     .filter((row) => playerHasHittingLine({ player: row.player, hit: row.stats, gp: row.gp }))
     .filter((row) => statLeaderEligible(row, minimumGames));
-  const pitcherRows = rosterStatPlayerRows()
-    .map((player) => ({
+  const pitcherRows = (Array.isArray(statsRows.pitchingRows)
+    ? statsRows.pitchingRows.map(({ player, pit }) => ({
+      player,
+      stats: pit,
+      gp: gamesPitchedForPlayer(player.id, statsSeasonFilter, statsGameTypeFilter)
+    }))
+    : rosterStatPlayerRows()
+      .map((player) => ({
       player,
       stats: pitcherStats(player.id, null, statsSeasonFilter, statsGameTypeFilter),
       gp: gamesPitchedForPlayer(player.id, statsSeasonFilter, statsGameTypeFilter)
-    }))
+    })))
     .filter((row) => !focusedPlayerId || row.player.id === focusedPlayerId)
     .filter((row) => hasPitchingStats(row.stats))
     .filter((row) => statLeaderEligible(row, minimumGames));

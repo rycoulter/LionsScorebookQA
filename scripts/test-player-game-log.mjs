@@ -70,7 +70,9 @@ assert.match(appJs, /openStatsPlayerGameLog\(button\.dataset\.openPlayerStats, b
 const openPlayerLogBody = functionBody(appJs, "openStatsPlayerGameLog");
 assert.match(openPlayerLogBody, /const player = canonicalRosterPlayerForId\(playerId\)/, "Opening a player from the stats sheet should resolve recreated players to one roster record");
 assert.match(openPlayerLogBody, /statsPlayerFocus = player\.id/, "Opening a player from the stats sheet should use focused-player mode");
-assert.match(openPlayerLogBody, /renderStatsSprayControls\(\)/, "Focused player stats should lock and refresh the player's spray chart");
+assert.match(openPlayerLogBody, /renderStatsSurface\(\)/, "Focused player stats should refresh the shared Stats surface");
+const renderStatsSurfaceBody = functionBody(appJs, "renderStatsSurface");
+assert.match(renderStatsSurfaceBody, /renderStatsSprayControls\(\)/, "The shared Stats surface should lock and refresh the player's spray chart");
 const switchViewBody = functionBody(appJs, "switchView");
 assert.match(switchViewBody, /previousView === "stats" && nextView !== "stats"[\s\S]*resetStatsViewFilters\(\)/, "Leaving Stats should clear player and game filters");
 const resetFiltersBody = functionBody(appJs, "resetStatsViewFilters");

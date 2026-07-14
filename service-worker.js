@@ -1,4 +1,4 @@
-const CACHE_NAME = "baseball-scorebook-v1-1-132-build-296";
+const CACHE_NAME = "baseball-scorebook-v1-1-134-build-298";
 const FILES_TO_CACHE = [
   "./",
   "./index.html",
@@ -62,7 +62,6 @@ self.addEventListener("activate", (event) => {
     ).then(() => self.clients.claim())
   );
 });
-
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SKIP_WAITING") {
     self.skipWaiting();

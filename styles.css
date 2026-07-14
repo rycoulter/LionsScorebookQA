@@ -13222,8 +13222,8 @@ textarea {
 .topbar .tab:hover,
 .topbar .tab:focus-visible {
   border-color: transparent;
-  background: rgba(255, 255, 255, 0.055);
-  color: var(--white);
+  background: transparent;
+  color: var(--lion-gold);
 }
 
 .topbar .tab:hover .tab-icon,
