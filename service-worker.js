@@ -1,4 +1,4 @@
-const CACHE_NAME = "baseball-scorebook-v1-1-120-build-284";
+const CACHE_NAME = "baseball-scorebook-v1-1-132-build-296";
 const FILES_TO_CACHE = [
   "./",
   "./index.html",
@@ -9,6 +9,7 @@ const FILES_TO_CACHE = [
   "./storage.js",
   "./supabase-config.js",
   "./supabase-storage.js",
+  "./bracket-engine.js",
   "./matchup-images.js",
   "./data/league-standings-cache.js",
   "./data/league-standings.json",
@@ -50,7 +51,6 @@ self.addEventListener("install", (event) => {
       .then(() => self.skipWaiting())
   );
 });
-
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>

@@ -168,6 +168,91 @@ create table if not exists public.site_visits (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.tournaments (
+  id text primary key default gen_random_uuid()::text,
+  name text not null,
+  season integer not null,
+  division text not null default 'AA',
+  tournament_type text not null default 'custom-bracket',
+  status text not null default 'draft',
+  starts_at date,
+  ends_at date,
+  is_public boolean not null default false,
+  championship_format text not null default '',
+  description text not null default '',
+  template_id text not null default '',
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+create table if not exists public.tournament_entries (
+  id text primary key default gen_random_uuid()::text,
+  tournament_id text not null references public.tournaments(id) on delete cascade,
+  team_id text,
+  seed integer not null,
+  display_name_override text not null default '',
+  entry_status text not null default 'active',
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  unique (tournament_id, seed),
+  unique (tournament_id, team_id)
+);
+
+create table if not exists public.tournament_matchups (
+  id text primary key default gen_random_uuid()::text,
+  tournament_id text not null references public.tournaments(id) on delete cascade,
+  matchup_code text not null,
+  bracket_section text not null default 'winners',
+  round_number integer not null default 1,
+  display_order integer not null default 1,
+  scheduled_at timestamptz,
+  date_label text not null default '',
+  time_label text not null default '',
+  location text not null default '',
+  status text not null default 'scheduled',
+  series_best_of integer not null default 1,
+  series_game_number integer not null default 1,
+  home_source_type text not null default 'tbd',
+  home_source_seed integer,
+  home_source_team_id text,
+  home_source_matchup_id text references public.tournament_matchups(id) deferrable initially deferred,
+  home_source_outcome text not null default '',
+  away_source_type text not null default 'tbd',
+  away_source_seed integer,
+  away_source_team_id text,
+  away_source_matchup_id text references public.tournament_matchups(id) deferrable initially deferred,
+  away_source_outcome text not null default '',
+  resolved_home_team_id text,
+  resolved_away_team_id text,
+  home_score integer,
+  away_score integer,
+  winner_team_id text,
+  loser_team_id text,
+  winner_destination_matchup_id text references public.tournament_matchups(id) deferrable initially deferred,
+  winner_destination_slot text not null default '',
+  loser_destination_matchup_id text references public.tournament_matchups(id) deferrable initially deferred,
+  loser_destination_slot text not null default '',
+  linked_game_id text references public.games(id) on delete set null,
+  notes text not null default '',
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  unique (tournament_id, matchup_code)
+);
+
+create table if not exists public.tournament_audit_log (
+  id text primary key default gen_random_uuid()::text,
+  tournament_id text not null references public.tournaments(id) on delete cascade,
+  matchup_id text references public.tournament_matchups(id) on delete set null,
+  action text not null,
+  previous_value jsonb not null default '{}'::jsonb,
+  new_value jsonb not null default '{}'::jsonb,
+  changed_by text not null default '',
+  created_at timestamptz not null default timezone('utc', now())
+);
+
 alter table public.game_highlights
 add column if not exists game_id text not null default '',
 add column if not exists youtube_url text not null default '',
@@ -291,6 +376,14 @@ create unique index if not exists site_visits_session_idx on public.site_visits 
 create index if not exists site_visits_visit_date_idx on public.site_visits (visit_date desc);
 create index if not exists site_visits_created_at_idx on public.site_visits (created_at desc);
 create index if not exists site_visits_visitor_idx on public.site_visits (visitor_id);
+create index if not exists tournaments_public_status_idx on public.tournaments (is_public, status, season desc);
+create index if not exists tournaments_updated_at_idx on public.tournaments (updated_at desc);
+create index if not exists tournament_entries_tournament_seed_idx on public.tournament_entries (tournament_id, seed);
+create index if not exists tournament_matchups_tournament_round_idx on public.tournament_matchups (tournament_id, bracket_section, round_number, display_order);
+create index if not exists tournament_matchups_linked_game_idx on public.tournament_matchups (linked_game_id);
+create index if not exists tournament_matchups_winner_dest_idx on public.tournament_matchups (winner_destination_matchup_id);
+create index if not exists tournament_matchups_loser_dest_idx on public.tournament_matchups (loser_destination_matchup_id);
+create index if not exists tournament_audit_log_tournament_idx on public.tournament_audit_log (tournament_id, created_at desc);
 
 drop trigger if exists set_app_state_updated_at on public.app_state;
 create trigger set_app_state_updated_at
@@ -325,6 +418,21 @@ for each row execute function public.set_updated_at();
 drop trigger if exists set_site_visits_updated_at on public.site_visits;
 create trigger set_site_visits_updated_at
 before update on public.site_visits
+for each row execute function public.set_updated_at();
+
+drop trigger if exists set_tournaments_updated_at on public.tournaments;
+create trigger set_tournaments_updated_at
+before update on public.tournaments
+for each row execute function public.set_updated_at();
+
+drop trigger if exists set_tournament_entries_updated_at on public.tournament_entries;
+create trigger set_tournament_entries_updated_at
+before update on public.tournament_entries
+for each row execute function public.set_updated_at();
+
+drop trigger if exists set_tournament_matchups_updated_at on public.tournament_matchups;
+create trigger set_tournament_matchups_updated_at
+before update on public.tournament_matchups
 for each row execute function public.set_updated_at();
 
 create or replace function public.record_site_visit(
@@ -549,6 +657,10 @@ alter table public.league_standings enable row level security;
 alter table public.game_highlights enable row level security;
 alter table public.news_articles enable row level security;
 alter table public.site_visits enable row level security;
+alter table public.tournaments enable row level security;
+alter table public.tournament_entries enable row level security;
+alter table public.tournament_matchups enable row level security;
+alter table public.tournament_audit_log enable row level security;
 
 drop policy if exists "Public read app_state" on public.app_state;
 create policy "Public read app_state"
@@ -591,6 +703,43 @@ on public.news_articles
 for select
 to anon, authenticated
 using (true);
+
+drop policy if exists "Public read published tournaments" on public.tournaments;
+create policy "Public read published tournaments"
+on public.tournaments
+for select
+to anon, authenticated
+using (is_public = true and status = 'published');
+
+drop policy if exists "Public read published tournament_entries" on public.tournament_entries;
+create policy "Public read published tournament_entries"
+on public.tournament_entries
+for select
+to anon, authenticated
+using (
+  exists (
+    select 1
+    from public.tournaments tournament
+    where tournament.id = tournament_entries.tournament_id
+      and tournament.is_public = true
+      and tournament.status = 'published'
+  )
+);
+
+drop policy if exists "Public read published tournament_matchups" on public.tournament_matchups;
+create policy "Public read published tournament_matchups"
+on public.tournament_matchups
+for select
+to anon, authenticated
+using (
+  exists (
+    select 1
+    from public.tournaments tournament
+    where tournament.id = tournament_matchups.tournament_id
+      and tournament.is_public = true
+      and tournament.status = 'published'
+  )
+);
 
 drop policy if exists "Public read news images" on storage.objects;
 create policy "Public read news images"
@@ -781,6 +930,92 @@ using (
     where admins.email = lower((select auth.jwt() ->> 'email'))
   )
 )
+with check (
+  exists (
+    select 1
+    from public.app_admins admins
+    where admins.email = lower((select auth.jwt() ->> 'email'))
+  )
+);
+
+drop policy if exists "Authenticated write tournaments" on public.tournaments;
+create policy "Authenticated write tournaments"
+on public.tournaments
+for all
+to authenticated
+using (
+  exists (
+    select 1
+    from public.app_admins admins
+    where admins.email = lower((select auth.jwt() ->> 'email'))
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.app_admins admins
+    where admins.email = lower((select auth.jwt() ->> 'email'))
+  )
+);
+
+drop policy if exists "Authenticated write tournament_entries" on public.tournament_entries;
+create policy "Authenticated write tournament_entries"
+on public.tournament_entries
+for all
+to authenticated
+using (
+  exists (
+    select 1
+    from public.app_admins admins
+    where admins.email = lower((select auth.jwt() ->> 'email'))
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.app_admins admins
+    where admins.email = lower((select auth.jwt() ->> 'email'))
+  )
+);
+
+drop policy if exists "Authenticated write tournament_matchups" on public.tournament_matchups;
+create policy "Authenticated write tournament_matchups"
+on public.tournament_matchups
+for all
+to authenticated
+using (
+  exists (
+    select 1
+    from public.app_admins admins
+    where admins.email = lower((select auth.jwt() ->> 'email'))
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.app_admins admins
+    where admins.email = lower((select auth.jwt() ->> 'email'))
+  )
+);
+
+drop policy if exists "Authenticated admin read tournament_audit_log" on public.tournament_audit_log;
+create policy "Authenticated admin read tournament_audit_log"
+on public.tournament_audit_log
+for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.app_admins admins
+    where admins.email = lower((select auth.jwt() ->> 'email'))
+  )
+);
+
+drop policy if exists "Authenticated admin insert tournament_audit_log" on public.tournament_audit_log;
+create policy "Authenticated admin insert tournament_audit_log"
+on public.tournament_audit_log
+for insert
+to authenticated
 with check (
   exists (
     select 1

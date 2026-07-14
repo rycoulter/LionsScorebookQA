@@ -3,24 +3,24 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <link rel="manifest" href="manifest.json?v=2026.07.13-build-284">
-    <link rel="icon" href="favicon.ico?v=2026.07.13-build-284" sizes="any">
-    <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png?v=2026.07.13-build-284">
-    <link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-48.png?v=2026.07.13-build-284">
-    <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=2026.07.13-build-284">
+    <link rel="manifest" href="manifest.json?v=2026.07.14-build-296">
+    <link rel="icon" href="favicon.ico?v=2026.07.14-build-296" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png?v=2026.07.14-build-296">
+    <link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-48.png?v=2026.07.14-build-296">
+    <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=2026.07.14-build-296">
     <meta name="theme-color" content="#1f2937">
   <title>Oakmont Lions</title>
     <link rel="preconnect" href="https://images.unsplash.com">
-    <link rel="stylesheet" href="styles.css?v=2026.07.13-build-284">
+    <link rel="stylesheet" href="styles.css?v=2026.07.14-build-296">
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
         <div class="brand-block">
-          <img src="assets/team-logos/lions-header-mark.png?v=2026.07.13-build-284" alt="" class="brand-logo" width="48" height="48">
+          <img src="assets/team-logos/lions-header-mark.png?v=2026.07.14-build-296" alt="" class="brand-logo" width="48" height="48">
           <div class="brand-copy">
             <h1 class="sr-only">Oakmont Lions</h1>
-            <img src="assets/team-logos/lions-header-wordmark-cropped.png?v=2026.07.13-build-284" alt="" class="brand-wordmark" width="170" height="67" aria-hidden="true">
+            <img src="assets/team-logos/lions-header-wordmark-cropped.png?v=2026.07.14-build-296" alt="" class="brand-wordmark" width="170" height="67" aria-hidden="true">
           </div>
         </div>
         <nav class="tabs" aria-label="Scorebook sections">
@@ -69,7 +69,7 @@
           </section>
           <div class="home-grid">
             <div class="home-left-column">
-              <section class="home-panel home-hero-panel">
+              <section class="home-panel home-hero-panel" id="homeHeroPanel">
                 <div class="home-hero-head">
                   <span class="scout-kicker">Next Game</span>
                   <p class="player-meta home-next-game-status" id="homeNextGameStatus">
@@ -79,11 +79,20 @@
                     <span id="homeNextGameStatusText">Schedule and score updates show up here automatically.</span>
                   </p>
                 </div>
-                <img
-                src="assets/backgrounds/lions-no-game-hero.png?v=2026.07.13-build-284"
-                  alt="Oakmont Lions"
-                  id="homeMatchupImage"
-                  class="home-field-image is-no-game-hero">
+                <div class="home-next-game-media">
+                  <img
+                    src="assets/backgrounds/lions-no-game-hero.png?v=2026.07.14-build-296"
+                    alt="Oakmont Lions"
+                    id="homeMatchupImage"
+                    class="home-field-image is-no-game-hero">
+                  <div class="home-next-game-postseason-badge" id="homeNextGamePostseasonBadge" hidden>
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M7 4.75h10v2.5c0 3.15-1.88 5.72-4.25 6.14v2.36h2.75v2H8.5v-2h2.75v-2.36C8.88 12.97 7 10.4 7 7.25v-2.5Z" fill="currentColor"/>
+                      <path d="M7.25 6.5H4.75v1.25c0 1.66 1.19 3.02 2.76 3.31M16.75 6.5h2.5v1.25c0 1.66-1.19 3.02-2.76 3.31" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Playoff Game</span>
+                  </div>
+                </div>
                 <div class="home-next-game">
                   <div class="home-next-game-head">
                     <h3 id="homeNextGame">No upcoming game scheduled</h3>
@@ -107,6 +116,13 @@
                   <div class="home-next-game-footer">
                     <button class="home-dashboard-link home-next-game-link home-next-game-score-link" id="homeNextGameScoreBtn" type="button" hidden>
                       <span>Start Game</span>
+                      <svg class="inline-chevron-icon inline-chevron-icon--right" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                        <path class="inline-chevron-icon-main" d="M6 3l5 5-5 5"></path>
+                        <path class="inline-chevron-icon-claw" d="M3.5 5.25 6.25 8 3.5 10.75"></path>
+                      </svg>
+                    </button>
+                    <button class="home-dashboard-link home-next-game-link" id="homeNextGameBracketBtn" type="button" hidden>
+                      <span>View Bracket</span>
                       <svg class="inline-chevron-icon inline-chevron-icon--right" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
                         <path class="inline-chevron-icon-main" d="M6 3l5 5-5 5"></path>
                         <path class="inline-chevron-icon-claw" d="M3.5 5.25 6.25 8 3.5 10.75"></path>
@@ -536,7 +552,7 @@
                   </div>
                   <div class="spray-chart" id="sprayChart" role="button" tabindex="0" aria-label="Tap to set batted ball location">
                     <div class="field-layer field-background" aria-hidden="true">
-                      <img class="field-background-art" src="assets/updated-field.png?v=2026.07.13-build-284" alt="" aria-hidden="true">
+                      <img class="field-background-art" src="assets/updated-field.png?v=2026.07.14-build-296" alt="" aria-hidden="true">
                     </div>
                     <div class="field-layer position-marker-layer" aria-hidden="true"></div>
                     <div class="field-layer spray-chart-overlay">
@@ -884,10 +900,8 @@
           <div class="record-summary" id="recordSummary" hidden></div>
           <div class="schedule-toolbar">
             <div class="game-filter-row" id="gameFilterRow" aria-label="Filter games">
-              <button type="button" class="secondary-action is-active" data-game-filter="all">All</button>
-              <button type="button" class="secondary-action" data-game-filter="future">Future</button>
-              <button type="button" class="secondary-action" data-game-filter="completed">Completed</button>
-              <button type="button" class="secondary-action" data-game-filter="postponed">Postponed</button>
+              <button type="button" class="secondary-action is-active" data-game-filter="regular">Regular Season</button>
+              <button type="button" class="secondary-action" data-game-filter="postseason">Post Season</button>
             </div>
             <div class="schedule-toolbar-side">
               <div class="schedule-toolbar-actions">
@@ -906,10 +920,40 @@
                     </svg>
                   </span>
                 </label>
+                <button type="button" class="secondary-action" id="scheduleBracketBuilderBtn" data-admin-only hidden>Playoff Bracket</button>
                 <button type="button" class="primary-action" id="scheduleGameBtn" data-admin-only hidden>Create Game</button>
               </div>
             </div>
           </div>
+          <section class="playoff-bracket-editor schedule-shell-card" id="playoffBracketEditor" data-admin-only hidden>
+            <div class="schedule-shell-head playoff-bracket-editor-head">
+              <div>
+                <p class="eyebrow">Admin</p>
+                <h3>Playoff Bracket Editor</h3>
+              </div>
+              <div class="schedule-shell-head-actions playoff-bracket-editor-actions">
+                <button type="button" class="secondary-action compact-action" id="playoffBracketTemplateBtn">Pittsburgh Preset</button>
+                <button type="button" class="secondary-action compact-action" id="playoffBracketSeedBtn">Auto-Seed</button>
+                <button type="button" class="secondary-action compact-action" id="playoffBracketAddRoundBtn">Add Matchup</button>
+                <button type="button" class="secondary-action compact-action" id="playoffBracketPreviewBtn">View Bracket</button>
+                <button type="button" class="primary-action compact-action" id="playoffBracketSaveBtn">Save / Publish</button>
+              </div>
+            </div>
+            <div class="playoff-bracket-editor-body">
+              <div class="playoff-bracket-editor-fields">
+                <label>
+                  Bracket Title
+                  <input id="playoffBracketTitleInput" autocomplete="off" placeholder="2026 AA Playoff Bracket">
+                </label>
+                <label>
+                  Season
+                  <select id="playoffBracketSeasonSelect" aria-label="Bracket season"></select>
+                </label>
+                <p class="player-meta" id="playoffBracketEditorStatus">Create a playoff bracket from postseason games.</p>
+              </div>
+              <div class="playoff-bracket-editor-rounds" id="playoffBracketEditorRounds"></div>
+            </div>
+          </section>
           <div class="schedule-dashboard" id="scheduleDashboard" hidden>
             <div class="schedule-dashboard-main">
               <section class="schedule-shell-card schedule-feature-shell">
@@ -1509,7 +1553,7 @@
             <div class="stats-spray-feature">
               <div class="stats-spray-preview" aria-hidden="true">
                 <div class="field-layer field-background stats-field-background">
-                  <img class="field-background-art stats-field-background-art" src="assets/updated-field.png?v=2026.07.13-build-284" alt="" aria-hidden="true">
+                  <img class="field-background-art stats-field-background-art" src="assets/updated-field.png?v=2026.07.14-build-296" alt="" aria-hidden="true">
                 </div>
                 <div class="stats-spray-preview-markers" id="statsSprayPreviewMarkers"></div>
               </div>
@@ -1813,9 +1857,44 @@
                     </svg>
                   </span>
                 </label>
+                <label class="schedule-season-chip archive-game-type-chip" for="archiveGameTypeSelect" aria-label="Choose past game type">
+                  <span class="schedule-season-chip-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M6 9h12"></path>
+                      <path d="M7 4h10v4a5 5 0 0 1-10 0V4Z"></path>
+                      <path d="M9 20h6"></path>
+                      <path d="M12 13v7"></path>
+                    </svg>
+                  </span>
+                  <span class="schedule-season-chip-label">Regular Season</span>
+                  <select id="archiveGameTypeSelect" class="schedule-season-select" aria-label="Past game type">
+                    <option value="regular">Regular Season</option>
+                    <option value="postseason">Post Season</option>
+                  </select>
+                  <span class="schedule-season-chip-caret" aria-hidden="true">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M4 6l4 4 4-4"></path>
+                    </svg>
+                  </span>
+                </label>
               </div>
             </div>
           </div>
+          <section class="archive-postseason-bracket playoff-bracket-shell" id="archivePostseasonBracketPanel" hidden>
+            <div class="archive-postseason-bracket-head">
+              <div>
+                <p class="eyebrow">Postseason</p>
+                <h3 id="archivePostseasonBracketTitle">Playoff Bracket</h3>
+                <p class="player-meta" id="archivePostseasonBracketMeta">Select a Lions game in the bracket to open its box score.</p>
+              </div>
+              <button type="button" class="secondary-action compact-action archive-bracket-toggle" id="archiveBracketToggleBtn" aria-expanded="true">Minimize Bracket</button>
+            </div>
+            <div class="playoff-bracket-grid archive-bracket-grid" id="archiveBracketGrid"></div>
+            <div class="playoff-bracket-empty" id="archiveBracketEmpty" hidden>
+              <h3>No playoff bracket yet.</h3>
+              <p class="player-meta">Create postseason games or use the admin bracket editor to build the bracket.</p>
+            </div>
+          </section>
           <section class="lineup-builder" id="gameSummaryPanel">
             <div class="mini-head">
               <div>
@@ -1827,6 +1906,27 @@
             <div id="gameSummaryBody"></div>
           </section>
           <div class="archive-grid" id="archiveGrid"></div>
+        </section>
+
+        <section class="view" id="playoffBracketView" data-panel="bracket">
+          <div class="section-head playoff-bracket-page-head">
+            <div>
+              <p class="eyebrow">Postseason</p>
+              <h2 id="playoffBracketPageTitle">Playoff Bracket</h2>
+              <p class="player-meta" id="playoffBracketPageMeta">Postseason matchups and results.</p>
+            </div>
+            <div class="schedule-page-actions">
+              <button type="button" class="secondary-action compact-action" id="playoffBracketScheduleBtn">Schedule</button>
+              <button type="button" class="secondary-action compact-action" id="playoffBracketPastGamesBtn">Past Games</button>
+            </div>
+          </div>
+          <section class="playoff-bracket-shell">
+            <div class="playoff-bracket-grid" id="playoffBracketGrid"></div>
+            <div class="playoff-bracket-empty" id="playoffBracketEmpty" hidden>
+              <h3>No playoff bracket yet.</h3>
+              <p class="player-meta">Create postseason games or use the admin bracket editor to build the bracket.</p>
+            </div>
+          </section>
         </section>
 
         <section class="view" id="boxScoreView" data-panel="boxscore">
@@ -2312,7 +2412,7 @@
           </div>
           <div class="spray-chart stats-spray-chart" id="statsSprayChart" aria-label="Player spray chart">
             <div class="field-layer field-background stats-field-background" aria-hidden="true">
-                <img class="field-background-art stats-field-background-art" src="assets/updated-field.png?v=2026.07.13-build-284" alt="" aria-hidden="true">
+                <img class="field-background-art stats-field-background-art" src="assets/updated-field.png?v=2026.07.14-build-296" alt="" aria-hidden="true">
             </div>
             <div class="field-layer stats-spray-chart-overlay">
               <div class="spray-markers stats-spray-markers" id="statsSprayMarkers"></div>
@@ -2424,7 +2524,7 @@
             </div>
             <div class="spray-chart stat-edit-spray-chart" id="statEditSprayChart" role="button" tabindex="0" aria-label="Tap to add a spray chart location">
               <div class="field-layer field-background" aria-hidden="true">
-                <img class="field-background-art" src="assets/updated-field.png?v=2026.07.13-build-284" alt="" aria-hidden="true">
+                <img class="field-background-art" src="assets/updated-field.png?v=2026.07.14-build-296" alt="" aria-hidden="true">
               </div>
               <div class="field-layer stats-spray-chart-overlay">
                 <div class="spray-markers stats-spray-markers" id="statEditSprayMarkers"></div>
@@ -2497,16 +2597,17 @@
       </div>
     </div>
 
-    <script src="dexie.min.js?v=2026.07.13-build-284"></script>
-    <script src="db.js?v=2026.07.13-build-284"></script>
-    <script src="storage.js?v=2026.07.13-build-284"></script>
-    <script src="matchup-images.js?v=2026.07.13-build-284"></script>
+    <script src="dexie.min.js?v=2026.07.14-build-296"></script>
+    <script src="db.js?v=2026.07.14-build-296"></script>
+    <script src="storage.js?v=2026.07.14-build-296"></script>
+    <script src="matchup-images.js?v=2026.07.14-build-296"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=2026.07.13-build-284"></script>
-    <script src="supabase-storage.js?v=2026.07.13-build-284"></script>
-    <script src="data/league-standings-cache.js?v=2026.07.13-build-284"></script>
-    <script src="data/naba-rosters-cache.js?v=2026.07.13-build-284"></script>
+    <script src="supabase-config.js?v=2026.07.14-build-296"></script>
+    <script src="supabase-storage.js?v=2026.07.14-build-296"></script>
+    <script src="bracket-engine.js?v=2026.07.14-build-296"></script>
+    <script src="data/league-standings-cache.js?v=2026.07.14-build-296"></script>
+    <script src="data/naba-rosters-cache.js?v=2026.07.14-build-296"></script>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js"></script>
-    <script src="app.js?v=2026.07.13-build-284"></script>
+    <script src="app.js?v=2026.07.14-build-296"></script>
   </body>
 </html>

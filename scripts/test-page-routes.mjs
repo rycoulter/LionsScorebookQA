@@ -27,8 +27,10 @@ assert.equal(existsSync(notFoundPath), true, "404.html should exist for GitHub P
 
 mustMatch(appJs, /const VIEW_ROUTES = \{[\s\S]*archive:\s*"\/archive"/, "Canonical routes should include Archive");
 mustMatch(appJs, /const VIEW_ROUTES = \{[\s\S]*highlights:\s*"\/highlights"/, "Canonical routes should include Highlights");
+mustMatch(appJs, /const VIEW_ROUTES = \{[\s\S]*bracket:\s*"\/bracket"/, "Canonical routes should include Bracket");
 mustMatch(appJs, /const ROUTE_VIEW_ALIASES = \{[\s\S]*"\/archive":\s*"archive"/, "Route aliases should map Archive");
 mustMatch(appJs, /const ROUTE_VIEW_ALIASES = \{[\s\S]*"\/highlights":\s*"highlights"/, "Route aliases should map Highlights");
+mustMatch(appJs, /const ROUTE_VIEW_ALIASES = \{[\s\S]*"\/playoff-bracket":\s*"bracket"/, "Route aliases should map Bracket");
 mustMatch(functionBody(appJs, "deploymentBasePath"), /\.github\.io/, "Route helper should detect GitHub Pages project paths");
 mustMatch(functionBody(appJs, "routePathWithoutBase"), /deploymentBasePath\(locationObject\)/, "Route parsing should strip the deployment base path");
 mustMatch(functionBody(appJs, "routeViewFromLocation"), /URLSearchParams[\s\S]*route/, "Route parser should support the GitHub Pages route query fallback");
@@ -43,6 +45,7 @@ mustMatch(indexHtml, /<button class="tab" data-view="roster">/, "Desktop roster 
 mustMatch(mobileBottomNav, /data-view="roster"/, "Roster should be available in the mobile bottom navigation");
 mustMatch(notFoundHtml, /params\.set\("route", route\)/, "404 fallback should preserve the requested path as route");
 mustMatch(notFoundHtml, /routeRoots[\s\S]*archive/, "404 fallback should know the public route roots");
+mustMatch(notFoundHtml, /routeRoots[\s\S]*bracket/, "404 fallback should know the bracket route");
 mustMatch(notFoundHtml, /github\\.io[\s\S]*base = "\/" \+ parts\[0\]/, "404 fallback should preserve GitHub Pages project paths");
 mustMatch(notFoundHtml, /window\.location\.replace\(base \+ "\/\?"/, "404 fallback should redirect to the app shell within the deployment base");
 mustMatch(serviceWorkerJs, /"\.\/404\.html"/, "Service worker should cache 404.html");
@@ -64,6 +67,11 @@ assert.equal(
   redirectFor("https://www.oakmontlions.com/archive"),
   "/?route=%2Farchive",
   "Root-domain deep links should return to the root app shell"
+);
+assert.equal(
+  redirectFor("https://www.oakmontlions.com/bracket"),
+  "/?route=%2Fbracket",
+  "Root-domain bracket links should return to the app shell"
 );
 assert.equal(
   redirectFor("https://rycoulter.github.io/LionsScorebookQA/archive"),

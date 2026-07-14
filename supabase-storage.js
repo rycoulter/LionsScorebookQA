@@ -209,7 +209,8 @@
         updated_from: "scorebook-app",
         games_count: currentGameIds.length,
         current_game_ids: currentGameIds,
-        deleted_game_tombstones: deletedGameTombstones
+        deleted_game_tombstones: deletedGameTombstones,
+        playoff_bracket: deepClone(state?.playoffBracket || null)
       }
     };
   }
@@ -326,6 +327,9 @@
       ? deepClone(remoteMetadata.deleted_game_tombstones)
       : {};
     nextState.deletedGameTombstones = deepClone(remoteDeletedGameTombstones);
+    if (remoteMetadata.playoff_bracket && typeof remoteMetadata.playoff_bracket === "object") {
+      nextState.playoffBracket = deepClone(remoteMetadata.playoff_bracket);
+    }
     if (Array.isArray(newsRows)) {
       nextState.newsArticles = newsRows.map(newsArticleFromRow).filter((article) => article?.id);
     } else {

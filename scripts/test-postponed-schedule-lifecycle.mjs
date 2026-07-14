@@ -27,6 +27,7 @@ assert.match(lifecycleBody, /gameIsPostponed\(game\)\) return "postponed"/, "gam
 
 const gamesForLifecycleBody = functionBody(appJs, "gamesForLifecycle");
 assert.match(gamesForLifecycleBody, /gameLifecycle\(game\) !== lifecycle/, "schedule filters should rely on the shared lifecycle helper");
+assert.match(gamesForLifecycleBody, /options\.gameType[\s\S]*gameMatchesScheduleFilter\(game, gameType\)/, "schedule lifecycle helpers should support regular/postseason scoping");
 
 const upcomingBody = functionBody(appJs, "upcomingScheduledGames");
 assert.match(upcomingBody, /gameLifecycle\(game\) === "future"/, "home next-game lookup should use the shared future lifecycle");
@@ -35,7 +36,7 @@ const scoreableBody = functionBody(appJs, "scoreableGames");
 assert.match(scoreableBody, /!gameIsPostponed\(game\)/, "postponed games should not be considered scoreable live games");
 
 const renderGamesBody = functionBody(appJs, "renderGames");
-assert.match(renderGamesBody, /scheduleDashboardUpcomingGames\(\{ season: scheduleSeasonFilter \}\)/, "Schedule/Scores ALL dashboard should use the dedicated next-game helper");
+assert.match(renderGamesBody, /scheduleDashboardUpcomingGames\(\{ season: scheduleSeasonFilter, gameType: "regular" \}\)/, "Schedule/Scores regular-season dashboard should use the dedicated next-game helper");
 
 const scheduleDashboardUpcomingBody = functionBody(appJs, "scheduleDashboardUpcomingGames");
 assert.match(scheduleDashboardUpcomingBody, /gamesForLifecycle\("future", options\)/, "Schedule/Scores next-game helper should use future lifecycle games");

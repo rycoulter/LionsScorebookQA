@@ -11,6 +11,7 @@
         var hash = window.location.hash || "";
         var routeRoots = {
           archive: true,
+          bracket: true,
           boxscore: true,
           "box-score": true,
           games: true,
@@ -28,7 +29,9 @@
           standings: true,
           statistics: true,
           stats: true,
-          "team-news": true
+          "team-news": true,
+          "playoff-bracket": true,
+          playoffs: true
         };
         var parts = path.split("/").filter(Boolean);
         var firstPart = (parts[0] || "").toLowerCase();

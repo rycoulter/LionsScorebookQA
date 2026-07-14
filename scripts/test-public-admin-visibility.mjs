@@ -31,6 +31,8 @@ function functionBody(source, functionName) {
   "highlightsAdminTools",
   "gameForm",
   "scheduleGameBtn",
+  "scheduleBracketBuilderBtn",
+  "playoffBracketEditor",
   "addPlayerBtn",
   "homeVisitCounterCard"
 ].forEach((id) => {

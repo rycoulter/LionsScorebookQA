@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.120";
+const APP_VERSION = "v.1.1.132";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -642,7 +642,7 @@ const VISIT_SESSION_ID_STORAGE_KEY = "oakmont-lions-visit-session-id-v1";
 const VISIT_RECORDED_STORAGE_KEY = "oakmont-lions-visit-recorded-v1";
 const SITE_VISIT_SUMMARY_REFRESH_MS = 5 * 60 * 1000;
 const PUBLIC_TAB_VIEWS = new Set(["home", "news", "standings", "games", "roster", "stats", "highlights", "archive"]);
-const PUBLIC_READ_VIEWS = new Set(["home", "news", "standings", "games", "roster", "stats", "highlights", "archive", "scorebook", "boxscore"]);
+const PUBLIC_READ_VIEWS = new Set(["home", "news", "standings", "games", "roster", "stats", "highlights", "archive", "bracket", "scorebook", "boxscore"]);
 const ADMIN_TAB_VIEWS = new Set(["home", "news", "standings", "newsEditor", "score", "games", "lineup", "roster", "stats", "highlights", "archive"]);
 const VIEW_ROUTES = {
   home: "/",
@@ -653,6 +653,7 @@ const VIEW_ROUTES = {
   stats: "/stats",
   highlights: "/highlights",
   archive: "/archive",
+  bracket: "/bracket",
   scorebook: "/scorebook",
   boxscore: "/boxscore",
   score: "/score-game"
@@ -673,6 +674,9 @@ const ROUTE_VIEW_ALIASES = {
   "/game-highlights": "highlights",
   "/archive": "archive",
   "/game-archive": "archive",
+  "/bracket": "bracket",
+  "/playoff-bracket": "bracket",
+  "/playoffs": "bracket",
   "/scorebook": "scorebook",
   "/boxscore": "boxscore",
   "/box-score": "boxscore",
@@ -691,6 +695,7 @@ const HIGHLIGHT_FILTERS = [
 const DEFAULT_HIGHLIGHT_CATEGORY = "top-plays";
 const DEFAULT_HIGHLIGHT_CATEGORIES = [DEFAULT_HIGHLIGHT_CATEGORY];
 const supabaseStorage = window.ScorebookSupabaseStorage || null;
+const bracketEngine = window.ScorebookBracketEngine || null;
 
 const FIELD_LOCATIONS = [
   { name: "Herschel Park", address: "800 Herschel St, Pittsburgh, PA 15220" },
@@ -718,6 +723,12 @@ let lineupAnalyzerGameId = "";
 let lineupAnalyzerPitcherId = "";
 let lineupAnalyzerDraft = null;
 let lineupAnalyzerNotice = "";
+let playoffBracketDraft = null;
+let playoffBracketPreviewDraft = null;
+let playoffBracketViewSeason = "";
+let playoffBracketNotice = "";
+let scheduleBracketEditorOpen = false;
+let archivePostseasonBracketCollapsed = false;
 let pendingSpray = null;
 let lineupBuilderGameId = null;
 let gameEditId = null;
@@ -801,11 +812,12 @@ let runnerDecisionError = "";
 let scoreCompleteSummaryGameId = "";
 let pendingOutType = "";
 let pendingOutFielder = "";
-let gameFilter = "all";
+let gameFilter = "regular";
 let scheduleGamesLayout = "dashboard";
 let scheduleSeasonFilter = String(currentLeagueSeason());
 let scheduleCalendarMonth = todayValue().slice(0, 7);
 let archiveSeasonFilter = String(currentLeagueSeason());
+let archiveGameTypeFilter = "regular";
 let statsSeasonFilter = String(currentLeagueSeason());
 let statsGameTypeFilter = "all";
 let selectedNewsArticleId = "";
@@ -913,6 +925,7 @@ const els = {
   homeVisitCounterCard: document.getElementById("homeVisitCounterCard"),
   homeVisitTotal: document.getElementById("homeVisitTotal"),
   homeVisitMeta: document.getElementById("homeVisitMeta"),
+  homeHeroPanel: document.getElementById("homeHeroPanel"),
   homeMatchupImage: document.getElementById("homeMatchupImage"),
   homeNextGame: document.getElementById("homeNextGame"),
   homeNextGameMobileTitle: document.getElementById("homeNextGameMobileTitle"),
@@ -921,7 +934,9 @@ const els = {
   homeNextGameStatus: document.getElementById("homeNextGameStatus"),
   homeNextGameStatusText: document.getElementById("homeNextGameStatusText"),
   homeNextGameWeather: document.getElementById("homeNextGameWeather"),
+  homeNextGamePostseasonBadge: document.getElementById("homeNextGamePostseasonBadge"),
   homeNextGameScoreBtn: document.getElementById("homeNextGameScoreBtn"),
+  homeNextGameBracketBtn: document.getElementById("homeNextGameBracketBtn"),
   homeNextGameScheduleLink: document.getElementById("homeNextGameScheduleLink"),
   homeGamesBtn: document.getElementById("homeGamesBtn"),
   homeBattingLeaders: document.getElementById("homeBattingLeaders"),
@@ -1063,6 +1078,7 @@ const els = {
   choiceButtons: [...document.querySelectorAll("[data-choice-group]")],
   gameForm: document.getElementById("gameForm"),
   scheduleGameBtn: document.getElementById("scheduleGameBtn"),
+  scheduleBracketBuilderBtn: document.getElementById("scheduleBracketBuilderBtn"),
   cancelGameCreateBtn: document.getElementById("cancelGameCreateBtn"),
   gameSetupTeamIndicator: document.getElementById("gameSetupTeamIndicator"),
   gameFilterRow: document.getElementById("gameFilterRow"),
@@ -1082,6 +1098,16 @@ const els = {
   scheduleCalendarWeekdays: document.getElementById("scheduleCalendarWeekdays"),
   scheduleCalendarFooter: document.getElementById("scheduleCalendarFooter"),
   scheduleResultsArchiveLink: document.getElementById("scheduleResultsArchiveLink"),
+  playoffBracketEditor: document.getElementById("playoffBracketEditor"),
+  playoffBracketTitleInput: document.getElementById("playoffBracketTitleInput"),
+  playoffBracketSeasonSelect: document.getElementById("playoffBracketSeasonSelect"),
+  playoffBracketEditorStatus: document.getElementById("playoffBracketEditorStatus"),
+  playoffBracketEditorRounds: document.getElementById("playoffBracketEditorRounds"),
+  playoffBracketTemplateBtn: document.getElementById("playoffBracketTemplateBtn"),
+  playoffBracketSeedBtn: document.getElementById("playoffBracketSeedBtn"),
+  playoffBracketAddRoundBtn: document.getElementById("playoffBracketAddRoundBtn"),
+  playoffBracketPreviewBtn: document.getElementById("playoffBracketPreviewBtn"),
+  playoffBracketSaveBtn: document.getElementById("playoffBracketSaveBtn"),
   gamesGrid: document.getElementById("gamesGrid"),
   gamesArchiveNote: document.getElementById("gamesArchiveNote"),
   scorebookGameSelect: document.getElementById("scorebookGameSelect"),
@@ -1217,6 +1243,13 @@ const els = {
   rosterListMeta: document.getElementById("rosterListMeta"),
   rosterListBody: document.getElementById("rosterListBody"),
   archiveSeasonSelect: document.getElementById("archiveSeasonSelect"),
+  archiveGameTypeSelect: document.getElementById("archiveGameTypeSelect"),
+  archiveBracketToggleBtn: document.getElementById("archiveBracketToggleBtn"),
+  archivePostseasonBracketPanel: document.getElementById("archivePostseasonBracketPanel"),
+  archivePostseasonBracketTitle: document.getElementById("archivePostseasonBracketTitle"),
+  archivePostseasonBracketMeta: document.getElementById("archivePostseasonBracketMeta"),
+  archiveBracketGrid: document.getElementById("archiveBracketGrid"),
+  archiveBracketEmpty: document.getElementById("archiveBracketEmpty"),
   archiveGrid: document.getElementById("archiveGrid"),
   gameSummaryPanel: document.getElementById("gameSummaryPanel"),
   gameSummaryTitle: document.getElementById("gameSummaryTitle"),
@@ -1234,6 +1267,12 @@ const els = {
   halfInningLineBottom: document.getElementById("halfInningLineBottom"),
   halfInningTitle: document.getElementById("halfInningTitle"),
   halfInningSubtitle: document.getElementById("halfInningSubtitle"),
+  playoffBracketPageTitle: document.getElementById("playoffBracketPageTitle"),
+  playoffBracketPageMeta: document.getElementById("playoffBracketPageMeta"),
+  playoffBracketGrid: document.getElementById("playoffBracketGrid"),
+  playoffBracketEmpty: document.getElementById("playoffBracketEmpty"),
+  playoffBracketScheduleBtn: document.getElementById("playoffBracketScheduleBtn"),
+  playoffBracketPastGamesBtn: document.getElementById("playoffBracketPastGamesBtn"),
   boxScoreTitle: document.getElementById("boxScoreTitle"),
   boxScoreMobileTitle: document.getElementById("boxScoreMobileTitle"),
   boxScoreMobileMetaPrimary: document.getElementById("boxScoreMobileMetaPrimary"),
@@ -2223,6 +2262,16 @@ function gameTypePill(game) {
   return gameIsPostseason(game) ? `<span class="game-type-pill">Postseason</span>` : "";
 }
 
+function normalizeScheduleGameFilter(value = "regular") {
+  const type = String(value || "").trim().toLowerCase();
+  return type === "postseason" ? "postseason" : "regular";
+}
+
+function gameMatchesScheduleFilter(game, filter = gameFilter) {
+  const normalizedFilter = normalizeScheduleGameFilter(filter);
+  return normalizedFilter === (gameIsPostseason(game) ? "postseason" : "regular");
+}
+
 function normalizeStatsGameTypeFilter(value = "all") {
   const type = String(value || "").trim().toLowerCase();
   return ["all", "regular", "postseason"].includes(type) ? type : "all";
@@ -2318,6 +2367,7 @@ function seedState() {
     deletedGameTombstones: {},
     highlights: [],
     newsArticles: [],
+    playoffBracket: seedPlayoffBracket(),
     games: [],
     activeGameId: ""
   };
@@ -2423,6 +2473,7 @@ function normalizeState(nextState) {
   nextState.completedGameSyncQueue = normalizeCompletedGameSyncQueue(nextState.completedGameSyncQueue, nextState.games);
   nextState.highlights = normalizeHighlights(nextState.highlights, nextState.games);
   nextState.newsArticles = normalizeNewsArticles(nextState.newsArticles, nextState.games);
+  nextState.playoffBracket = normalizePlayoffBracket(nextState.playoffBracket, nextState.games);
   if (rosterWasReplaced) {
     nextState.games.forEach((game) => resetGameAwayLineupToRoster(game, nextState));
   }
@@ -2512,6 +2563,176 @@ function normalizeHighlights(highlights = [], games = state?.games || []) {
     .map((highlight) => normalizeHighlight(highlight, games))
     .filter((highlight) => highlight?.id)
     .sort(sortHighlightsNewestFirst);
+}
+
+function seedPlayoffBracket(season = String(currentLeagueSeason())) {
+  const base = {
+    title: `${season} AA Championship Series`,
+    name: `${season} AA Championship Series`,
+    subtitle: "Double Elimination Tournament",
+    season,
+    division: "AA",
+    tournamentType: "double-elimination",
+    format: "double-elimination",
+    status: "draft",
+    isPublic: false,
+    championshipFormat: "Best of 3",
+    entries: bracketEngine?.seedEntries?.(7) || [],
+    matchups: [],
+    updatedAt: "",
+    rounds: []
+  };
+  return bracketEngine?.normalizeTournament ? bracketEngine.normalizeTournament(base) : base;
+}
+
+function normalizeBracketStatus(value = "scheduled") {
+  const status = String(value || "").trim().toLowerCase();
+  if (["final", "completed", "complete"].includes(status)) return "final";
+  if (["live", "active", "in-progress"].includes(status)) return "live";
+  if (["bye", "advance", "advanced"].includes(status)) return "bye";
+  return "scheduled";
+}
+
+function normalizeBracketSide(value = "") {
+  const side = String(value || "").trim().toUpperCase();
+  return side === "A" || side === "B" ? side : "";
+}
+
+function normalizeBracketSideKey(value = "winners") {
+  const side = String(value || "").trim().toLowerCase().replace(/[\s_]+/g, "-");
+  if (["loser", "losers", "losers-bracket", "elimination"].includes(side)) return "losers";
+  if (["championship", "championship-series", "championship-round", "final", "finals"].includes(side)) return "championship";
+  if (["bye", "byes", "bye-round"].includes(side)) return "bye";
+  return "winners";
+}
+
+function bracketSideLabel(side = "winners") {
+  const normalized = normalizeBracketSideKey(side);
+  if (normalized === "losers") return "Losers Bracket";
+  if (normalized === "championship") return "Championship Series";
+  if (normalized === "bye") return "Bye Round";
+  return "Winners Bracket";
+}
+
+function normalizeBracketMatchup(matchup = {}, index = 0, games = state?.games || [], roundSide = "winners") {
+  const gameId = String(matchup.linkedGameId || matchup.linked_game_id || matchup.gameId || matchup.game_id || "").trim();
+  const linkedGame = gameId ? (games || []).find((game) => game?.id === gameId) : null;
+  const linkedTeams = linkedGame ? bracketTeamsForGame(linkedGame) : null;
+  const rawSide = normalizeBracketSideKey(matchup.bracketSection || matchup.bracket_section || matchup.bracketSide || matchup.bracket_side || matchup.side || roundSide);
+  const rawIsBye = Boolean(matchup.isBye || matchup.is_bye || matchup.bye || rawSide === "bye");
+  let linkedWinner = "";
+  if (linkedGame && gameIsFinal(linkedGame)) {
+    const lionsWon = Number(linkedGame.score?.lions || 0) > Number(linkedGame.score?.opponent || 0);
+    const opponentWon = Number(linkedGame.score?.opponent || 0) > Number(linkedGame.score?.lions || 0);
+    if (lionsWon) linkedWinner = lionsSide(linkedGame) === "away" ? "A" : "B";
+    if (opponentWon) linkedWinner = lionsSide(linkedGame) === "away" ? "B" : "A";
+  }
+  const status = normalizeBracketStatus(matchup.status || (rawIsBye ? "bye" : linkedGame ? (gameIsFinal(linkedGame) ? "final" : gameLifecycle(linkedGame) === "active" ? "live" : "scheduled") : "scheduled"));
+  const isBye = rawIsBye || status === "bye";
+  const bracketSide = isBye ? "bye" : rawSide;
+  const winnerSide = normalizeBracketSide(matchup.winnerSide || matchup.winner || linkedWinner);
+  return {
+    id: String(matchup.id || createId("bracket-game")),
+    order: Number(matchup.order || index + 1) || index + 1,
+    bracketSide,
+    bracketSection: bracketSide,
+    roundNumber: Number(matchup.roundNumber || matchup.round_number || matchup.round || 0) || 0,
+    displayOrder: Number(matchup.displayOrder || matchup.display_order || matchup.order || index + 1) || index + 1,
+    isBye,
+    label: String(matchup.label || matchup.gameCode || matchup.game_code || "").trim(),
+    matchupCode: String(matchup.matchupCode || matchup.matchup_code || matchup.code || matchup.label || matchup.gameCode || matchup.game_code || "").trim(),
+    dateLabel: String(matchup.dateLabel || matchup.date_label || "").trim(),
+    timeLabel: String(matchup.timeLabel || matchup.time_label || matchup.time || "").trim(),
+    location: String(matchup.location || matchup.locationName || matchup.location_name || "").trim(),
+    note: String(matchup.note || matchup.notes || "").trim(),
+    linkedGameId: linkedGame?.id || "",
+    teamA: String(matchup.teamA || matchup.team_a || linkedTeams?.teamA || "").trim(),
+    seedA: String(matchup.seedA || matchup.seed_a || "").trim(),
+    sourceLabelA: String(matchup.sourceLabelA || matchup.source_label_a || "").trim(),
+    scoreA: String(matchup.scoreA ?? matchup.score_a ?? linkedTeams?.scoreA ?? "").trim(),
+    teamB: String(matchup.teamB || matchup.team_b || linkedTeams?.teamB || "").trim(),
+    seedB: String(matchup.seedB || matchup.seed_b || "").trim(),
+    sourceLabelB: String(matchup.sourceLabelB || matchup.source_label_b || "").trim(),
+    scoreB: String(matchup.scoreB ?? matchup.score_b ?? linkedTeams?.scoreB ?? "").trim(),
+    status,
+    winner: winnerSide,
+    winnerSide,
+    slotA: matchup.slotA || matchup.homeSource || null,
+    slotB: matchup.slotB || matchup.awaySource || null,
+    winnerDestination: String(matchup.winnerDestination || matchup.winner_destination || "").trim().toUpperCase(),
+    winnerDestinationSlot: normalizeBracketSide(matchup.winnerDestinationSlot || matchup.winner_destination_slot || ""),
+    loserDestination: String(matchup.loserDestination || matchup.loser_destination || "").trim().toUpperCase(),
+    loserDestinationSlot: normalizeBracketSide(matchup.loserDestinationSlot || matchup.loser_destination_slot || ""),
+    seriesBestOf: Number(matchup.seriesBestOf || matchup.series_best_of || 1) || 1,
+    seriesGameNumber: Number(matchup.seriesGameNumber || matchup.series_game_number || 1) || 1
+  };
+}
+
+function normalizeBracketRound(round = {}, index = 0, games = state?.games || []) {
+  const bracketSide = normalizeBracketSideKey(round.bracketSide || round.bracket_side || round.side || round.type || round.group || "winners");
+  const roundNumber = Number(round.roundNumber || round.round_number || round.order || index + 1) || index + 1;
+  const matchups = (Array.isArray(round.matchups || round.games) ? (round.matchups || round.games) : [])
+    .map((matchup, matchupIndex) => ({
+      ...normalizeBracketMatchup(matchup, matchupIndex, games, bracketSide),
+      bracketSection: normalizeBracketSideKey(matchup.bracketSection || matchup.bracket_section || matchup.bracketSide || matchup.bracket_side || bracketSide),
+      roundNumber: Number(matchup.roundNumber || matchup.round_number || matchup.round || roundNumber) || roundNumber,
+      displayOrder: Number(matchup.displayOrder || matchup.display_order || matchup.order || matchupIndex + 1) || matchupIndex + 1
+    }))
+    .filter((matchup) => matchup.teamA || matchup.teamB || matchup.linkedGameId || matchup.label || matchup.dateLabel || matchup.note || matchup.isBye);
+  return {
+    id: String(round.id || createId("bracket-round")),
+    name: String(round.name || round.title || `Round ${index + 1}`).trim(),
+    order: Number(round.order || roundNumber || index + 1) || index + 1,
+    roundNumber,
+    bracketSide,
+    matchups
+  };
+}
+
+function normalizePlayoffBracket(bracket = {}, games = state?.games || []) {
+  const fallback = seedPlayoffBracket();
+  const season = String(bracket?.season || fallback.season || currentLeagueSeason()).trim();
+  const rounds = (Array.isArray(bracket?.rounds) ? bracket.rounds : [])
+    .map((round, index) => normalizeBracketRound(round, index, games))
+    .sort((left, right) => (left.order || 0) - (right.order || 0));
+  rounds.forEach((round, index) => {
+    round.order = index + 1;
+    round.matchups.sort((left, right) => (left.order || 0) - (right.order || 0));
+    round.matchups.forEach((matchup, matchupIndex) => { matchup.order = matchupIndex + 1; });
+  });
+  const sourceMatchups = Array.isArray(bracket?.matchups) && bracket.matchups.length
+    ? bracket.matchups
+    : rounds.flatMap((round) => round.matchups.map((matchup) => ({
+      ...matchup,
+      bracketSection: matchup.bracketSection || matchup.bracketSide || round.bracketSide,
+      roundNumber: matchup.roundNumber || round.roundNumber || round.order,
+      displayOrder: matchup.displayOrder || matchup.order
+    })));
+  const matchups = sourceMatchups
+    .map((matchup, index) => normalizeBracketMatchup(matchup, index, games, matchup.bracketSection || matchup.bracketSide || "winners"))
+    .filter((matchup) => matchup.teamA || matchup.teamB || matchup.linkedGameId || matchup.label || matchup.matchupCode || matchup.dateLabel || matchup.note || matchup.isBye || matchup.slotA || matchup.slotB);
+  const normalized = {
+    id: String(bracket?.id || fallback.id || "primary-playoff-bracket").trim(),
+    name: String(bracket?.name || bracket?.title || `${season} AA Championship Series`).trim(),
+    title: String(bracket?.title || `${season} AA Championship Series`).trim(),
+    subtitle: String(bracket?.subtitle || bracket?.description || "Double Elimination Tournament").trim(),
+    description: String(bracket?.description || "").trim(),
+    season,
+    division: String(bracket?.division || "AA").trim(),
+    tournamentType: String(bracket?.tournamentType || bracket?.tournament_type || bracket?.format || "double-elimination").trim(),
+    format: String(bracket?.format || bracket?.tournamentType || bracket?.tournament_type || "double-elimination").trim(),
+    templateId: String(bracket?.templateId || bracket?.template_id || "").trim(),
+    status: String(bracket?.status || (bracket?.isPublic ? "published" : "draft")).trim(),
+    isPublic: bracket?.isPublic === undefined ? bracket?.status === "published" : Boolean(bracket?.isPublic),
+    startsAt: String(bracket?.startsAt || bracket?.starts_at || "").trim(),
+    endsAt: String(bracket?.endsAt || bracket?.ends_at || "").trim(),
+    championshipFormat: String(bracket?.championshipFormat || bracket?.championship_format || "Best of 3").trim(),
+    entries: Array.isArray(bracket?.entries) ? bracket.entries : (fallback.entries || []),
+    matchups,
+    updatedAt: String(bracket?.updatedAt || bracket?.updated_at || "").trim(),
+    rounds
+  };
+  return bracketEngine?.resolveTournament ? bracketEngine.resolveTournament(normalized) : normalized;
 }
 
 function normalizeRoster(roster = []) {
@@ -3182,6 +3403,7 @@ function hasMeaningfulSupabaseSnapshot(snapshot) {
   if (Array.isArray(appState.roster) && appState.roster.length) return true;
   if (Array.isArray(appState.lineup) && appState.lineup.length) return true;
   if (typeof appState.active_game_id === "string" && appState.active_game_id.trim()) return true;
+  if (appState.metadata?.playoff_bracket && typeof appState.metadata.playoff_bracket === "object") return true;
   return false;
 }
 
@@ -4095,6 +4317,7 @@ function ensureIndexAdminAccess() {
 
 function boxScoreReturnLabel(view = boxScoreReturnView) {
   if (view === "archive") return "Past Games";
+  if (view === "bracket") return "Bracket";
   if (view === "games") return "Schedule";
   if (view === "home") return "Home";
   if (view === "scorebook") return "Scorebook";
@@ -4601,6 +4824,7 @@ function bindEvents() {
   els.homeScoreGameBtn?.addEventListener("click", openCurrentGameForScoring);
   els.homeStartGameBtn?.addEventListener("click", startNextGameFromHome);
   els.homeNextGameScoreBtn?.addEventListener("click", handleHomeNextGameScoreAction);
+  els.homeNextGameBracketBtn?.addEventListener("click", openPlayoffBracket);
   els.homeGamesBtn?.addEventListener("click", () => switchView("games"));
   els.homeNextGameScheduleLink?.addEventListener("click", () => switchView("games"));
   els.homeBattingLeadersLink?.addEventListener("click", () => switchView("stats"));
@@ -4838,6 +5062,22 @@ function bindEvents() {
     renderGames();
   });
   els.scheduleResultsArchiveLink?.addEventListener("click", () => switchView("archive"));
+  els.scheduleBracketBuilderBtn?.addEventListener("click", () => {
+    if (!requireAdminAccess("Admin sign-in required to edit the playoff bracket.")) return;
+    gameFilter = "postseason";
+    scheduleBracketEditorOpen = !scheduleBracketEditorOpen;
+    scheduleGamesLayout = "dashboard";
+    renderGames();
+    renderPlayoffBracketEditor();
+  });
+  els.playoffBracketTemplateBtn?.addEventListener("click", seedDoubleElimBracketDraftTemplate);
+  els.playoffBracketSeedBtn?.addEventListener("click", seedPlayoffBracketDraftFromGames);
+  els.playoffBracketAddRoundBtn?.addEventListener("click", addPlayoffBracketRound);
+  els.playoffBracketPreviewBtn?.addEventListener("click", previewPlayoffBracketDraft);
+  els.playoffBracketSaveBtn?.addEventListener("click", savePlayoffBracket);
+  els.playoffBracketEditor?.addEventListener("input", handlePlayoffBracketEditorInput);
+  els.playoffBracketEditor?.addEventListener("change", handlePlayoffBracketEditorInput);
+  els.playoffBracketEditorRounds?.addEventListener("click", handlePlayoffBracketEditorClick);
   els.scheduleResultsBody?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-game-action]");
     if (!button) return;
@@ -4862,7 +5102,7 @@ function bindEvents() {
     const button = event.target.closest("[data-game-action]");
     if (!button) return;
     const action = button.dataset.gameAction;
-    if (["summary", "scorebook", "stats", "boxscore", "sync", "quick-score", "highlights"].includes(action)) {
+    if (["summary", "scorebook", "stats", "boxscore", "sync", "quick-score", "highlights", "bracket"].includes(action)) {
       handleGameActionClick(event);
       return;
     }
@@ -4880,7 +5120,7 @@ function bindEvents() {
   els.gameFilterRow?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-game-filter]");
     if (!button) return;
-    gameFilter = button.dataset.gameFilter || "all";
+    gameFilter = button.dataset.gameFilter || "regular";
     scheduleGamesLayout = "dashboard";
     renderGames();
   });
@@ -5282,6 +5522,27 @@ window.addEventListener("pageshow", () => {
   els.archiveSeasonSelect?.addEventListener("change", (event) => {
     archiveSeasonFilter = normalizeArchiveSeasonFilter(event.target.value);
     renderArchive();
+  });
+  els.archiveGameTypeSelect?.addEventListener("change", (event) => {
+    archiveGameTypeFilter = normalizeScheduleGameFilter(event.target.value);
+    renderArchive();
+  });
+  els.archiveBracketToggleBtn?.addEventListener("click", () => {
+    archivePostseasonBracketCollapsed = !archivePostseasonBracketCollapsed;
+    updateArchivePostseasonBracketCollapseUi(Boolean(els.archiveBracketGrid?.innerHTML.trim()));
+    if (!archivePostseasonBracketCollapsed) queuePlayoffBracketConnectorRender();
+  });
+  els.archiveBracketGrid?.addEventListener("click", handleGameActionClick);
+  els.archiveBracketGrid?.addEventListener("keydown", handleGameActionKeydown);
+  els.playoffBracketGrid?.addEventListener("click", handleGameActionClick);
+  els.playoffBracketGrid?.addEventListener("keydown", handleGameActionKeydown);
+  els.playoffBracketScheduleBtn?.addEventListener("click", () => switchView("games"));
+  els.playoffBracketPastGamesBtn?.addEventListener("click", () => {
+    const bracketSeason = playoffBracketViewSeason || state.playoffBracket?.season || String(currentLeagueSeason());
+    archiveSeasonFilter = normalizeArchiveSeasonFilter(bracketSeason);
+    archiveGameTypeFilter = "postseason";
+    renderArchive();
+    switchView("archive");
   });
   els.statsSeasonSelect?.addEventListener("change", (event) => {
     statsSeasonFilter = normalizeStatsSeasonFilter(event.target.value);
@@ -8079,6 +8340,7 @@ function handleGameActionClick(event) {
   if (button.dataset.gameAction === "stats") openGameStats(gameId);
   if (button.dataset.gameAction === "boxscore") openBoxScore(gameId);
   if (button.dataset.gameAction === "highlights") openGameHighlights(gameId);
+  if (button.dataset.gameAction === "bracket") openPlayoffBracket();
   if (button.dataset.gameAction === "quick-score") openQuickScoreModal(gameId);
   if (button.dataset.gameAction === "sync") {
     syncCompletedGame(gameId).catch((error) => {
@@ -8088,6 +8350,14 @@ function handleGameActionClick(event) {
       render();
     });
   }
+}
+
+function handleGameActionKeydown(event) {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  const action = event.target.closest("[data-game-action]");
+  if (!action || !event.currentTarget?.contains(action)) return;
+  event.preventDefault();
+  action.click();
 }
 
 function openGameSummary(gameId) {
@@ -8425,7 +8695,7 @@ function postponeGame(game, options = {}) {
   markSharedGamesDirty(game.id);
   if (state.activeGameId === game.id) moveActiveGameOffGame(game.id);
   closeGameActionsModal();
-  gameFilter = "postponed";
+  gameFilter = gameIsPostseason(game) ? "postseason" : "regular";
   scheduleGamesLayout = "dashboard";
   saveStateWithOptions({ markLiveGamesDirty: false });
   switchView("games");
@@ -8700,8 +8970,10 @@ function render() {
   renderTeamNews();
   renderNewsEditor();
   renderBoxScore();
+  renderPlayoffBracket();
   renderGameSetupPreview();
   renderGames();
+  renderPlayoffBracketEditor();
   renderGameEditor();
   renderGameSummary();
   renderSeasonStats();
@@ -8750,6 +9022,9 @@ function renderHome() {
   if (els.homeGamesBtn) els.homeGamesBtn.hidden = true;
   if (next) {
     const nextGameStatus = homeNextGameStatusState(next);
+    const nextIsPostseason = gameIsPostseason(next);
+    if (els.homeHeroPanel) els.homeHeroPanel.classList.toggle("is-postseason", nextIsPostseason);
+    if (els.homeNextGamePostseasonBadge) els.homeNextGamePostseasonBadge.hidden = !nextIsPostseason;
     if (els.homeNextGame) {
       els.homeNextGame.textContent = gameMatchupLabel(next);
       els.homeNextGame.hidden = true;
@@ -8773,8 +9048,17 @@ function renderHome() {
       els.homeNextGameScoreBtn.innerHTML = `<span>${homeNextGameScoreButtonLabel(next)}</span>${inlineChevronIcon("right")}`;
       els.homeNextGameScoreBtn.setAttribute("aria-label", `${homeNextGameScoreButtonLabel(next)}: ${gameMatchupLabel(next)}`);
     }
+    if (els.homeNextGameBracketBtn) {
+      const showBracketAction = nextIsPostseason;
+      els.homeNextGameBracketBtn.hidden = !showBracketAction;
+      els.homeNextGameBracketBtn.dataset.gameId = next.id;
+      els.homeNextGameBracketBtn.innerHTML = `<span>View Bracket</span>${inlineChevronIcon("right")}`;
+      els.homeNextGameBracketBtn.setAttribute("aria-label", `View playoff bracket for ${gameMatchupLabel(next)}`);
+    }
     setHomeMatchupImage(next);
   } else {
+    if (els.homeHeroPanel) els.homeHeroPanel.classList.remove("is-postseason");
+    if (els.homeNextGamePostseasonBadge) els.homeNextGamePostseasonBadge.hidden = true;
     if (els.homeNextGame) {
       els.homeNextGame.textContent = "No upcoming game scheduled";
       els.homeNextGame.hidden = false;
@@ -8795,6 +9079,11 @@ function renderHome() {
       els.homeNextGameScoreBtn.hidden = true;
       delete els.homeNextGameScoreBtn.dataset.gameId;
       els.homeNextGameScoreBtn.removeAttribute("aria-label");
+    }
+    if (els.homeNextGameBracketBtn) {
+      els.homeNextGameBracketBtn.hidden = true;
+      delete els.homeNextGameBracketBtn.dataset.gameId;
+      els.homeNextGameBracketBtn.removeAttribute("aria-label");
     }
     setHomeMatchupImage(null);
   }
@@ -13587,15 +13876,67 @@ function populateArchiveSeasonSelect() {
   syncSeasonChipLabel(els.archiveSeasonSelect);
 }
 
+function populateArchiveGameTypeSelect() {
+  archiveGameTypeFilter = normalizeScheduleGameFilter(archiveGameTypeFilter);
+  if (!els.archiveGameTypeSelect) return;
+  els.archiveGameTypeSelect.value = archiveGameTypeFilter;
+  syncSeasonChipLabel(els.archiveGameTypeSelect);
+}
+
+function gameMatchesArchiveFilters(game, season = archiveSeasonFilter, gameType = archiveGameTypeFilter) {
+  const selectedSeason = String(season || currentLeagueSeason());
+  if (!String(game?.date || "").startsWith(`${selectedSeason}-`)) return false;
+  return normalizeScheduleGameFilter(gameType) === (gameIsPostseason(game) ? "postseason" : "regular");
+}
+
+function updateArchivePostseasonBracketCollapseUi(hasMatchups = false) {
+  const collapsed = archivePostseasonBracketCollapsed && hasMatchups;
+  if (els.archivePostseasonBracketPanel) {
+    els.archivePostseasonBracketPanel.classList.toggle("is-minimized", collapsed);
+  }
+  if (els.archiveBracketToggleBtn) {
+    els.archiveBracketToggleBtn.disabled = !hasMatchups;
+    els.archiveBracketToggleBtn.textContent = collapsed ? "Show Bracket" : "Minimize Bracket";
+    els.archiveBracketToggleBtn.setAttribute("aria-expanded", String(!collapsed));
+  }
+  if (els.archiveBracketGrid) els.archiveBracketGrid.hidden = collapsed || !hasMatchups;
+  if (els.archiveBracketEmpty) els.archiveBracketEmpty.hidden = collapsed || hasMatchups;
+}
+
+function renderArchivePostseasonBracket() {
+  const viewingPostseason = archiveGameTypeFilter === "postseason";
+  if (els.archivePostseasonBracketPanel) els.archivePostseasonBracketPanel.hidden = !viewingPostseason;
+  if (!viewingPostseason) {
+    if (els.archiveBracketGrid) els.archiveBracketGrid.innerHTML = "";
+    updateArchivePostseasonBracketCollapseUi(false);
+    return;
+  }
+
+  const bracket = playoffBracketDisplayData(archiveSeasonFilter, { ignorePreview: true });
+  const hasMatchups = bracket.rounds.some((round) => round.matchups.length);
+  const postseasonGameCount = playoffBracketPostseasonGames(archiveSeasonFilter).length;
+  if (els.archivePostseasonBracketTitle) els.archivePostseasonBracketTitle.textContent = bracket.title || `${archiveSeasonFilter} Playoff Bracket`;
+  if (els.archivePostseasonBracketMeta) {
+    els.archivePostseasonBracketMeta.textContent = `${archiveSeasonFilter} postseason | ${postseasonGameCount} ${postseasonGameCount === 1 ? "game" : "games"} logged | Select a Lions game in the bracket to open its box score.`;
+  }
+  if (els.archiveBracketGrid) els.archiveBracketGrid.innerHTML = hasMatchups ? renderPlayoffBracketBoard(bracket) : "";
+  if (els.archiveBracketGrid) els.archiveBracketGrid.scrollLeft = 0;
+  updateArchivePostseasonBracketCollapseUi(hasMatchups);
+  if (hasMatchups && !archivePostseasonBracketCollapsed) queuePlayoffBracketConnectorRender();
+}
+
 function renderArchive() {
   populateArchiveSeasonSelect();
+  populateArchiveGameTypeSelect();
+  renderArchivePostseasonBracket();
   const games = state.games
-    .filter((game) => gameIsFinal(game) && String(game?.date || "").startsWith(`${archiveSeasonFilter}-`))
+    .filter((game) => gameIsFinal(game))
+    .filter((game) => gameMatchesArchiveFilters(game))
     .sort(sortGamesNewestFirst);
 
   els.archiveGrid.innerHTML = games.length
     ? games.map(renderArchiveCard).join("")
-    : `<p class="player-meta">No past games yet.</p>`;
+    : `<p class="player-meta">No ${escapeHtml(archiveGameTypeFilter === "postseason" ? "postseason" : "regular season")} games logged for ${escapeHtml(archiveSeasonFilter)} yet.</p>`;
 }
 
 function renderArchiveCard(game) {
@@ -13659,10 +14000,1063 @@ function renderArchiveCard(game) {
     </div>
     <div class="archive-card-actions ${isAdmin ? "archive-card-actions-admin" : "archive-card-actions-public"}">
       <button type="button" class="secondary-action archive-card-action" data-game-action="boxscore" data-game-id="${escapeHtml(game.id)}">View Box Score</button>
+      ${renderPlayoffBracketAction(game, "archive-card-action")}
       ${renderGameHighlightsAction(game, "archive-card-action")}
       ${syncButton}
     </div>
   </article>`;
+}
+
+function openPlayoffBracket(options = {}) {
+  if (!options.preview) playoffBracketPreviewDraft = null;
+  playoffBracketViewSeason = options.season ? String(options.season) : "";
+  renderPlayoffBracket();
+  switchView("bracket");
+}
+
+function previewPlayoffBracketDraft() {
+  if (!requireAdminAccess("Admin sign-in required to preview the playoff bracket.")) return;
+  const draft = ensurePlayoffBracketDraft();
+  playoffBracketPreviewDraft = normalizePlayoffBracket(draft, state.games);
+  openPlayoffBracket({ preview: true });
+}
+
+function bracketTeamLogo(teamName = "") {
+  const name = String(teamName || "").trim();
+  if (!name || /^lions$/i.test(name) || /oakmont lions/i.test(name)) return "assets/team-logos/lions.png";
+  return window.MatchupImages?.getTeamLogo?.(name, "opponent") || "assets/team-logos/lions.png";
+}
+
+function bracketPlaceholderTeam(teamName = "") {
+  const name = String(teamName || "").trim();
+  return !name
+    || /^tbd$/i.test(name)
+    || /^(winner|loser)\s+/i.test(name)
+    || /^#?\d+\s*seed$/i.test(name)
+    || /qualifier/i.test(name);
+}
+
+function bracketTrophyIconMarkup() {
+  return `<span class="playoff-bracket-team-placeholder-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24" focusable="false">
+      <path d="M7 4h10v3h3v2.2c0 2.2-1.6 4.1-3.8 4.5-.7 1.3-1.8 2.3-3.2 2.7V19h3v2H8v-2h3v-2.6c-1.4-.4-2.5-1.4-3.2-2.7C5.6 13.3 4 11.4 4 9.2V7h3V4Zm10 5v2.2c.7-.3 1-.9 1-2V9h-1ZM6 9v.2c0 1.1.3 1.7 1 2V9H6Zm3-3v5.5c0 1.9 1.3 3.5 3 3.5s3-1.6 3-3.5V6H9Z"></path>
+    </svg>
+  </span>`;
+}
+
+function bracketTeamsForGame(game) {
+  if (!game) return null;
+  const opponentName = homeOpponentName(game);
+  const lionsHome = lionsSide(game) === "home";
+  const lionsScore = Number(game?.score?.lions || 0);
+  const opponentScore = Number(game?.score?.opponent || 0);
+  return {
+    teamA: lionsHome ? opponentName : "Lions",
+    scoreA: gameIsFinal(game) || gameLifecycle(game) === "active" ? String(lionsHome ? opponentScore : lionsScore) : "",
+    teamB: lionsHome ? "Lions" : opponentName,
+    scoreB: gameIsFinal(game) || gameLifecycle(game) === "active" ? String(lionsHome ? lionsScore : opponentScore) : ""
+  };
+}
+
+function playoffBracketPostseasonGames(season = state.playoffBracket?.season || String(currentLeagueSeason())) {
+  const activeSeason = String(season || currentLeagueSeason());
+  return [...(state.games || [])]
+    .filter((game) => gameIsPostseason(game))
+    .filter((game) => !activeSeason || String(game?.date || "").startsWith(`${activeSeason}-`))
+    .sort(sortGamesOldestFirst);
+}
+
+function autoPlayoffBracketFromPostseasonGames(season = state.playoffBracket?.season || String(currentLeagueSeason())) {
+  const games = playoffBracketPostseasonGames(season);
+  const bracket = seedPlayoffBracket(String(season || currentLeagueSeason()));
+  bracket.title = `${bracket.season} AA Championship Series`;
+  if (!games.length) return bracket;
+  bracket.rounds = [{
+    id: "auto-postseason-round",
+    name: "Postseason Games",
+    order: 1,
+    bracketSide: "winners",
+    matchups: games.map((game, index) => normalizeBracketMatchup({
+      id: `auto-${game.id}`,
+      order: index + 1,
+      bracketSide: "winners",
+      linkedGameId: game.id
+    }, index, state.games))
+  }];
+  return bracket;
+}
+
+function playoffBracketDisplayData(season = state.playoffBracket?.season || String(currentLeagueSeason()), options = {}) {
+  const targetSeason = String(season || currentLeagueSeason());
+  if (playoffBracketPreviewDraft && !options.ignorePreview) return normalizePlayoffBracket(playoffBracketPreviewDraft, state.games);
+  const saved = normalizePlayoffBracket(state.playoffBracket, state.games);
+  if (saved.rounds.some((round) => round.matchups.length) && String(saved.season || "") === targetSeason) return saved;
+  return autoPlayoffBracketFromPostseasonGames(targetSeason);
+}
+
+function bracketMatchupStatusLabel(matchup, game = null) {
+  if (matchup.status === "bye" || matchup.isBye) return "Bye";
+  if (game && gameIsFinal(game)) return "Final";
+  if (game && gameLifecycle(game) === "active") return "Live";
+  if (matchup.status === "final") return "Final";
+  if (matchup.status === "live") return "Live";
+  if (game?.date) return `${formatShortMonthDay(game.date)}${game.time ? ` | ${formatGameTimeDisplay(game.time)}` : ""}`;
+  return "Scheduled";
+}
+
+function renderBracketTeamRow(matchup, side) {
+  const isA = side === "A";
+  const team = isA ? matchup.teamA : matchup.teamB;
+  const seed = isA ? matchup.seedA : matchup.seedB;
+  const score = isA ? matchup.scoreA : matchup.scoreB;
+  const winner = matchup.winner === side;
+  const icon = bracketPlaceholderTeam(team)
+    ? bracketTrophyIconMarkup()
+    : `<img src="${escapeHtml(bracketTeamLogo(team))}" alt="" loading="lazy" decoding="async">`;
+  return `<div class="playoff-bracket-team${winner ? " is-winner" : ""}">
+    <div class="playoff-bracket-team-main">
+      ${seed ? `<span class="playoff-bracket-seed">${escapeHtml(seed)}</span>` : ""}
+      ${icon}
+      <strong>${escapeHtml(team || "TBD")}</strong>
+    </div>
+    <span class="playoff-bracket-score">${escapeHtml(score || "-")}</span>
+  </div>`;
+}
+
+function playoffBracketRegions(bracket) {
+  const regionOrder = ["bye", "winners", "losers", "championship"];
+  return regionOrder
+    .map((side) => {
+      const rounds = bracket.rounds
+        .map((round) => ({
+          ...round,
+          matchups: round.matchups.filter((matchup) => normalizeBracketSideKey(matchup.bracketSide || round.bracketSide) === side)
+        }))
+        .filter((round) => round.matchups.length);
+      return {
+        side,
+        title: bracketSideLabel(side),
+        rounds
+      };
+    })
+    .filter((region) => region.rounds.length);
+}
+
+function renderBracketMatchup(matchup) {
+  const game = matchup.linkedGameId ? state.games.find((item) => item.id === matchup.linkedGameId) : null;
+  const linkedTeams = game ? bracketTeamsForGame(game) : null;
+  const view = normalizeBracketMatchup({
+    ...matchup,
+    teamA: matchup.teamA || linkedTeams?.teamA || "",
+    scoreA: matchup.scoreA || linkedTeams?.scoreA || "",
+    teamB: matchup.teamB || linkedTeams?.teamB || "",
+    scoreB: matchup.scoreB || linkedTeams?.scoreB || ""
+  }, 0, state.games);
+  const matchupActionAttrs = game
+    ? ` data-game-action="boxscore" data-game-id="${escapeHtml(game.id)}" role="button" tabindex="0" aria-label="${escapeHtml(`Open box score for ${view.teamA || "TBD"} vs ${view.teamB || "TBD"}`)}"`
+    : "";
+  const actions = game
+    ? `<div class="playoff-bracket-card-actions">
+        <span class="secondary-action compact-action playoff-bracket-card-link">Box Score</span>
+      </div>`
+    : "";
+  const detailParts = [
+    view.label,
+    view.dateLabel,
+    view.note
+  ].filter(Boolean);
+  const byeRow = view.isBye
+    ? `<div class="playoff-bracket-bye-row">BYE</div>`
+    : renderBracketTeamRow(view, "B");
+  return `<article class="playoff-bracket-card playoff-bracket-node${view.winner ? " has-winner" : ""}${view.isBye ? " is-bye" : ""}${game ? " is-clickable" : ""}"${matchupActionAttrs}>
+    <div class="playoff-bracket-card-head">
+      <span>${escapeHtml(bracketMatchupStatusLabel(view, game))}</span>
+      ${game ? `<span>${escapeHtml(gameLocationLabel(game) || "Location TBD")}</span>` : ""}
+    </div>
+    ${detailParts.length ? `<div class="playoff-bracket-game-meta">${detailParts.map((part) => `<span>${escapeHtml(part)}</span>`).join("")}</div>` : ""}
+    <div class="playoff-bracket-card-teams">
+      ${renderBracketTeamRow(view, "A")}
+      ${byeRow}
+    </div>
+    ${actions}
+  </article>`;
+}
+
+function bracketRoundOffset(side = "winners", regionRoundIndex = 0) {
+  const normalizedSide = normalizeBracketSideKey(side);
+  if (normalizedSide === "winners") return Math.min(regionRoundIndex, 3) * 54;
+  if (normalizedSide === "losers") return Math.min(regionRoundIndex, 3) * 28;
+  return 0;
+}
+
+function renderBracketRound(round, side = "winners", regionRoundIndex = 0) {
+  const matchups = round.matchups.filter((matchup) => normalizeBracketSideKey(matchup.bracketSide || round.bracketSide) === side);
+  const roundOffset = bracketRoundOffset(side, regionRoundIndex);
+  return `<section class="playoff-bracket-column" data-bracket-round-index="${escapeHtml(String(regionRoundIndex))}">
+    <div class="playoff-bracket-round-head">
+      <p class="eyebrow">Round ${escapeHtml(String(round.order || ""))}</p>
+      <h3>${escapeHtml(round.name || "Round")}</h3>
+    </div>
+    <div class="playoff-bracket-matchups" style="--matchup-count: ${escapeHtml(String(Math.max(matchups.length, 1)))}; --bracket-round-offset: ${escapeHtml(String(roundOffset))}px">
+      ${matchups.length ? matchups.map((matchup, matchupIndex) => `<div class="playoff-bracket-node-wrap" data-bracket-matchup-index="${escapeHtml(String(matchupIndex))}">${renderBracketMatchup(matchup)}</div>`).join("") : `<p class="player-meta">No matchups in this round yet.</p>`}
+    </div>
+  </section>`;
+}
+
+function renderBracketRegion(region) {
+  const roundCount = Math.max(region.rounds.length, 1);
+  return `<section class="playoff-bracket-region playoff-bracket-region-${escapeHtml(region.side)}" style="--round-count: ${escapeHtml(String(roundCount))}">
+    <div class="playoff-bracket-region-head">
+      <p class="eyebrow">${escapeHtml(region.side === "bye" ? "Advance" : "Double Elim")}</p>
+      <h3>${escapeHtml(region.title)}</h3>
+    </div>
+    <div class="playoff-bracket-region-canvas">
+      <svg class="playoff-bracket-connector-layer" aria-hidden="true" focusable="false"></svg>
+      <div class="playoff-bracket-columns">
+        ${region.rounds.map((round, roundIndex) => renderBracketRound(round, region.side, roundIndex)).join("")}
+      </div>
+    </div>
+  </section>`;
+}
+
+function renderPlayoffBracketBoard(bracket) {
+  const regions = playoffBracketRegions(bracket);
+  return `<div class="playoff-bracket-board playoff-bracket-board-double">${regions.map(renderBracketRegion).join("")}</div>`;
+}
+
+let playoffBracketConnectorFrame = 0;
+let playoffBracketConnectorResizeObserver = null;
+let playoffBracketConnectorResizeListenerBound = false;
+let playoffBracketConnectorFontsQueued = false;
+
+function queuePlayoffBracketConnectorRender() {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+  if (playoffBracketConnectorFrame) window.cancelAnimationFrame(playoffBracketConnectorFrame);
+  playoffBracketConnectorFrame = window.requestAnimationFrame(() => {
+    playoffBracketConnectorFrame = 0;
+    renderPlayoffBracketConnectors();
+    setupPlayoffBracketConnectorObservers();
+  });
+}
+
+function bracketConnectorPath(startX, startY, endX, endY) {
+  const gap = Math.max(endX - startX, 24);
+  const midX = startX + gap / 2;
+  return `M ${startX.toFixed(1)} ${startY.toFixed(1)} H ${midX.toFixed(1)} V ${endY.toFixed(1)} H ${endX.toFixed(1)}`;
+}
+
+function renderPlayoffBracketRegionConnectors(region) {
+  const canvas = region.querySelector(".playoff-bracket-region-canvas");
+  const svg = region.querySelector(".playoff-bracket-connector-layer");
+  if (!canvas || !svg) return;
+
+  const columns = [...region.querySelectorAll(".playoff-bracket-column")];
+  const canvasRect = canvas.getBoundingClientRect();
+  const width = Math.max(canvas.scrollWidth, canvasRect.width, 1);
+  const height = Math.max(canvas.scrollHeight, canvasRect.height, 1);
+  const paths = [];
+
+  columns.forEach((column, columnIndex) => {
+    const nextColumn = columns[columnIndex + 1];
+    if (!nextColumn) return;
+    const sourceCards = [...column.querySelectorAll(".playoff-bracket-node-wrap")];
+    const targetCards = [...nextColumn.querySelectorAll(".playoff-bracket-node-wrap")];
+    if (!sourceCards.length || !targetCards.length) return;
+
+    sourceCards.forEach((sourceCard, sourceIndex) => {
+      const targetIndex = Math.min(
+        Math.floor(sourceIndex / Math.max(sourceCards.length / targetCards.length, 1)),
+        targetCards.length - 1
+      );
+      const targetCard = targetCards[targetIndex];
+      const sourceRect = sourceCard.getBoundingClientRect();
+      const targetRect = targetCard.getBoundingClientRect();
+      const connectorClearance = 14;
+      const startX = sourceRect.right - canvasRect.left + connectorClearance;
+      const startY = sourceRect.top + sourceRect.height / 2 - canvasRect.top;
+      const endX = targetRect.left - canvasRect.left - connectorClearance;
+      const endY = targetRect.top + targetRect.height / 2 - canvasRect.top;
+      if (endX <= startX) return;
+      paths.push(`<path d="${bracketConnectorPath(startX, startY, endX, endY)}"></path>`);
+    });
+  });
+
+  svg.setAttribute("viewBox", `0 0 ${Math.ceil(width)} ${Math.ceil(height)}`);
+  svg.setAttribute("width", String(Math.ceil(width)));
+  svg.setAttribute("height", String(Math.ceil(height)));
+  svg.innerHTML = paths.join("");
+}
+
+function renderPlayoffBracketConnectors() {
+  document.querySelectorAll(".playoff-bracket-region").forEach(renderPlayoffBracketRegionConnectors);
+}
+
+function setupPlayoffBracketConnectorObservers() {
+  if (typeof window === "undefined") return;
+  if (!playoffBracketConnectorResizeListenerBound) {
+    window.addEventListener("resize", queuePlayoffBracketConnectorRender);
+    playoffBracketConnectorResizeListenerBound = true;
+  }
+  if (!playoffBracketConnectorFontsQueued && document.fonts?.ready) {
+    playoffBracketConnectorFontsQueued = true;
+    document.fonts.ready.then(queuePlayoffBracketConnectorRender).catch(() => {});
+  }
+  if (typeof ResizeObserver !== "function") return;
+
+  if (playoffBracketConnectorResizeObserver) playoffBracketConnectorResizeObserver.disconnect();
+  playoffBracketConnectorResizeObserver = new ResizeObserver(queuePlayoffBracketConnectorRender);
+  document.querySelectorAll(".playoff-bracket-region-canvas, .playoff-bracket-node-wrap").forEach((item) => {
+    playoffBracketConnectorResizeObserver.observe(item);
+  });
+}
+
+function renderPlayoffBracket() {
+  if (!els.playoffBracketGrid) return;
+  const bracket = playoffBracketDisplayData(playoffBracketViewSeason || state.playoffBracket?.season || String(currentLeagueSeason()));
+  const hasMatchups = bracket.rounds.some((round) => round.matchups.length);
+  if (els.playoffBracketPageTitle) els.playoffBracketPageTitle.textContent = bracket.title || "Playoff Bracket";
+  if (els.playoffBracketPageMeta) {
+    const postseasonGameCount = playoffBracketPostseasonGames(bracket.season).length;
+    const updated = bracket.updatedAt ? `Updated ${formatSyncTimestamp(bracket.updatedAt)}` : "Updates as playoff games are added.";
+    const preview = playoffBracketPreviewDraft ? "Previewing unsaved bracket | " : "";
+    els.playoffBracketPageMeta.textContent = `${preview}${bracket.season} postseason | ${bracket.subtitle || "Double Elimination Tournament"} | ${postseasonGameCount} ${postseasonGameCount === 1 ? "game" : "games"} | ${updated}`;
+  }
+  els.playoffBracketGrid.innerHTML = hasMatchups
+    ? renderPlayoffBracketBoard(bracket)
+    : "";
+  els.playoffBracketGrid.scrollLeft = 0;
+  if (els.playoffBracketEmpty) els.playoffBracketEmpty.hidden = hasMatchups;
+  queuePlayoffBracketConnectorRender();
+}
+
+function bracketSeasonOptions() {
+  const seasons = new Set([String(currentLeagueSeason()), state.playoffBracket?.season || ""]);
+  state.games.forEach((game) => {
+    const season = String(game?.date || "").slice(0, 4);
+    if (/^\d{4}$/.test(season)) seasons.add(season);
+  });
+  return [...seasons].filter(Boolean).sort((a, b) => Number(b) - Number(a));
+}
+
+function playoffBracketKnownTeams() {
+  const teamMap = new Map();
+  const addTeam = (name = "") => {
+    const label = String(name || "").trim();
+    if (!label) return;
+    const key = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    if (!key || teamMap.has(key)) return;
+    teamMap.set(key, { teamId: key, teamName: label });
+  };
+  addTeam("Oakmont Lions");
+  if (Array.isArray(window.MatchupImages?.knownOpponents)) {
+    window.MatchupImages.knownOpponents.forEach(addTeam);
+  }
+  leagueStandingsRows.forEach((row) => addTeam(row.teamName));
+  state.games.forEach((game) => addTeam(homeOpponentName(game) || game.opponent));
+  return [...teamMap.values()].sort((left, right) => left.teamName.localeCompare(right.teamName));
+}
+
+function playoffBracketTeamSelectOptions(selectedTeam = "") {
+  const selected = String(selectedTeam || "").trim();
+  const teams = playoffBracketKnownTeams();
+  const hasSelected = selected && teams.some((team) => team.teamName === selected || team.teamId === selected);
+  return [
+    `<option value="">TBD / Placeholder</option>`,
+    hasSelected ? `<option value="${escapeHtml(selected)}" selected>${escapeHtml(selected)}</option>` : "",
+    ...teams.map((team) => `<option value="${escapeHtml(team.teamName)}" ${team.teamName === selected ? "selected" : ""}>${escapeHtml(team.teamName)}</option>`)
+  ].filter(Boolean).join("");
+}
+
+function playoffBracketTemplateOptions(selectedTemplate = "pittsburgh-naba-aa") {
+  const labels = bracketEngine?.TEMPLATE_LABELS || {
+    "pittsburgh-naba-aa": "Pittsburgh NABA AA Playoffs",
+    "single-4": "Four-team single elimination",
+    "single-8": "Eight-team single elimination",
+    "double-8": "Eight-team double elimination"
+  };
+  return Object.entries(labels)
+    .map(([value, label]) => `<option value="${escapeHtml(value)}" ${value === selectedTemplate ? "selected" : ""}>${escapeHtml(label)}</option>`)
+    .join("");
+}
+
+function playoffBracketLocationOptions(selectedLocation = "") {
+  const selected = String(selectedLocation || "").trim();
+  const known = FIELD_LOCATIONS.map((field) => field.name);
+  const hasSelected = selected && known.some((name) => name === selected);
+  return [
+    `<option value="">Location TBD</option>`,
+    hasSelected ? `<option value="${escapeHtml(selected)}" selected>${escapeHtml(selected)}</option>` : "",
+    ...known.map((name) => `<option value="${escapeHtml(name)}" ${name === selected ? "selected" : ""}>${escapeHtml(name)}</option>`)
+  ].filter(Boolean).join("");
+}
+
+function ensurePlayoffBracketDraftEntries(draft) {
+  if (!draft) return [];
+  const count = Math.max(2, Number(draft.numberOfTeams || draft.teamCount || draft.entries?.length || 7) || 7);
+  if (!Array.isArray(draft.entries) || !draft.entries.length) {
+    draft.entries = bracketEngine?.seedEntries?.(count) || Array.from({ length: count }, (_, index) => ({
+      id: `seed-${index + 1}`,
+      seed: index + 1,
+      teamName: `#${index + 1} Seed`,
+      teamId: `seed-${index + 1}`
+    }));
+  }
+  while (draft.entries.length < count) {
+    const seed = draft.entries.length + 1;
+    draft.entries.push({
+      id: `seed-${seed}`,
+      seed,
+      teamId: `seed-${seed}`,
+      teamName: `#${seed} Seed`,
+      entryStatus: "active"
+    });
+  }
+  draft.entries = draft.entries
+    .slice(0, count)
+    .map((entry, index) => ({
+      ...entry,
+      seed: index + 1,
+      id: entry.id || `seed-${index + 1}`,
+      teamId: entry.teamId || entry.team_id || `seed-${index + 1}`,
+      teamName: entry.teamName || entry.name || entry.displayNameOverride || `#${index + 1} Seed`,
+      entryStatus: entry.entryStatus || "active"
+    }));
+  return draft.entries;
+}
+
+function ensurePlayoffBracketDraft() {
+  if (!playoffBracketDraft) playoffBracketDraft = deepClone(normalizePlayoffBracket(state.playoffBracket, state.games));
+  ensurePlayoffBracketDraftEntries(playoffBracketDraft);
+  return playoffBracketDraft;
+}
+
+function playoffBracketGameOptions(selectedGameId = "", season = playoffBracketDraft?.season || state.playoffBracket?.season) {
+  const games = playoffBracketPostseasonGames(season);
+  return [
+    `<option value="">No linked game</option>`,
+    ...games.map((game) => `<option value="${escapeHtml(game.id)}" ${game.id === selectedGameId ? "selected" : ""}>${escapeHtml(`${formatGameDateDisplay(game.date)} | ${gameMatchupLabel(game)} | ${gameStatusLabel(game)}`)}</option>`)
+  ].join("");
+}
+
+function playoffBracketSideOptions(selectedSide = "winners") {
+  const activeSide = normalizeBracketSideKey(selectedSide);
+  return ["winners", "losers", "championship", "bye"]
+    .map((side) => `<option value="${side}" ${side === activeSide ? "selected" : ""}>${escapeHtml(bracketSideLabel(side))}</option>`)
+    .join("");
+}
+
+function markPlayoffBracketDraftDirty() {
+  if (!playoffBracketDraft) return;
+  playoffBracketDraft.dirty = true;
+  playoffBracketNotice = "Unsaved bracket changes.";
+  if (els.playoffBracketEditorStatus) els.playoffBracketEditorStatus.textContent = playoffBracketNotice;
+}
+
+function syncBracketMatchupFromGame(matchup) {
+  const game = state.games.find((item) => item.id === matchup.linkedGameId);
+  if (!game) return;
+  const teams = bracketTeamsForGame(game);
+  matchup.teamA = teams.teamA;
+  matchup.scoreA = teams.scoreA;
+  matchup.teamB = teams.teamB;
+  matchup.scoreB = teams.scoreB;
+  matchup.status = gameIsFinal(game) ? "final" : gameLifecycle(game) === "active" ? "live" : "scheduled";
+  matchup.winner = gameIsFinal(game)
+    ? Number(game.score?.lions || 0) > Number(game.score?.opponent || 0)
+      ? (lionsSide(game) === "away" ? "A" : "B")
+      : Number(game.score?.opponent || 0) > Number(game.score?.lions || 0)
+        ? (lionsSide(game) === "away" ? "B" : "A")
+        : ""
+    : "";
+  matchup.winnerSide = matchup.winner;
+}
+
+function renderPlayoffBracketEditor() {
+  if (!els.playoffBracketEditor) return;
+  const admin = isAdminMode();
+  const showEditor = admin && gameFilter === "postseason" && scheduleBracketEditorOpen;
+  els.playoffBracketEditor.hidden = !showEditor;
+  if (!admin) {
+    playoffBracketDraft = null;
+    return;
+  }
+  if (!showEditor) return;
+  const draft = bracketEngine?.resolveTournament ? bracketEngine.resolveTournament(ensurePlayoffBracketDraft()) : ensurePlayoffBracketDraft();
+  playoffBracketDraft = deepClone(draft);
+  if (els.playoffBracketTitleInput && document.activeElement !== els.playoffBracketTitleInput) {
+    els.playoffBracketTitleInput.value = draft.title || "";
+  }
+  if (els.playoffBracketSeasonSelect) {
+    els.playoffBracketSeasonSelect.innerHTML = bracketSeasonOptions()
+      .map((season) => `<option value="${escapeHtml(season)}" ${season === draft.season ? "selected" : ""}>${escapeHtml(`${season} Season`)}</option>`)
+      .join("");
+    els.playoffBracketSeasonSelect.value = draft.season;
+  }
+  if (els.playoffBracketEditorStatus) {
+    const matchupCount = draft.matchups?.length || draft.rounds.reduce((total, round) => total + round.matchups.length, 0);
+    const errorCount = draft.validation?.length || 0;
+    els.playoffBracketEditorStatus.textContent = playoffBracketNotice || `${draft.entries?.length || 0} teams | ${matchupCount} matchups${errorCount ? ` | ${errorCount} warning${errorCount === 1 ? "" : "s"}` : ""}`;
+  }
+  if (els.playoffBracketEditorRounds) {
+    els.playoffBracketEditorRounds.innerHTML = renderGuidedPlayoffBracketEditor(draft);
+  }
+}
+
+function renderBracketEditorRound(round, roundIndex, draft) {
+  const matchups = round.matchups || [];
+  return `<section class="playoff-bracket-editor-section" data-bracket-round="${escapeHtml(round.id || `round-${roundIndex}`)}">
+    <div class="playoff-bracket-editor-section-head">
+      <div>
+        <p class="eyebrow">${escapeHtml(bracketSideLabel(round.bracketSide))}</p>
+        <h4>${escapeHtml(round.name || `Round ${roundIndex + 1}`)}</h4>
+      </div>
+      <span>${escapeHtml(String(matchups.length))} games</span>
+    </div>
+    <div class="playoff-bracket-matchup-admin-list">
+      ${matchups.length ? matchups.map((matchup) => renderBracketEditorMatchup(matchup, draft)).join("") : `<p class="player-meta">No matchups in this section yet.</p>`}
+    </div>
+  </section>`;
+}
+
+function renderBracketEditorMatchup(matchup, draft) {
+  const winnerA = matchup.winner === "A" || matchup.winnerSide === "A";
+  const winnerB = matchup.winner === "B" || matchup.winnerSide === "B";
+  const routeMeta = [
+    matchup.winnerDestination ? `Winner to ${matchup.winnerDestination}${matchup.winnerDestinationSlot ? ` (${matchup.winnerDestinationSlot})` : ""}` : "",
+    matchup.loserDestination ? `Loser to ${matchup.loserDestination}${matchup.loserDestinationSlot ? ` (${matchup.loserDestinationSlot})` : ""}` : ""
+  ].filter(Boolean).join(" | ");
+  return `<article class="playoff-bracket-admin-matchup" data-bracket-matchup="${escapeHtml(matchup.id)}">
+    <div class="playoff-bracket-admin-matchup-head">
+      <div>
+        <strong>${escapeHtml(matchup.matchupCode || matchup.label || "Matchup")}</strong>
+        <span>${escapeHtml(bracketSideLabel(matchup.bracketSection || matchup.bracketSide))}</span>
+      </div>
+      <div class="playoff-bracket-admin-matchup-actions">
+        <button type="button" class="secondary-action compact-action" data-bracket-matchup-action="duplicate">Duplicate</button>
+        <button type="button" class="secondary-action compact-action danger-action" data-bracket-matchup-action="remove">Delete</button>
+      </div>
+    </div>
+    <div class="playoff-bracket-admin-source-grid">
+      <div class="playoff-bracket-admin-source${winnerA ? " is-winner" : ""}">
+        <span>${escapeHtml(matchup.sourceLabelA || bracketEngine?.sourceLabel?.(matchup.slotA) || "Team 1")}</span>
+        <strong>${escapeHtml(matchup.teamA || "TBD")}</strong>
+      </div>
+      <div class="playoff-bracket-admin-source${winnerB ? " is-winner" : ""}">
+        <span>${escapeHtml(matchup.isBye ? "Bye" : (matchup.sourceLabelB || bracketEngine?.sourceLabel?.(matchup.slotB) || "Team 2"))}</span>
+        <strong>${escapeHtml(matchup.isBye ? "BYE" : (matchup.teamB || "TBD"))}</strong>
+      </div>
+    </div>
+    <div class="playoff-bracket-admin-fields">
+      <label>
+        Game label
+        <input value="${escapeHtml(matchup.matchupCode || matchup.label || "")}" data-bracket-matchup-key="matchupCode" autocomplete="off" placeholder="AA-1">
+      </label>
+      <label>
+        Date
+        <input value="${escapeHtml(matchup.dateLabel)}" data-bracket-matchup-key="dateLabel" autocomplete="off" placeholder="7/18">
+      </label>
+      <label>
+        Time
+        <input value="${escapeHtml(matchup.timeLabel || "")}" data-bracket-matchup-key="timeLabel" autocomplete="off" placeholder="8:00 PM">
+      </label>
+      <label>
+        Location
+        <select data-bracket-matchup-key="location">${playoffBracketLocationOptions(matchup.location || "")}</select>
+      </label>
+      <label>
+        Status
+        <select data-bracket-matchup-key="status">
+          ${["scheduled", "live", "final", "postponed", "bye"].map((status) => `<option value="${status}" ${matchup.status === status ? "selected" : ""}>${status === "final" ? "Final" : status === "live" ? "Live" : status === "postponed" ? "Postponed" : status === "bye" ? "Bye" : "Scheduled"}</option>`).join("")}
+        </select>
+      </label>
+      <label>
+        Team 1 score
+        <input value="${escapeHtml(matchup.scoreA)}" data-bracket-matchup-key="scoreA" inputmode="numeric" autocomplete="off">
+      </label>
+      <label>
+        Team 2 score
+        <input value="${escapeHtml(matchup.scoreB)}" data-bracket-matchup-key="scoreB" inputmode="numeric" autocomplete="off" ${matchup.isBye ? "disabled" : ""}>
+      </label>
+      <label>
+        Winner
+        <select data-bracket-matchup-key="winner">
+          <option value="" ${!matchup.winner ? "selected" : ""}>Auto / TBD</option>
+          <option value="A" ${winnerA ? "selected" : ""}>Team 1</option>
+          <option value="B" ${winnerB ? "selected" : ""} ${matchup.isBye ? "disabled" : ""}>Team 2</option>
+        </select>
+      </label>
+      <label>
+        Linked website game
+        <select data-bracket-matchup-key="linkedGameId">${playoffBracketGameOptions(matchup.linkedGameId, draft.season)}</select>
+      </label>
+      <label class="playoff-bracket-admin-note">
+        Notes / series info
+        <input value="${escapeHtml(matchup.note || "")}" data-bracket-matchup-key="note" autocomplete="off" placeholder="AA-12 if needed">
+      </label>
+    </div>
+    ${routeMeta ? `<p class="playoff-bracket-admin-route">${escapeHtml(routeMeta)}</p>` : ""}
+  </article>`;
+}
+
+function renderGuidedPlayoffBracketEditor(draft) {
+  const validation = draft.validation || [];
+  const sections = ["bye", "winners", "losers", "championship"]
+    .map((side) => ({
+      side,
+      title: bracketSideLabel(side),
+      matchups: (draft.matchups || []).filter((matchup) => normalizeBracketSideKey(matchup.bracketSection || matchup.bracketSide) === side)
+    }))
+    .filter((section) => section.matchups.length);
+  return `<div class="playoff-bracket-wizard">
+    <section class="playoff-bracket-editor-section playoff-bracket-wizard-details">
+      <div class="playoff-bracket-editor-section-head">
+        <div>
+          <p class="eyebrow">Step 1</p>
+          <h4>Tournament Details</h4>
+        </div>
+        <span>${escapeHtml(draft.status === "published" ? "Published" : "Draft")}</span>
+      </div>
+      <div class="playoff-bracket-detail-grid">
+        <label>
+          Division
+          <input value="${escapeHtml(draft.division || "AA")}" data-bracket-detail="division" autocomplete="off">
+        </label>
+        <label>
+          Tournament type
+          <select data-bracket-detail="templateId">
+            ${playoffBracketTemplateOptions(draft.templateId || "pittsburgh-naba-aa")}
+          </select>
+        </label>
+        <label>
+          Start date
+          <input value="${escapeHtml(draft.startsAt || "")}" data-bracket-detail="startsAt" type="date">
+        </label>
+        <label>
+          End date
+          <input value="${escapeHtml(draft.endsAt || "")}" data-bracket-detail="endsAt" type="date">
+        </label>
+        <label>
+          Teams
+          <input value="${escapeHtml(String(draft.entries?.length || 7))}" data-bracket-detail="teamCount" type="number" min="2" max="16" step="1">
+        </label>
+        <label>
+          Championship format
+          <input value="${escapeHtml(draft.championshipFormat || "Best of 3")}" data-bracket-detail="championshipFormat" autocomplete="off">
+        </label>
+        <label>
+          Public status
+          <select data-bracket-detail="status">
+            <option value="draft" ${draft.status !== "published" ? "selected" : ""}>Private draft</option>
+            <option value="published" ${draft.status === "published" ? "selected" : ""}>Published</option>
+          </select>
+        </label>
+        <label class="playoff-bracket-description-field">
+          Description
+          <input value="${escapeHtml(draft.description || "")}" data-bracket-detail="description" autocomplete="off" placeholder="Optional public note">
+        </label>
+      </div>
+    </section>
+
+    <section class="playoff-bracket-editor-section">
+      <div class="playoff-bracket-editor-section-head">
+        <div>
+          <p class="eyebrow">Step 2</p>
+          <h4>Teams and Seeding</h4>
+        </div>
+        <button type="button" class="secondary-action compact-action" data-bracket-action="auto-seed">Auto-seed from standings</button>
+      </div>
+      <div class="playoff-bracket-seed-list">
+        ${renderPlayoffBracketSeedRows(draft)}
+      </div>
+    </section>
+
+    <section class="playoff-bracket-editor-section">
+      <div class="playoff-bracket-editor-section-head">
+        <div>
+          <p class="eyebrow">Step 3</p>
+          <h4>Bracket Setup</h4>
+        </div>
+        <div class="playoff-bracket-editor-round-actions">
+          <button type="button" class="secondary-action compact-action" data-bracket-action="generate">Generate Bracket</button>
+          <button type="button" class="secondary-action compact-action" data-bracket-action="add-matchup">Add Matchup</button>
+        </div>
+      </div>
+      <p class="player-meta">Use the Pittsburgh NABA preset to create AA-1 through the championship path automatically. Result changes recalculate dependent matchups from the configured winner and loser routes.</p>
+    </section>
+
+    <section class="playoff-bracket-editor-section">
+      <div class="playoff-bracket-editor-section-head">
+        <div>
+          <p class="eyebrow">Step 4</p>
+          <h4>Schedule and Results</h4>
+        </div>
+        <span>${escapeHtml(String(draft.matchups?.length || 0))} matchups</span>
+      </div>
+      <div class="playoff-bracket-matchup-admin-list">
+        ${sections.length
+          ? sections.map((section) => `<div class="playoff-bracket-admin-section-group">
+            <h5>${escapeHtml(section.title)}</h5>
+            ${section.matchups.map((matchup) => renderBracketEditorMatchup(matchup, draft)).join("")}
+          </div>`).join("")
+          : `<p class="player-meta playoff-bracket-editor-empty">No matchups yet. Choose a preset and generate the bracket.</p>`}
+      </div>
+    </section>
+
+    <section class="playoff-bracket-editor-section playoff-bracket-review-section">
+      <div class="playoff-bracket-editor-section-head">
+        <div>
+          <p class="eyebrow">Step 5</p>
+          <h4>Review and Publish</h4>
+        </div>
+        <span>${validation.length ? `${validation.length} warning${validation.length === 1 ? "" : "s"}` : "Ready"}</span>
+      </div>
+      ${validation.length
+        ? `<div class="playoff-bracket-validation-list">${validation.map((item) => `<p>${escapeHtml(item.message || "Bracket warning")}</p>`).join("")}</div>`
+        : `<p class="player-meta">No bracket wiring warnings. Use View Bracket to preview, then Save / Publish when ready.</p>`}
+    </section>
+  </div>`;
+}
+
+function renderPlayoffBracketSeedRows(draft) {
+  const entries = ensurePlayoffBracketDraftEntries(draft);
+  return entries.map((entry, index) => `<div class="playoff-bracket-seed-row" data-bracket-entry-index="${index}">
+    <span class="playoff-bracket-seed-number">#${escapeHtml(String(index + 1))}</span>
+    <label>
+      Team
+      <select data-bracket-entry-key="teamName">${playoffBracketTeamSelectOptions(entry.teamName)}</select>
+    </label>
+    <label>
+      Display override
+      <input value="${escapeHtml(entry.displayNameOverride || "")}" data-bracket-entry-key="displayNameOverride" autocomplete="off" placeholder="Optional">
+    </label>
+    <div class="playoff-bracket-seed-actions">
+      <button type="button" class="icon-button" data-bracket-entry-action="up" aria-label="Move seed up" ${index === 0 ? "disabled" : ""}>${inlineChevronIcon("up")}</button>
+      <button type="button" class="icon-button" data-bracket-entry-action="down" aria-label="Move seed down" ${index === entries.length - 1 ? "disabled" : ""}>${inlineChevronIcon("down")}</button>
+    </div>
+  </div>`).join("");
+}
+
+function createBracketTemplateMatchup(side, index, matchup = {}) {
+  return normalizeBracketMatchup({
+    id: createId("bracket-game"),
+    order: index + 1,
+    bracketSide: side,
+    ...matchup
+  }, index, state.games, side);
+}
+
+function createBracketTemplateRound(name, side, order, matchups = []) {
+  return normalizeBracketRound({
+    id: createId("bracket-round"),
+    name,
+    order,
+    bracketSide: side,
+    matchups: matchups.map((matchup, index) => createBracketTemplateMatchup(side, index, matchup))
+  }, order - 1, state.games);
+}
+
+function seedDoubleElimBracketDraftTemplate() {
+  if (!requireAdminAccess("Admin sign-in required to edit the playoff bracket.")) return;
+  const draft = ensurePlayoffBracketDraft();
+  const season = draft.season || String(currentLeagueSeason());
+  const templateId = draft.templateId || "pittsburgh-naba-aa";
+  const template = bracketEngine?.createTemplate
+    ? bracketEngine.createTemplate(templateId, {
+      ...draft,
+      season,
+      title: draft.title || `${season} AA Championship Series`,
+      entries: ensurePlayoffBracketDraftEntries(draft)
+    })
+    : draft;
+  playoffBracketDraft = deepClone(template);
+  markPlayoffBracketDraftDirty();
+  renderPlayoffBracketEditor();
+}
+
+function seedPlayoffBracketDraftFromGames() {
+  if (!requireAdminAccess("Admin sign-in required to edit the playoff bracket.")) return;
+  const draft = ensurePlayoffBracketDraft();
+  const standingsTeams = leagueStandingsRows
+    .filter((row) => row.teamName)
+    .sort((left, right) => Number(left.rank || 999) - Number(right.rank || 999))
+    .map((row) => row.teamName);
+  const teams = standingsTeams.length ? standingsTeams : playoffBracketKnownTeams().map((team) => team.teamName);
+  if (!teams.length) {
+    window.alert("No standings or known teams are available to seed from yet.");
+    return;
+  }
+  draft.entries = ensurePlayoffBracketDraftEntries(draft).map((entry, index) => ({
+    ...entry,
+    teamName: teams[index] || entry.teamName || `#${index + 1} Seed`,
+    teamId: teams[index] ? teams[index].toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") : entry.teamId
+  }));
+  if (bracketEngine?.resolveTournament) playoffBracketDraft = bracketEngine.resolveTournament(draft);
+  markPlayoffBracketDraftDirty();
+  renderPlayoffBracketEditor();
+}
+
+function addPlayoffBracketRound() {
+  if (!requireAdminAccess("Admin sign-in required to edit the playoff bracket.")) return;
+  const draft = ensurePlayoffBracketDraft();
+  const nextNumber = (draft.matchups?.length || 0) + 1;
+  const matchup = bracketEngine?.normalizeMatchup
+    ? bracketEngine.normalizeMatchup({
+      id: createId("bracket-game"),
+      matchupCode: `CUSTOM-${nextNumber}`,
+      bracketSection: "winners",
+      roundNumber: Math.max(1, ...((draft.matchups || []).map((item) => Number(item.roundNumber || 1)))) + 1,
+      displayOrder: nextNumber,
+      slotA: bracketEngine.tbdSource("TBD"),
+      slotB: bracketEngine.tbdSource("TBD")
+    })
+    : normalizeBracketMatchup({ id: createId("bracket-game"), label: `CUSTOM-${nextNumber}` }, nextNumber - 1, state.games);
+  draft.matchups = Array.isArray(draft.matchups) ? draft.matchups : [];
+  draft.matchups.push(matchup);
+  if (bracketEngine?.resolveTournament) playoffBracketDraft = bracketEngine.resolveTournament(draft);
+  markPlayoffBracketDraftDirty();
+  renderPlayoffBracketEditor();
+}
+
+function handlePlayoffBracketEditorInput(event) {
+  const draft = ensurePlayoffBracketDraft();
+  if (!draft) return;
+  if (event.target === els.playoffBracketTitleInput) {
+    draft.title = event.target.value;
+    draft.name = event.target.value;
+    markPlayoffBracketDraftDirty();
+    return;
+  }
+  if (event.target === els.playoffBracketSeasonSelect) {
+    draft.season = event.target.value || String(currentLeagueSeason());
+    markPlayoffBracketDraftDirty();
+    renderPlayoffBracketEditor();
+    return;
+  }
+  const detailKey = event.target.dataset.bracketDetail;
+  if (detailKey) {
+    if (detailKey === "teamCount") {
+      const nextCount = Math.max(2, Math.min(16, Number(event.target.value || draft.entries?.length || 7) || 7));
+      draft.numberOfTeams = nextCount;
+      draft.teamCount = nextCount;
+      ensurePlayoffBracketDraftEntries(draft);
+      if (event.type === "change") renderPlayoffBracketEditor();
+    } else if (detailKey === "status") {
+      draft.status = event.target.value === "published" ? "published" : "draft";
+      draft.isPublic = draft.status === "published";
+      renderPlayoffBracketEditor();
+    } else if (detailKey === "templateId") {
+      draft.templateId = event.target.value || "pittsburgh-naba-aa";
+    } else {
+      draft[detailKey] = event.target.value;
+    }
+    markPlayoffBracketDraftDirty();
+    return;
+  }
+
+  const entryRow = event.target.closest("[data-bracket-entry-index]");
+  if (entryRow && event.target.matches("[data-bracket-entry-key]")) {
+    const entryIndex = Number(entryRow.dataset.bracketEntryIndex);
+    const entry = ensurePlayoffBracketDraftEntries(draft)[entryIndex];
+    if (!entry) return;
+    const key = event.target.dataset.bracketEntryKey;
+    if (key === "teamName") {
+      const selected = event.target.value || `#${entryIndex + 1} Seed`;
+      entry.teamName = selected;
+      entry.teamId = selected.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || `seed-${entryIndex + 1}`;
+    } else {
+      entry[key] = event.target.value;
+    }
+    if (bracketEngine?.resolveTournament) playoffBracketDraft = bracketEngine.resolveTournament(draft);
+    markPlayoffBracketDraftDirty();
+    if (event.type === "change") renderPlayoffBracketEditor();
+    return;
+  }
+
+  const roundRow = event.target.closest("[data-bracket-round]");
+  const matchupRow = event.target.closest("[data-bracket-matchup]");
+  if (roundRow && event.target.matches("[data-bracket-round-key]")) {
+    const round = draft.rounds.find((item) => item.id === roundRow.dataset.bracketRound);
+    if (!round) return;
+    const key = event.target.dataset.bracketRoundKey;
+    if (key === "bracketSide") {
+      round.bracketSide = normalizeBracketSideKey(event.target.value);
+      round.matchups.forEach((matchup) => {
+        matchup.bracketSide = round.bracketSide;
+        if (round.bracketSide === "bye") {
+          matchup.isBye = true;
+          matchup.status = "bye";
+          matchup.winner = matchup.winner || "A";
+        }
+      });
+      renderPlayoffBracketEditor();
+    } else {
+      round[key] = event.target.value;
+    }
+    markPlayoffBracketDraftDirty();
+    return;
+  }
+  if (matchupRow && event.target.matches("[data-bracket-matchup-key]")) {
+    const matchupId = matchupRow.dataset.bracketMatchup;
+    const matchup = (draft.matchups || draft.rounds.flatMap((round) => round.matchups)).find((item) => item.id === matchupId);
+    if (!matchup) return;
+    const key = event.target.dataset.bracketMatchupKey;
+    if (key === "isBye") {
+      matchup.isBye = event.target.checked;
+      matchup.status = matchup.isBye ? "bye" : matchup.status === "bye" ? "scheduled" : matchup.status;
+      matchup.bracketSide = matchup.isBye ? "bye" : "winners";
+      matchup.winner = matchup.isBye ? (matchup.winner || "A") : matchup.winner;
+      matchup.winnerSide = matchup.winner;
+      renderPlayoffBracketEditor();
+    } else if (key === "matchupCode") {
+      matchup.matchupCode = String(event.target.value || "").trim().toUpperCase();
+      matchup.label = matchup.matchupCode;
+    } else if (key === "winner") {
+      matchup.winner = normalizeBracketSide(event.target.value);
+      matchup.winnerSide = matchup.winner;
+    } else {
+      matchup[key] = event.target.value;
+    }
+    if (key === "status") {
+      matchup.status = normalizeBracketStatus(event.target.value);
+      matchup.isBye = matchup.status === "bye";
+      if (matchup.isBye) {
+        matchup.bracketSide = "bye";
+        matchup.winner = matchup.winner || "A";
+        matchup.winnerSide = matchup.winner;
+      } else if (normalizeBracketSideKey(matchup.bracketSide) === "bye") {
+        matchup.bracketSide = "winners";
+      }
+      renderPlayoffBracketEditor();
+    }
+    if (key === "linkedGameId") {
+      syncBracketMatchupFromGame(matchup);
+      renderPlayoffBracketEditor();
+    }
+    if (["scoreA", "scoreB"].includes(key)) {
+      matchup.winner = "";
+      matchup.winnerSide = "";
+    }
+    if (["scoreA", "scoreB", "winner", "status", "matchupCode"].includes(key) && bracketEngine?.resolveTournament) {
+      playoffBracketDraft = bracketEngine.resolveTournament(draft);
+      if (event.type === "change") renderPlayoffBracketEditor();
+    }
+    markPlayoffBracketDraftDirty();
+  }
+}
+
+function handlePlayoffBracketEditorClick(event) {
+  const draft = ensurePlayoffBracketDraft();
+  if (!draft) return;
+  const wizardButton = event.target.closest("[data-bracket-action]");
+  if (wizardButton) {
+    const action = wizardButton.dataset.bracketAction;
+    if (action === "generate") {
+      seedDoubleElimBracketDraftTemplate();
+      return;
+    }
+    if (action === "auto-seed") {
+      seedPlayoffBracketDraftFromGames();
+      return;
+    }
+    if (action === "add-matchup") {
+      addPlayoffBracketRound();
+      return;
+    }
+  }
+
+  const seedButton = event.target.closest("[data-bracket-entry-action]");
+  if (seedButton) {
+    const entryRow = seedButton.closest("[data-bracket-entry-index]");
+    const index = Number(entryRow?.dataset.bracketEntryIndex);
+    const action = seedButton.dataset.bracketEntryAction;
+    const entries = ensurePlayoffBracketDraftEntries(draft);
+    const swapIndex = action === "up" ? index - 1 : action === "down" ? index + 1 : index;
+    if (Number.isInteger(index) && entries[index] && entries[swapIndex]) {
+      [entries[index], entries[swapIndex]] = [entries[swapIndex], entries[index]];
+      entries.forEach((entry, nextIndex) => { entry.seed = nextIndex + 1; });
+      if (bracketEngine?.resolveTournament) playoffBracketDraft = bracketEngine.resolveTournament(draft);
+      markPlayoffBracketDraftDirty();
+      renderPlayoffBracketEditor();
+    }
+    return;
+  }
+
+  const roundButton = event.target.closest("[data-bracket-round-action]");
+  if (roundButton) {
+    const roundId = roundButton.closest("[data-bracket-round]")?.dataset.bracketRound || "";
+    const round = draft.rounds.find((item) => item.id === roundId);
+    if (!round) return;
+    const action = roundButton.dataset.bracketRoundAction;
+    if (action === "add-matchup") {
+      round.matchups.push(normalizeBracketMatchup({
+        id: createId("bracket-game"),
+        order: round.matchups.length + 1,
+        bracketSide: round.bracketSide,
+        isBye: round.bracketSide === "bye",
+        status: round.bracketSide === "bye" ? "bye" : "scheduled"
+      }, round.matchups.length, state.games, round.bracketSide));
+    }
+    if (action === "remove") {
+      draft.rounds = draft.rounds.filter((item) => item.id !== round.id);
+      draft.rounds.forEach((item, index) => { item.order = index + 1; });
+    }
+    markPlayoffBracketDraftDirty();
+    renderPlayoffBracketEditor();
+    return;
+  }
+  const matchupButton = event.target.closest("[data-bracket-matchup-action]");
+  if (matchupButton) {
+    const matchupId = matchupButton.closest("[data-bracket-matchup]")?.dataset.bracketMatchup || "";
+    const action = matchupButton.dataset.bracketMatchupAction;
+    draft.matchups = Array.isArray(draft.matchups)
+      ? draft.matchups
+      : draft.rounds.flatMap((round) => round.matchups.map((matchup) => ({
+        ...matchup,
+        bracketSection: matchup.bracketSection || matchup.bracketSide || round.bracketSide,
+        roundNumber: matchup.roundNumber || round.order,
+        displayOrder: matchup.displayOrder || matchup.order
+      })));
+    const matchup = draft.matchups.find((item) => item.id === matchupId);
+    if (!matchup) return;
+    if (action === "duplicate") {
+      const duplicate = {
+        ...deepClone(matchup),
+        id: createId("bracket-game"),
+        matchupCode: `${matchup.matchupCode || "CUSTOM"}-COPY`,
+        label: `${matchup.matchupCode || "CUSTOM"}-COPY`,
+        displayOrder: (draft.matchups.length || 0) + 1,
+        scoreA: "",
+        scoreB: "",
+        winner: "",
+        winnerSide: "",
+        status: "scheduled"
+      };
+      draft.matchups.push(duplicate);
+    } else {
+      draft.matchups = draft.matchups.filter((item) => item.id !== matchupId);
+    }
+    draft.matchups.forEach((item, index) => { item.displayOrder = item.displayOrder || index + 1; item.order = item.displayOrder; });
+    if (bracketEngine?.resolveTournament) playoffBracketDraft = bracketEngine.resolveTournament(draft);
+    markPlayoffBracketDraftDirty();
+    renderPlayoffBracketEditor();
+  }
+}
+
+function savePlayoffBracket() {
+  if (!requireAdminAccess("Admin sign-in required to save the playoff bracket.")) return;
+  const draft = ensurePlayoffBracketDraft();
+  if (!draft) return;
+  const normalized = normalizePlayoffBracket({
+    ...draft,
+    updatedAt: new Date().toISOString()
+  }, state.games);
+  state.playoffBracket = normalized;
+  playoffBracketDraft = deepClone(normalized);
+  playoffBracketPreviewDraft = null;
+  playoffBracketNotice = "Bracket saved.";
+  saveStateWithOptions({ markLiveGamesDirty: false, capturePendingScoring: false });
+  render();
+  requestSharedSnapshotSync("playoff-bracket");
 }
 
 function renderGameSummary() {
@@ -13812,29 +15206,56 @@ function renderGameSummaryMobilePitcher(row) {
   </article>`;
 }
 
+function scheduleGameFilterLabel(filter = gameFilter) {
+  return normalizeScheduleGameFilter(filter) === "postseason" ? "post season" : "regular season";
+}
+
+function scheduleGamesForType(filter = gameFilter, options = {}) {
+  const season = normalizeScheduleSeasonFilter(options.season || scheduleSeasonFilter);
+  const scheduleType = normalizeScheduleGameFilter(filter);
+  return [...state.games]
+    .filter((game) => {
+      if (!gameMatchesScheduleFilter(game, scheduleType)) return false;
+      if (!season) return true;
+      return String(game?.date || "").startsWith(`${season}-`);
+    })
+    .sort(sortGamesOldestFirst);
+}
+
 function renderGames() {
   const admin = isAdminMode();
   const activeId = activeScoreGame()?.id || "";
-  const visibleFilters = new Set(["all", "future", "completed", "postponed"]);
+  const visibleFilters = new Set(["regular", "postseason"]);
   populateScheduleSeasonSelect();
-  if (!visibleFilters.has(gameFilter)) gameFilter = "all";
+  if (!visibleFilters.has(gameFilter)) gameFilter = "regular";
+  gameFilter = normalizeScheduleGameFilter(gameFilter);
+  const viewingPostseason = gameFilter === "postseason";
+  if (!viewingPostseason) scheduleBracketEditorOpen = false;
   renderRecordSummary();
   if (!admin) {
     if (els.gameForm) els.gameForm.hidden = true;
     if (els.scheduleGameBtn) els.scheduleGameBtn.hidden = true;
+    if (els.scheduleBracketBuilderBtn) els.scheduleBracketBuilderBtn.hidden = true;
+    scheduleBracketEditorOpen = false;
     gameEditId = null;
   } else if (els.scheduleGameBtn) {
     els.scheduleGameBtn.hidden = !els.gameForm?.hidden;
+  }
+  if (els.scheduleBracketBuilderBtn) {
+    els.scheduleBracketBuilderBtn.hidden = !admin || !viewingPostseason;
+    els.scheduleBracketBuilderBtn.classList.toggle("is-active", scheduleBracketEditorOpen && viewingPostseason);
+    els.scheduleBracketBuilderBtn.setAttribute("aria-expanded", scheduleBracketEditorOpen && viewingPostseason ? "true" : "false");
+    els.scheduleBracketBuilderBtn.textContent = scheduleBracketEditorOpen ? "Hide Bracket Builder" : "Create/Edit Bracket";
   }
   if (els.gameFilterRow) {
     els.gameFilterRow.querySelectorAll("[data-game-filter]").forEach((button) => {
       button.classList.toggle("is-active", button.dataset.gameFilter === gameFilter);
     });
   }
-  const completedGamesSorted = gamesForLifecycle("completed", { season: scheduleSeasonFilter });
+  const completedGamesSorted = gamesForLifecycle("completed", { season: scheduleSeasonFilter, gameType: gameFilter });
   const completedTotal = completedGamesSorted.length;
-  if (gameFilter === "all") {
-    const upcomingGames = scheduleDashboardUpcomingGames({ season: scheduleSeasonFilter });
+  if (!viewingPostseason) {
+    const upcomingGames = scheduleDashboardUpcomingGames({ season: scheduleSeasonFilter, gameType: "regular" });
     const featuredUpcoming = upcomingGames[0] || null;
     const additionalUpcoming = upcomingGames.slice(featuredUpcoming ? 1 : 0, featuredUpcoming ? 3 : 2);
     const recentCompleted = completedGamesSorted.slice(0, 6);
@@ -13867,19 +15288,14 @@ function renderGames() {
     if (els.scheduleCalendarView) els.scheduleCalendarView.hidden = true;
     if (els.gamesGrid) els.gamesGrid.hidden = false;
     els.gamesGrid.classList.remove("is-grouped");
-    const filtered = gamesForLifecycle(gameFilter, { season: scheduleSeasonFilter });
+    const filtered = scheduleGamesForType("postseason", { season: scheduleSeasonFilter });
     els.gamesGrid.innerHTML = filtered.length
       ? filtered.map((game) => renderScheduleGameCard(game, activeId)).join("")
-      : `<p class="player-meta">No ${escapeHtml(gameFilter)} games found.</p>`;
+      : `<p class="player-meta">No ${escapeHtml(scheduleGameFilterLabel(gameFilter))} games found.</p>`;
   }
   if (els.gamesArchiveNote) {
-    if (gameFilter === "all" || gameFilter === "completed") {
-      els.gamesArchiveNote.hidden = true;
-      els.gamesArchiveNote.innerHTML = "";
-    } else {
-      els.gamesArchiveNote.hidden = false;
-      els.gamesArchiveNote.innerHTML = `<span>Full game history lives in Past Games.</span><button type="button" class="secondary-action" data-game-action="archive">Open Past Games</button>`;
-    }
+    els.gamesArchiveNote.hidden = true;
+    els.gamesArchiveNote.innerHTML = "";
   }
 }
 
@@ -13910,6 +15326,7 @@ function renderScheduleFeaturedGameCard(game) {
         <span>${escapeHtml(status.text)}</span>
       </p>
       ${quickScoreAction}
+      ${renderPlayoffBracketAction(game, "schedule-bracket-feature")}
     </div>
   </article>`;
 }
@@ -14394,9 +15811,10 @@ function teamPitchingStats(season = null, gameTypeFilter = "all") {
 
 function openScheduleCalendar() {
   scheduleGamesLayout = "calendar";
-  const anchorGame = gamesForLifecycle("future", { season: scheduleSeasonFilter })[0]
+  const anchorGame = gamesForLifecycle("future", { season: scheduleSeasonFilter, gameType: gameFilter })[0]
     || [...state.games]
       .filter((game) => String(game?.date || "").startsWith(`${scheduleSeasonFilter}-`))
+      .filter((game) => gameMatchesScheduleFilter(game, gameFilter))
       .sort(sortGamesOldestFirst)[0]
     || null;
   scheduleCalendarMonth = monthKeyFromDateValue(anchorGame?.date || `${scheduleSeasonFilter}-01-01`);
@@ -14440,6 +15858,7 @@ function renderScheduleCalendar() {
   populateScheduleCalendarMonthSelect();
   const calendarGames = [...state.games]
     .filter((game) => String(game?.date || "").startsWith(`${scheduleSeasonFilter}-`))
+    .filter((game) => gameMatchesScheduleFilter(game, gameFilter))
     .sort(sortGamesOldestFirst);
   const gamesByDate = calendarGames.reduce((map, game) => {
     if (!game?.date) return map;
@@ -14559,6 +15978,7 @@ function renderScheduleUpcomingRow(game) {
   const dateLabel = formatGameDateDisplay(game?.date);
   const timeLabel = formatGameTimeDisplay(game?.time);
   const quickScoreAction = renderQuickScoreAction(game, "schedule-quick-score-row");
+  const bracketAction = renderPlayoffBracketAction(game, "schedule-bracket-row");
   return `<article class="schedule-upcoming-row">
     <img class="schedule-upcoming-row-logo" src="${escapeHtml(window.MatchupImages?.getTeamLogo?.(game?.opponent, "opponent") || "assets/team-logos/lions.png")}" alt="" loading="lazy" decoding="async">
     <div class="schedule-upcoming-row-copy">
@@ -14570,7 +15990,7 @@ function renderScheduleUpcomingRow(game) {
         ${renderScheduleWeatherInlineItem(game)}
       </div>
     </div>
-    ${quickScoreAction}
+    <div class="schedule-upcoming-row-actions">${quickScoreAction}${bracketAction}</div>
   </article>`;
 }
 
@@ -14597,6 +16017,7 @@ function renderScheduleResultRow(game) {
     </div>
     <div class="schedule-result-actions">
       <button type="button" class="secondary-action" data-game-action="boxscore" data-game-id="${escapeHtml(game.id)}">View Box Score</button>
+      ${renderPlayoffBracketAction(game)}
       ${renderGameHighlightsAction(game)}
       ${syncButton}
     </div>
@@ -14623,6 +16044,12 @@ function renderGameHighlightsAction(game, className = "") {
   if (!game?.id || !gameIsFinal(game) || !highlightCountForGame(game.id)) return "";
   const extraClass = className ? ` ${escapeHtml(className)}` : "";
   return `<button type="button" class="secondary-action${extraClass}" data-game-action="highlights" data-game-id="${escapeHtml(game.id)}">Game Highlights</button>`;
+}
+
+function renderPlayoffBracketAction(game, className = "") {
+  if (!game?.id || !gameIsPostseason(game)) return "";
+  const extraClass = className ? ` ${escapeHtml(className)}` : "";
+  return `<button type="button" class="secondary-action${extraClass}" data-game-action="bracket" data-game-id="${escapeHtml(game.id)}">View Bracket</button>`;
 }
 
 function highlightCountForGame(gameId) {
@@ -15223,8 +16650,10 @@ function renderScheduleWeatherInlineContent(game) {
 
 function gamesForLifecycle(lifecycle, options = {}) {
   const season = normalizeScheduleSeasonFilter(options.season || scheduleSeasonFilter);
+  const gameType = options.gameType ? normalizeScheduleGameFilter(options.gameType) : "";
   const games = state.games.filter((game) => {
     if (gameLifecycle(game) !== lifecycle) return false;
+    if (gameType && !gameMatchesScheduleFilter(game, gameType)) return false;
     if (!season) return true;
     return String(game?.date || "").startsWith(`${season}-`);
   });
@@ -15294,8 +16723,10 @@ function renderScheduleGameCard(game, activeId = "") {
     : "";
   const quickScoreAction = renderQuickScoreAction(game, "schedule-quick-score-card");
   const highlightsAction = renderGameHighlightsAction(game);
+  const bracketAction = renderPlayoffBracketAction(game);
   const reviewActions = `<button type="button" class="secondary-action" data-game-action="boxscore" data-game-id="${escapeHtml(game.id)}">View Box Score</button>
-         <button type="button" class="secondary-action" data-game-action="scorebook" data-game-id="${escapeHtml(game.id)}">View Scorebook</button>`;
+         <button type="button" class="secondary-action" data-game-action="scorebook" data-game-id="${escapeHtml(game.id)}">View Scorebook</button>
+         ${bracketAction}`;
   const postponedAdminActions = `<button type="button" class="primary-action" data-game-action="resume-postponed" data-game-id="${escapeHtml(game.id)}">Continue Scoring</button>
          <button type="button" class="secondary-action" data-game-action="scorebook" data-game-id="${escapeHtml(game.id)}">View Scorebook</button>`;
   const primaryAction = admin
@@ -15309,6 +16740,7 @@ function renderScheduleGameCard(game, activeId = "") {
     ? `<button type="button" class="secondary-action" data-game-action="summary" data-game-id="${game.id}">View Summary</button>
        <button type="button" class="secondary-action" data-game-action="boxscore" data-game-id="${game.id}">View Box Score</button>
        <button type="button" class="secondary-action" data-game-action="scorebook" data-game-id="${game.id}">View Scorebook</button>
+       ${bracketAction}
        ${highlightsAction}`
     : lifecycle === "active"
       ? reviewActions
@@ -15335,6 +16767,7 @@ function renderScheduleGameCard(game, activeId = "") {
         ? `${quickScoreAction}
            ${completed ? `<button type="button" class="secondary-action" data-game-action="summary" data-game-id="${game.id}">View Summary</button>` : ""}
            ${postponed ? postponedAdminActions : ""}
+           ${bracketAction}
            ${highlightsAction}
            ${completedSyncButton}
            <button type="button" class="secondary-action" data-game-action="edit" data-game-id="${game.id}" ${locked ? "disabled" : ""}>Edit</button>
@@ -21143,10 +22576,18 @@ function escapeHtml(value) {
 
 function inlineChevronIcon(direction = "right", className = "") {
   const isLeft = direction === "left";
-  const directionClass = isLeft ? "inline-chevron-icon--left" : "inline-chevron-icon--right";
+  const isUp = direction === "up";
+  const isDown = direction === "down";
+  const directionClass = isLeft
+    ? "inline-chevron-icon--left"
+    : isUp
+      ? "inline-chevron-icon--up"
+      : isDown
+        ? "inline-chevron-icon--down"
+        : "inline-chevron-icon--right";
   const classes = ["inline-chevron-icon", directionClass, className].filter(Boolean).join(" ");
-  const mainPath = isLeft ? "M10 3 5 8l5 5" : "M6 3l5 5-5 5";
-  const clawPath = isLeft ? "M12.5 5.25 9.75 8l2.75 2.75" : "M3.5 5.25 6.25 8 3.5 10.75";
+  const mainPath = isLeft ? "M10 3 5 8l5 5" : isUp ? "M3 10 8 5l5 5" : isDown ? "M3 6l5 5 5-5" : "M6 3l5 5-5 5";
+  const clawPath = isLeft ? "M12.5 5.25 9.75 8l2.75 2.75" : isUp ? "M5.25 12.5 8 9.75l2.75 2.75" : isDown ? "M5.25 3.5 8 6.25l2.75-2.75" : "M3.5 5.25 6.25 8 3.5 10.75";
   return `<svg class="${escapeHtml(classes)}" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
     <path class="inline-chevron-icon-main" d="${mainPath}"></path>
     <path class="inline-chevron-icon-claw" d="${clawPath}"></path>
@@ -21244,11 +22685,4 @@ if ("serviceWorker" in navigator) {
       });
   });
 }
-
-
-
-
-
-
-
 

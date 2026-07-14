@@ -38,9 +38,14 @@ function functionBody(source, name) {
 assert.match(indexHtml, /id="gameTypeInput"[\s\S]*Postseason \/ Playoff/, "Schedule builder should include a playoff game type field");
 assert.match(indexHtml, /id="editGameTypeInput"[\s\S]*Postseason \/ Playoff/, "Game editor should include a playoff game type field");
 assert.match(indexHtml, /id="statsGameTypeSelect"/, "Stats page should include a regular/postseason split selector");
+assert.match(indexHtml, /id="gameFilterRow"[\s\S]*data-game-filter="regular"[\s\S]*Regular Season[\s\S]*data-game-filter="postseason"[\s\S]*Post Season/, "Schedule filters should split regular season and postseason");
+assert.doesNotMatch(indexHtml, /data-game-filter="(?:all|future|completed|postponed)"/, "Schedule should not expose old lifecycle filters");
+assert.match(indexHtml, /id="scheduleBracketBuilderBtn"[\s\S]*data-admin-only[\s\S]*Playoff Bracket/, "Postseason schedule tab should include an admin bracket builder action");
 
 assert.match(functionBody(appJs, "normalizeGameType"), /postseason[\s\S]*playoff/, "Game type should normalize playoff values to postseason");
 assert.match(functionBody(appJs, "gameIsPostseason"), /game\?\.gameType[\s\S]*isPlayoff/, "Postseason detection should support new and legacy game flags");
+assert.match(functionBody(appJs, "normalizeScheduleGameFilter"), /postseason[\s\S]*regular/, "Schedule filters should normalize to regular/postseason only");
+assert.match(functionBody(appJs, "gameMatchesScheduleFilter"), /gameIsPostseason\(game\) \? "postseason" : "regular"/, "Schedule type filters should use game postseason status");
 assert.match(functionBody(appJs, "createGame"), /gameType: normalizeGameType\(config\.gameType/, "New games should persist gameType");
 assert.match(functionBody(appJs, "normalizeGame"), /gameType: normalizeGameType\(game\.gameType/, "Loaded games should normalize gameType");
 
@@ -62,6 +67,8 @@ assert.match(functionBody(appJs, "exportStatsTable"), /statsGameTypeFilter[\s\S]
 assert.match(functionBody(appJs, "renderScheduleFeaturedGameCard"), /gameTypePill\(game\)/, "Featured schedule game should display postseason pill");
 assert.match(functionBody(appJs, "renderScheduleUpcomingRow"), /gameTypePill\(game\)/, "Upcoming schedule row should display postseason pill");
 assert.match(functionBody(appJs, "renderScheduleGameCard"), /gameTypePill\(game\)/, "Schedule cards should display postseason pill");
+assert.match(functionBody(appJs, "renderGames"), /scheduleBracketBuilderBtn\.hidden = !admin \|\| !viewingPostseason/, "Bracket builder should only show for admins on the postseason schedule tab");
+assert.match(functionBody(appJs, "renderGames"), /scheduleGamesForType\("postseason"/, "Postseason tab should list postseason games by type");
 assert.match(stylesCss, /\.game-type-pill\s*\{[\s\S]*text-transform: uppercase;/, "Postseason pill should have themed styling");
 assert.match(stylesCss, /\.stats-game-type-chip\s*\{[\s\S]*min-width: 170px;/, "Stats split chip should keep a stable compact width");
 
