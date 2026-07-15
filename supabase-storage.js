@@ -320,14 +320,337 @@
     };
   }
 
-  function mergeRemoteSnapshot(baseState, appStateRow, gamesRows, rosterRows = [], highlightRows = [], newsRows = undefined) {
+  function safeTournamentKey(value = "", fallback = "item") {
+    return String(value || fallback)
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80) || fallback;
+  }
+
+  function maybeInteger(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.trunc(number) : null;
+  }
+
+  function maybeScore(value) {
+    if (value === "" || value === undefined || value === null) return null;
+    return maybeInteger(value);
+  }
+
+  function normalizeTournamentSource(source = {}, fallback = {}) {
+    const raw = source && typeof source === "object" ? source : {};
+    const textSource = typeof source === "string" ? String(source || "").trim() : "";
+    const type = String(raw.type || raw.sourceType || fallback.type || "").trim().toLowerCase();
+    const seed = maybeInteger(raw.seed ?? raw.sourceSeed ?? fallback.seed);
+    const matchupCode = String(raw.matchupCode || raw.sourceMatchupCode || raw.matchup_code || fallback.matchupCode || "").trim().toUpperCase();
+    const teamName = String(raw.teamName || raw.displayName || raw.name || fallback.teamName || textSource || "").trim();
+    const teamId = String(raw.teamId || raw.sourceTeamId || fallback.teamId || (teamName ? safeTournamentKey(teamName, "") : "")).trim();
+    if (type === "seed" || seed) {
+      return {
+        type: "seed",
+        seed,
+        teamId: teamId || "",
+        matchupCode: "",
+        label: String(raw.label || fallback.label || (seed ? `#${seed} Seed` : "Seed")).trim()
+      };
+    }
+    if (type === "winner" || /^winner\s+/i.test(textSource)) {
+      const sourceCode = matchupCode || textSource.replace(/^winner\s+/i, "").trim().toUpperCase();
+      return {
+        type: "winner",
+        seed: null,
+        teamId: "",
+        matchupCode: sourceCode,
+        label: String(raw.label || fallback.label || `Winner ${sourceCode || "TBD"}`).trim()
+      };
+    }
+    if (type === "loser" || /^loser\s+/i.test(textSource)) {
+      const sourceCode = matchupCode || textSource.replace(/^loser\s+/i, "").trim().toUpperCase();
+      return {
+        type: "loser",
+        seed: null,
+        teamId: "",
+        matchupCode: sourceCode,
+        label: String(raw.label || fallback.label || `Loser ${sourceCode || "TBD"}`).trim()
+      };
+    }
+    if (type === "qualifier") {
+      return {
+        type: "qualifier",
+        seed: null,
+        teamId: "",
+        matchupCode: "",
+        label: String(raw.label || fallback.label || "Qualifier").trim()
+      };
+    }
+    if (teamName) {
+      return {
+        type: "team",
+        seed: null,
+        teamId: teamId || safeTournamentKey(teamName),
+        matchupCode: "",
+        label: String(raw.label || fallback.label || teamName).trim()
+      };
+    }
+    return {
+      type: "tbd",
+      seed: null,
+      teamId: "",
+      matchupCode: "",
+      label: String(raw.label || fallback.label || "TBD").trim()
+    };
+  }
+
+  function tournamentMatchupCode(matchup = {}, index = 0) {
+    return String(matchup.matchupCode || matchup.matchup_code || matchup.code || matchup.label || `G-${index + 1}`)
+      .trim()
+      .toUpperCase();
+  }
+
+  function tournamentMatchupRowId(tournamentId, matchup = {}, index = 0) {
+    const code = tournamentMatchupCode(matchup, index);
+    return `${String(tournamentId || "primary-playoff-bracket").trim()}:${safeTournamentKey(code, `game-${index + 1}`)}`;
+  }
+
+  function buildTournamentRow(bracket = {}) {
+    const season = maybeInteger(bracket.season) || currentSeasonValue();
+    const status = String(bracket.status || (bracket.isPublic ? "published" : "draft")).trim() || "draft";
+    return {
+      id: String(bracket.id || "primary-playoff-bracket").trim(),
+      name: String(bracket.name || bracket.title || `${season} AA Championship Series`).trim(),
+      season,
+      division: String(bracket.division || "AA").trim(),
+      tournament_type: String(bracket.tournamentType || bracket.tournament_type || bracket.format || "double-elimination").trim(),
+      status,
+      starts_at: String(bracket.startsAt || bracket.starts_at || "").trim() || null,
+      ends_at: String(bracket.endsAt || bracket.ends_at || "").trim() || null,
+      is_public: bracket.isPublic === undefined ? status === "published" : Boolean(bracket.isPublic),
+      championship_format: String(bracket.championshipFormat || bracket.championship_format || "Best of 3").trim(),
+      description: String(bracket.description || "").trim(),
+      template_id: String(bracket.templateId || bracket.template_id || "").trim(),
+      metadata: {
+        updated_from: "scorebook-app",
+        title: String(bracket.title || bracket.name || `${season} AA Championship Series`).trim(),
+        subtitle: String(bracket.subtitle || "").trim(),
+        format: String(bracket.format || bracket.tournamentType || bracket.tournament_type || "double-elimination").trim(),
+        updatedAt: String(bracket.updatedAt || bracket.updated_at || "").trim()
+      }
+    };
+  }
+
+  function buildTournamentEntryRows(bracket = {}) {
+    const tournamentId = String(bracket.id || "primary-playoff-bracket").trim();
+    return (Array.isArray(bracket.entries) ? bracket.entries : [])
+      .map((entry, index) => {
+        const seed = maybeInteger(entry.seed) || index + 1;
+        const teamName = String(entry.teamName || entry.name || entry.displayNameOverride || entry.display_name_override || `#${seed} Seed`).trim();
+        const teamId = String(entry.teamId || entry.team_id || safeTournamentKey(teamName || `seed-${seed}`)).trim();
+        return {
+          id: String(entry.id || `${tournamentId}:seed-${seed}`).trim(),
+          tournament_id: tournamentId,
+          team_id: teamId,
+          seed,
+          display_name_override: String(entry.displayNameOverride || entry.display_name_override || teamName).trim(),
+          entry_status: String(entry.entryStatus || entry.entry_status || "active").trim(),
+          metadata: {
+            updated_from: "scorebook-app",
+            teamName,
+            source_entry: deepClone(entry)
+          }
+        };
+      })
+      .filter((row) => row.tournament_id && row.seed);
+  }
+
+  function buildTournamentMatchupRows(bracket = {}) {
+    const tournamentId = String(bracket.id || "primary-playoff-bracket").trim();
+    const matchups = Array.isArray(bracket.matchups) ? bracket.matchups : [];
+    const codeToRowId = new Map(matchups.map((matchup, index) => [tournamentMatchupCode(matchup, index), tournamentMatchupRowId(tournamentId, matchup, index)]));
+    return matchups
+      .map((matchup, index) => {
+        const code = tournamentMatchupCode(matchup, index);
+        const homeSource = normalizeTournamentSource(matchup.slotA || matchup.homeSource || matchup.home_source, {
+          seed: matchup.seedA || matchup.seed_a,
+          teamName: matchup.teamA || matchup.team_a,
+          label: matchup.sourceLabelA || matchup.source_label_a
+        });
+        const awaySource = normalizeTournamentSource(matchup.slotB || matchup.awaySource || matchup.away_source, {
+          seed: matchup.seedB || matchup.seed_b,
+          teamName: matchup.teamB || matchup.team_b,
+          label: matchup.sourceLabelB || matchup.source_label_b
+        });
+        const winnerDestinationCode = String(matchup.winnerDestination || matchup.winner_destination || "").trim().toUpperCase();
+        const loserDestinationCode = String(matchup.loserDestination || matchup.loser_destination || "").trim().toUpperCase();
+        return {
+          id: tournamentMatchupRowId(tournamentId, matchup, index),
+          tournament_id: tournamentId,
+          matchup_code: code,
+          bracket_section: String(matchup.bracketSection || matchup.bracket_section || matchup.bracketSide || matchup.bracket_side || "winners").trim(),
+          round_number: maybeInteger(matchup.roundNumber || matchup.round_number || matchup.round || matchup.order) || 1,
+          display_order: maybeInteger(matchup.displayOrder || matchup.display_order || matchup.order) || index + 1,
+          scheduled_at: null,
+          date_label: String(matchup.dateLabel || matchup.date_label || "").trim(),
+          time_label: String(matchup.timeLabel || matchup.time_label || "").trim(),
+          location: String(matchup.location || "").trim(),
+          status: String(matchup.status || (matchup.isBye ? "bye" : "scheduled")).trim(),
+          series_best_of: maybeInteger(matchup.seriesBestOf || matchup.series_best_of) || 1,
+          series_game_number: maybeInteger(matchup.seriesGameNumber || matchup.series_game_number) || 1,
+          home_source_type: homeSource.type,
+          home_source_seed: homeSource.seed,
+          home_source_team_id: homeSource.teamId || null,
+          home_source_matchup_id: homeSource.matchupCode ? (codeToRowId.get(homeSource.matchupCode) || null) : null,
+          home_source_outcome: homeSource.type === "winner" || homeSource.type === "loser" ? homeSource.type : "",
+          away_source_type: awaySource.type,
+          away_source_seed: awaySource.seed,
+          away_source_team_id: awaySource.teamId || null,
+          away_source_matchup_id: awaySource.matchupCode ? (codeToRowId.get(awaySource.matchupCode) || null) : null,
+          away_source_outcome: awaySource.type === "winner" || awaySource.type === "loser" ? awaySource.type : "",
+          resolved_home_team_id: homeSource.teamId || null,
+          resolved_away_team_id: awaySource.teamId || null,
+          home_score: maybeScore(matchup.scoreA ?? matchup.score_a),
+          away_score: maybeScore(matchup.scoreB ?? matchup.score_b),
+          winner_team_id: matchup.winner === "A" || matchup.winnerSide === "A" ? homeSource.teamId || null : matchup.winner === "B" || matchup.winnerSide === "B" ? awaySource.teamId || null : null,
+          loser_team_id: matchup.winner === "A" || matchup.winnerSide === "A" ? awaySource.teamId || null : matchup.winner === "B" || matchup.winnerSide === "B" ? homeSource.teamId || null : null,
+          winner_destination_matchup_id: winnerDestinationCode ? (codeToRowId.get(winnerDestinationCode) || null) : null,
+          winner_destination_slot: String(matchup.winnerDestinationSlot || matchup.winner_destination_slot || "").trim().toUpperCase(),
+          loser_destination_matchup_id: loserDestinationCode ? (codeToRowId.get(loserDestinationCode) || null) : null,
+          loser_destination_slot: String(matchup.loserDestinationSlot || matchup.loser_destination_slot || "").trim().toUpperCase(),
+          linked_game_id: String(matchup.linkedGameId || matchup.linked_game_id || matchup.gameId || "").trim() || null,
+          notes: String(matchup.note || matchup.notes || "").trim(),
+          metadata: {
+            updated_from: "scorebook-app",
+            matchup: deepClone(matchup),
+            homeSource,
+            awaySource
+          }
+        };
+      })
+      .filter((row) => row.tournament_id && row.matchup_code);
+  }
+
+  function tournamentSourceFromRow(row = {}, prefix = "home") {
+    const type = String(row[`${prefix}_source_type`] || "tbd").trim();
+    const seed = maybeInteger(row[`${prefix}_source_seed`]);
+    const teamId = String(row[`${prefix}_source_team_id`] || "").trim();
+    const outcome = String(row[`${prefix}_source_outcome`] || "").trim();
+    const sourceMatchupId = String(row[`${prefix}_source_matchup_id`] || "").trim();
+    const metadata = row.metadata && typeof row.metadata === "object" ? row.metadata : {};
+    const metadataSource = prefix === "home" ? metadata.homeSource : metadata.awaySource;
+    if (metadataSource && typeof metadataSource === "object") return deepClone(metadataSource);
+    if ((type === "winner" || outcome === "winner") && sourceMatchupId) return { type: "winner", matchupCode: sourceMatchupId.split(":").pop()?.toUpperCase() || "", label: `Winner ${sourceMatchupId}` };
+    if ((type === "loser" || outcome === "loser") && sourceMatchupId) return { type: "loser", matchupCode: sourceMatchupId.split(":").pop()?.toUpperCase() || "", label: `Loser ${sourceMatchupId}` };
+    if (type === "seed" || seed) return { type: "seed", seed, teamId, label: seed ? `#${seed} Seed` : "Seed" };
+    if (teamId) return { type: "team", teamId, teamName: "", label: teamId };
+    return { type: type || "tbd", label: "TBD" };
+  }
+
+  function playoffBracketFromTournamentRows(tournamentRow, entryRows = [], matchupRows = []) {
+    if (!tournamentRow?.id) return null;
+    const metadata = tournamentRow.metadata && typeof tournamentRow.metadata === "object" ? tournamentRow.metadata : {};
+    const entries = (Array.isArray(entryRows) ? entryRows : [])
+      .filter((row) => row?.tournament_id === tournamentRow.id)
+      .map((row) => ({
+        id: String(row.id || "").trim(),
+        teamId: String(row.team_id || "").trim(),
+        teamName: String(row.metadata?.teamName || row.display_name_override || row.team_id || "").trim(),
+        seed: maybeInteger(row.seed) || 0,
+        displayNameOverride: String(row.display_name_override || "").trim(),
+        entryStatus: String(row.entry_status || "active").trim()
+      }))
+      .filter((entry) => entry.seed)
+      .sort((left, right) => left.seed - right.seed);
+    const entriesByTeamId = new Map(entries.map((entry) => [entry.teamId, entry]).filter(([teamId]) => Boolean(teamId)));
+    const entriesBySeed = new Map(entries.map((entry) => [entry.seed, entry]));
+    const teamNameForSource = (source) => {
+      if (!source || typeof source !== "object") return "";
+      if (source.teamName) return source.teamName;
+      if (source.seed && entriesBySeed.has(source.seed)) return entriesBySeed.get(source.seed).teamName;
+      if (source.teamId && entriesByTeamId.has(source.teamId)) return entriesByTeamId.get(source.teamId).teamName;
+      return "";
+    };
+    const matchups = (Array.isArray(matchupRows) ? matchupRows : [])
+      .filter((row) => row?.tournament_id === tournamentRow.id)
+      .map((row, index) => {
+        const rowMetadata = row.metadata && typeof row.metadata === "object" ? row.metadata : {};
+        const sourceMatchup = rowMetadata.matchup && typeof rowMetadata.matchup === "object" ? rowMetadata.matchup : {};
+        const homeSource = tournamentSourceFromRow(row, "home");
+        const awaySource = tournamentSourceFromRow(row, "away");
+        const teamA = String(sourceMatchup.teamA || sourceMatchup.team_a || teamNameForSource(homeSource)).trim();
+        const teamB = String(sourceMatchup.teamB || sourceMatchup.team_b || teamNameForSource(awaySource)).trim();
+        const winnerSide = String(sourceMatchup.winnerSide || sourceMatchup.winner || "").trim().toUpperCase();
+        return {
+          ...deepClone(sourceMatchup),
+          id: String(sourceMatchup.id || row.id || "").trim(),
+          matchupCode: String(row.matchup_code || sourceMatchup.matchupCode || sourceMatchup.label || `G-${index + 1}`).trim(),
+          label: String(sourceMatchup.label || row.matchup_code || "").trim(),
+          bracketSection: String(row.bracket_section || sourceMatchup.bracketSection || sourceMatchup.bracketSide || "winners").trim(),
+          bracketSide: String(row.bracket_section || sourceMatchup.bracketSide || sourceMatchup.bracketSection || "winners").trim(),
+          roundNumber: maybeInteger(row.round_number) || maybeInteger(sourceMatchup.roundNumber) || 1,
+          displayOrder: maybeInteger(row.display_order) || maybeInteger(sourceMatchup.displayOrder) || index + 1,
+          order: maybeInteger(row.display_order) || maybeInteger(sourceMatchup.order) || index + 1,
+          dateLabel: String(row.date_label || sourceMatchup.dateLabel || "").trim(),
+          timeLabel: String(row.time_label || sourceMatchup.timeLabel || "").trim(),
+          location: String(row.location || sourceMatchup.location || "").trim(),
+          status: String(row.status || sourceMatchup.status || "scheduled").trim(),
+          seriesBestOf: maybeInteger(row.series_best_of) || maybeInteger(sourceMatchup.seriesBestOf) || 1,
+          seriesGameNumber: maybeInteger(row.series_game_number) || maybeInteger(sourceMatchup.seriesGameNumber) || 1,
+          slotA: homeSource,
+          slotB: awaySource,
+          teamA,
+          seedA: sourceMatchup.seedA || homeSource.seed || "",
+          sourceLabelA: sourceMatchup.sourceLabelA || homeSource.label || "",
+          scoreA: row.home_score === null || row.home_score === undefined ? String(sourceMatchup.scoreA || "") : String(row.home_score),
+          teamB,
+          seedB: sourceMatchup.seedB || awaySource.seed || "",
+          sourceLabelB: sourceMatchup.sourceLabelB || awaySource.label || "",
+          scoreB: row.away_score === null || row.away_score === undefined ? String(sourceMatchup.scoreB || "") : String(row.away_score),
+          winner: winnerSide,
+          winnerSide,
+          winnerDestination: String(sourceMatchup.winnerDestination || "").trim(),
+          winnerDestinationSlot: String(row.winner_destination_slot || sourceMatchup.winnerDestinationSlot || "").trim(),
+          loserDestination: String(sourceMatchup.loserDestination || "").trim(),
+          loserDestinationSlot: String(row.loser_destination_slot || sourceMatchup.loserDestinationSlot || "").trim(),
+          linkedGameId: String(row.linked_game_id || sourceMatchup.linkedGameId || "").trim(),
+          note: String(row.notes || sourceMatchup.note || "").trim()
+        };
+      })
+      .sort((left, right) => (left.roundNumber - right.roundNumber) || (left.displayOrder - right.displayOrder));
+    return {
+      id: String(tournamentRow.id || "").trim(),
+      name: String(tournamentRow.name || "").trim(),
+      title: String(metadata.title || tournamentRow.name || "").trim(),
+      subtitle: String(metadata.subtitle || tournamentRow.description || "").trim(),
+      description: String(tournamentRow.description || "").trim(),
+      season: String(tournamentRow.season || "").trim(),
+      division: String(tournamentRow.division || "AA").trim(),
+      tournamentType: String(tournamentRow.tournament_type || metadata.format || "double-elimination").trim(),
+      format: String(metadata.format || tournamentRow.tournament_type || "double-elimination").trim(),
+      templateId: String(tournamentRow.template_id || "").trim(),
+      status: String(tournamentRow.status || "draft").trim(),
+      isPublic: Boolean(tournamentRow.is_public),
+      startsAt: String(tournamentRow.starts_at || "").trim(),
+      endsAt: String(tournamentRow.ends_at || "").trim(),
+      championshipFormat: String(tournamentRow.championship_format || "Best of 3").trim(),
+      entries,
+      matchups,
+      updatedAt: String(tournamentRow.updated_at || metadata.updatedAt || "").trim(),
+      rounds: []
+    };
+  }
+
+  function mergeRemoteSnapshot(baseState, appStateRow, gamesRows, rosterRows = [], highlightRows = [], newsRows = undefined, playoffBrackets = undefined) {
     const nextState = deepClone(baseState || {});
     const remoteMetadata = appStateRow?.metadata && typeof appStateRow.metadata === "object" ? appStateRow.metadata : {};
     const remoteDeletedGameTombstones = remoteMetadata.deleted_game_tombstones && typeof remoteMetadata.deleted_game_tombstones === "object"
       ? deepClone(remoteMetadata.deleted_game_tombstones)
       : {};
     nextState.deletedGameTombstones = deepClone(remoteDeletedGameTombstones);
-    if (remoteMetadata.playoff_bracket && typeof remoteMetadata.playoff_bracket === "object") {
+    if (Array.isArray(playoffBrackets) && playoffBrackets.length) {
+      const metadataBracketId = String(remoteMetadata.playoff_bracket?.id || "").trim();
+      nextState.playoffBracket = deepClone(playoffBrackets.find((bracket) => bracket.id === metadataBracketId) || playoffBrackets[0]);
+    } else if (remoteMetadata.playoff_bracket && typeof remoteMetadata.playoff_bracket === "object") {
       nextState.playoffBracket = deepClone(remoteMetadata.playoff_bracket);
     }
     if (Array.isArray(newsRows)) {
@@ -484,15 +807,57 @@
     return response;
   }
 
+  async function fetchPlayoffBrackets() {
+    const client = getClient();
+    if (!client) return { data: [], error: new Error("Supabase client not ready.") };
+    const tournamentsResponse = await client
+      .from("tournaments")
+      .select("*")
+      .order("season", { ascending: false })
+      .order("updated_at", { ascending: false });
+    if (isMissingTableError(tournamentsResponse.error, "tournaments")) {
+      return { data: [], error: null, missingTable: true };
+    }
+    if (tournamentsResponse.error) return { data: [], error: tournamentsResponse.error };
+    const tournamentIds = (tournamentsResponse.data || []).map((row) => row.id).filter(Boolean);
+    if (!tournamentIds.length) return { data: [], error: null };
+    const [entriesResponse, matchupsResponse] = await Promise.all([
+      client
+        .from("tournament_entries")
+        .select("*")
+        .in("tournament_id", tournamentIds)
+        .order("seed", { ascending: true }),
+      client
+        .from("tournament_matchups")
+        .select("*")
+        .in("tournament_id", tournamentIds)
+        .order("bracket_section", { ascending: true })
+        .order("round_number", { ascending: true })
+        .order("display_order", { ascending: true })
+    ]);
+    const error = entriesResponse.error || matchupsResponse.error || null;
+    if (isMissingTableError(error, "tournament_entries") || isMissingTableError(error, "tournament_matchups")) {
+      return { data: [], error: null, missingTable: true };
+    }
+    if (error) return { data: [], error };
+    return {
+      data: (tournamentsResponse.data || [])
+        .map((tournament) => playoffBracketFromTournamentRows(tournament, entriesResponse.data || [], matchupsResponse.data || []))
+        .filter((bracket) => bracket?.id),
+      error: null
+    };
+  }
+
   async function fetchBootstrap() {
-    const [appStateResponse, rosterPlayersResponse, gamesResponse, highlightsResponse, newsArticlesResponse] = await Promise.all([
+    const [appStateResponse, rosterPlayersResponse, gamesResponse, highlightsResponse, newsArticlesResponse, playoffBracketsResponse] = await Promise.all([
       fetchAppState(),
       fetchRosterPlayers(),
       fetchGames(),
       fetchHighlights(),
-      fetchNewsArticles()
+      fetchNewsArticles(),
+      fetchPlayoffBrackets()
     ]);
-    const error = appStateResponse.error || rosterPlayersResponse.error || gamesResponse.error || highlightsResponse.error || newsArticlesResponse.error || null;
+    const error = appStateResponse.error || rosterPlayersResponse.error || gamesResponse.error || highlightsResponse.error || newsArticlesResponse.error || playoffBracketsResponse.error || null;
     return {
       data: {
         appState: appStateResponse.data || null,
@@ -502,7 +867,9 @@
         highlights: highlightsResponse.data || [],
         highlightsMissingTable: Boolean(highlightsResponse.missingTable),
         newsArticles: newsArticlesResponse.data || [],
-        newsArticlesMissingTable: Boolean(newsArticlesResponse.missingTable)
+        newsArticlesMissingTable: Boolean(newsArticlesResponse.missingTable),
+        playoffBrackets: playoffBracketsResponse.data || [],
+        playoffBracketsMissingTable: Boolean(playoffBracketsResponse.missingTable)
       },
       error
     };
@@ -652,20 +1019,81 @@
     };
   }
 
+  async function upsertPlayoffBracket(bracket) {
+    const client = getClient();
+    if (!client) return { data: null, error: new Error("Supabase client not ready.") };
+    if (!bracket?.id) return { data: null, error: null };
+    const tournamentRow = buildTournamentRow(bracket);
+    const entryRows = buildTournamentEntryRows(bracket);
+    const matchupRows = buildTournamentMatchupRows(bracket);
+    const missingTournamentTableError = () => ({
+      data: null,
+      error: new Error("Supabase tournament tables are not available to the app. Run supabase-schema.sql in this environment or refresh the Supabase API schema cache."),
+      missingTable: true
+    });
+    const clearReferencesResponse = await client
+      .from("tournament_matchups")
+      .update({
+        home_source_matchup_id: null,
+        away_source_matchup_id: null,
+        winner_destination_matchup_id: null,
+        loser_destination_matchup_id: null
+      })
+      .eq("tournament_id", tournamentRow.id);
+    if (isMissingTableError(clearReferencesResponse.error, "tournament_matchups")) return missingTournamentTableError();
+    if (clearReferencesResponse.error) return { data: null, error: clearReferencesResponse.error };
+    const deleteMatchupsResponse = await client
+      .from("tournament_matchups")
+      .delete()
+      .eq("tournament_id", tournamentRow.id);
+    if (deleteMatchupsResponse.error) return { data: null, error: deleteMatchupsResponse.error };
+    const deleteEntriesResponse = await client
+      .from("tournament_entries")
+      .delete()
+      .eq("tournament_id", tournamentRow.id);
+    if (isMissingTableError(deleteEntriesResponse.error, "tournament_entries")) return missingTournamentTableError();
+    if (deleteEntriesResponse.error) return { data: null, error: deleteEntriesResponse.error };
+    const tournamentResponse = await client
+      .from("tournaments")
+      .upsert(tournamentRow, { onConflict: "id" })
+      .select("*")
+      .single();
+    if (isMissingTableError(tournamentResponse.error, "tournaments")) return missingTournamentTableError();
+    if (tournamentResponse.error) return { data: null, error: tournamentResponse.error };
+    const entriesResponse = entryRows.length
+      ? await client.from("tournament_entries").insert(entryRows).select("*")
+      : { data: [], error: null };
+    if (entriesResponse.error) return { data: null, error: entriesResponse.error };
+    const matchupsResponse = matchupRows.length
+      ? await client.from("tournament_matchups").insert(matchupRows).select("*")
+      : { data: [], error: null };
+    if (matchupsResponse.error) return { data: null, error: matchupsResponse.error };
+    return {
+      data: playoffBracketFromTournamentRows(tournamentResponse.data, entriesResponse.data || [], matchupsResponse.data || []),
+      error: null
+    };
+  }
+
   async function pushSnapshot(state) {
     const [appStateResponse, rosterPlayersResponse, gamesResponse] = await Promise.all([
       upsertAppState(state),
       upsertRosterPlayers(state?.roster || [], state?.rosterVersion || ""),
       upsertGames(state?.games || [])
     ]);
+    const baseWriteError = appStateResponse.error || rosterPlayersResponse.error || gamesResponse.error || null;
+    const playoffBracketResponse = !baseWriteError && state?.playoffBracket
+      ? await upsertPlayoffBracket(state.playoffBracket)
+      : { data: null, error: null };
     return {
       data: {
         appState: appStateResponse.data || null,
         rosterPlayers: rosterPlayersResponse.data || [],
         rosterPlayersMissingTable: Boolean(rosterPlayersResponse.missingTable),
-        games: gamesResponse.data || []
+        games: gamesResponse.data || [],
+        playoffBracket: playoffBracketResponse.data || null,
+        playoffBracketsMissingTable: Boolean(playoffBracketResponse.missingTable)
       },
-      error: appStateResponse.error || rosterPlayersResponse.error || gamesResponse.error || null
+      error: baseWriteError || playoffBracketResponse.error || null
     };
   }
 
@@ -883,6 +1311,7 @@
     fetchGames,
     fetchHighlights,
     fetchNewsArticles,
+    fetchPlayoffBrackets,
     fetchBootstrap,
     fetchLeagueStandings,
     recordSiteVisit,
@@ -890,6 +1319,7 @@
     upsertAppState,
     upsertRosterPlayers,
     upsertGames,
+    upsertPlayoffBracket,
     pushSnapshot,
     replaceGamesSnapshot,
     deleteGames,

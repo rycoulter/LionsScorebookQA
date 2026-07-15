@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.134";
+const APP_VERSION = "v.1.1.135";
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -3398,6 +3398,7 @@ function hasMeaningfulSupabaseSnapshot(snapshot) {
   if (Array.isArray(snapshot.rosterPlayers) && snapshot.rosterPlayers.length) return true;
   if (Array.isArray(snapshot.highlights) && snapshot.highlights.length) return true;
   if (Array.isArray(snapshot.newsArticles) && snapshot.newsArticles.length) return true;
+  if (Array.isArray(snapshot.playoffBrackets) && snapshot.playoffBrackets.length) return true;
   const appState = snapshot.appState;
   if (!appState || typeof appState !== "object") return false;
   if (Array.isArray(appState.roster) && appState.roster.length) return true;
@@ -3571,7 +3572,8 @@ async function refreshSupabaseState(reason = "refresh", options = {}) {
           data.games,
           data.rosterPlayers,
           data.highlights,
-          data.newsArticlesMissingTable ? undefined : data.newsArticles
+          data.newsArticlesMissingTable ? undefined : data.newsArticles,
+          data.playoffBracketsMissingTable ? undefined : data.playoffBrackets
         ),
         state
       );
@@ -3855,7 +3857,8 @@ function buildSharedSnapshot(sourceState = state) {
     rosterVersion: sourceState?.rosterVersion ?? ROSTER_VERSION,
     deletedGameTombstones: normalizeDeletedGameTombstones(sourceState?.deletedGameTombstones, sourceState?.games || []),
     activeGameId: activeSharedGame?.id || "",
-    games: sharedGames
+    games: sharedGames,
+    playoffBracket: deepClone(sourceState?.playoffBracket || null)
   };
 }
 
@@ -3917,7 +3920,8 @@ async function syncSharedSnapshot(reason = "manual", options = {}) {
                 remoteBootstrap.data.games,
                 remoteBootstrap.data.rosterPlayers,
                 remoteBootstrap.data.highlights,
-                remoteBootstrap.data.newsArticlesMissingTable ? undefined : remoteBootstrap.data.newsArticles
+                remoteBootstrap.data.newsArticlesMissingTable ? undefined : remoteBootstrap.data.newsArticles,
+                remoteBootstrap.data.playoffBracketsMissingTable ? undefined : remoteBootstrap.data.playoffBrackets
               )
             ),
             sourceState
@@ -3943,10 +3947,14 @@ async function syncSharedSnapshot(reason = "manual", options = {}) {
           : Promise.resolve({ data: [], error: null }),
         supabaseStorage.upsertGames(snapshot.games)
       ]);
+      const baseWriteError = appStateResponse.error || rosterPlayersResponse.error || gamesResponse.error || null;
+      const playoffBracketResponse = !baseWriteError && supabaseStorage.upsertPlayoffBracket && snapshot.playoffBracket
+        ? await supabaseStorage.upsertPlayoffBracket(snapshot.playoffBracket)
+        : { data: null, error: null };
       const deleteResponse = deleteGameIds.length
         ? await supabaseStorage.deleteGames(deleteGameIds)
         : { data: [], error: null };
-      const error = appStateResponse.error || rosterPlayersResponse.error || gamesResponse.error || deleteResponse.error || null;
+      const error = baseWriteError || playoffBracketResponse.error || deleteResponse.error || null;
       if (error) {
         console.warn(`Unable to sync shared scorebook snapshot (${reason}).`, error);
         return { data: null, error };
@@ -3971,7 +3979,9 @@ async function syncSharedSnapshot(reason = "manual", options = {}) {
           appState: appStateResponse.data || null,
           rosterPlayers: rosterPlayersResponse.data || [],
           rosterPlayersMissingTable: Boolean(rosterPlayersResponse.missingTable),
-          games: gamesResponse.data || []
+          games: gamesResponse.data || [],
+          playoffBracket: playoffBracketResponse.data || null,
+          playoffBracketsMissingTable: Boolean(playoffBracketResponse.missingTable)
         },
         error: null
       };
@@ -4038,6 +4048,48 @@ async function syncSharedRosterChangeOrAlert(reason = "roster-change") {
       response.error.message || "The shared roster table could not be updated.",
       "",
       "This roster change was saved locally on this device, but it did not reach Supabase. Refresh, sign in again as admin, and try the edit again before relying on QA."
+    ].join("\n"));
+  }
+  return response;
+}
+
+function sharedPlayoffBracketSyncUnavailableError() {
+  if (!supabaseStorage?.isReady?.()) {
+    return new Error("Supabase is not ready on this device, so the playoff bracket was not updated in the tournament tables.");
+  }
+  if (!supabaseAdminEmail) {
+    return new Error("Admin sign-in is not active, so the playoff bracket was not updated in the tournament tables. Sign out and sign back in as an approved admin.");
+  }
+  return null;
+}
+
+async function syncSharedPlayoffBracketChange(reason = "playoff-bracket") {
+  const unavailableError = sharedPlayoffBracketSyncUnavailableError();
+  if (unavailableError) return { data: null, error: unavailableError };
+  const response = await syncSharedSnapshot(reason, { skipFreshBaselineCheck: true });
+  if (!response) {
+    return {
+      data: null,
+      error: new Error("The playoff bracket sync did not start. Refresh the page and sign in again before editing the bracket.")
+    };
+  }
+  if (response?.data?.playoffBracketsMissingTable) {
+    return {
+      data: response.data,
+      error: new Error("The tournament tables are not available to the app yet. Run supabase-schema.sql in production or refresh the Supabase API schema cache.")
+    };
+  }
+  return response;
+}
+
+async function syncSharedPlayoffBracketChangeOrAlert(reason = "playoff-bracket") {
+  const response = await syncSharedPlayoffBracketChange(reason);
+  if (response?.error) {
+    console.warn(`Shared playoff bracket sync failed (${reason}).`, response.error);
+    window.alert([
+      response.error.message || "The playoff bracket could not be synced to Supabase.",
+      "",
+      "The bracket was saved locally on this device, but it did not reach the Supabase tournament tables. Refresh, sign in again as admin, and save the bracket again before relying on another device."
     ].join("\n"));
   }
   return response;
@@ -15048,7 +15100,9 @@ function savePlayoffBracket() {
   markSharedAppStateDirty();
   saveStateWithOptions({ markLiveGamesDirty: false, capturePendingScoring: false });
   render();
-  requestSharedSnapshotSync("playoff-bracket");
+  syncSharedPlayoffBracketChangeOrAlert("playoff-bracket").catch((error) => {
+    console.warn("Shared playoff bracket sync failed.", error);
+  });
 }
 
 function renderGameSummary() {

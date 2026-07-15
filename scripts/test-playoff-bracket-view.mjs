@@ -82,10 +82,15 @@ mustMatch(functionBody(appJs, "renderPlayoffBracketEditor"), /const showEditor =
 mustMatch(functionBody(appJs, "renderGuidedPlayoffBracketEditor"), /Step 1[\s\S]*Tournament Details[\s\S]*Step 2[\s\S]*Teams and Seeding[\s\S]*Step 5[\s\S]*Review and Publish/, "Editor should render a guided tournament workflow");
 mustMatch(functionBody(appJs, "renderPlayoffBracketSeedRows"), /data-bracket-entry-action="up"[\s\S]*data-bracket-entry-action="down"/, "Seeds should support accessible up/down ordering");
 mustMatch(functionBody(appJs, "renderBracketEditorMatchup"), /Winner to[\s\S]*Loser to[\s\S]*data-bracket-matchup-key="winner"/, "Matchup editor should expose readable routes and winner selection");
-mustMatch(functionBody(appJs, "savePlayoffBracket"), /requestSharedSnapshotSync\("playoff-bracket"\)/, "Saving the bracket should request shared sync");
+mustMatch(functionBody(appJs, "buildSharedSnapshot"), /playoffBracket:\s*deepClone\(sourceState\?\.playoffBracket/, "Shared snapshot should include the playoff bracket");
+mustMatch(functionBody(appJs, "syncSharedSnapshot"), /upsertPlayoffBracket[\s\S]*snapshot\.playoffBracket/, "Shared sync should write playoff bracket rows to Supabase tournament tables");
+mustMatch(functionBody(appJs, "savePlayoffBracket"), /syncSharedPlayoffBracketChangeOrAlert\("playoff-bracket"\)/, "Saving the bracket should request tournament-table sync with visible failure handling");
 
 mustMatch(supabaseStorageJs, /playoff_bracket: deepClone\(state\?\.playoffBracket/, "Shared app state should write playoff bracket metadata");
 mustMatch(supabaseStorageJs, /remoteMetadata\.playoff_bracket[\s\S]*nextState\.playoffBracket/, "Shared app state should read playoff bracket metadata");
+mustMatch(supabaseStorageJs, /function fetchPlayoffBrackets\(\)[\s\S]*from\("tournaments"\)[\s\S]*from\("tournament_entries"\)[\s\S]*from\("tournament_matchups"\)/, "Supabase bootstrap should read playoff bracket tournament tables");
+mustMatch(supabaseStorageJs, /function upsertPlayoffBracket\(bracket\)[\s\S]*from\("tournaments"\)[\s\S]*from\("tournament_entries"\)[\s\S]*from\("tournament_matchups"\)/, "Supabase sync should write playoff bracket tournament tables");
+mustMatch(supabaseStorageJs, /mergeRemoteSnapshot\(baseState, appStateRow, gamesRows, rosterRows = \[\], highlightRows = \[\], newsRows = undefined, playoffBrackets = undefined\)/, "Remote snapshot merge should accept playoff bracket rows from tournament tables");
 mustMatch(notFoundHtml, /bracket:\s*true/, "Deep-link fallback should allow /bracket");
 
 mustMatch(supabaseSchemaSql, /create table if not exists public\.tournaments/i, "Schema should create tournaments");
