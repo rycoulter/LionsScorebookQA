@@ -42,6 +42,9 @@ mustMatch(bracketEngineJs, /function resolveTournament/, "Engine should resolve 
 mustMatch(bracketEngineJs, /function applyMatchupResult/, "Engine should apply matchup results");
 mustMatch(bracketEngineJs, /winnerSource\("AA-1"\)|winnerSource\('AA-1'\)/, "Preset should route winners by matchup code");
 mustMatch(bracketEngineJs, /loserSource\("AA-1"\)|loserSource\('AA-1'\)/, "Preset should route losers by matchup code");
+mustMatch(bracketEngineJs, /matchupCode:\s*"AA-10"[\s\S]*slotA:\s*winnerSource\("AA-4"\)[\s\S]*slotB:\s*winnerSource\("AA-7"\)/, "Left semifinal should be AA-4 winner vs AA-7 survivor");
+mustMatch(bracketEngineJs, /matchupCode:\s*"AA-9"[\s\S]*slotA:\s*winnerSource\("AA-5"\)[\s\S]*slotB:\s*winnerSource\("AA-8"\)/, "Right semifinal should be AA-5 winner vs AA-8 survivor");
+mustMatch(bracketEngineJs, /matchupCode:\s*"AAPNC-1"[\s\S]*slotA:\s*winnerSource\("AA-10"\)[\s\S]*slotB:\s*winnerSource\("AA-9"\)/, "Championship should receive the two semifinal winners");
 mustMatch(tournamentTypes, /export interface Tournament[\s\S]*entries: TournamentEntry\[\][\s\S]*matchups: TournamentMatchup\[\]/, "Tournament TypeScript contract should describe entries and matchups");
 mustMatch(tournamentTypes, /export interface TournamentMatchup[\s\S]*winnerDestination[\s\S]*loserDestination/, "Matchup TypeScript contract should include advancement destinations");
 

@@ -54,6 +54,18 @@ assert.equal(aa5.teamB, teams[2], "AA-2 winner should advance to AA-5");
 assert.equal(aa6.teamA, teams[5], "AA-2 loser should advance to AA-6");
 assert.equal(aa6.teamB, teams[1], "AA-3 loser should advance to AA-6");
 
+tournament = engine.applyMatchupResult(tournament, "AA-4", { scoreA: 5, scoreB: 2, status: "final" });
+tournament = engine.applyMatchupResult(tournament, "AA-5", { scoreA: 4, scoreB: 1, status: "final" });
+const aa10 = tournament.matchups.find((matchup) => matchup.matchupCode === "AA-10");
+const aa9 = tournament.matchups.find((matchup) => matchup.matchupCode === "AA-9");
+const championship = tournament.matchups.find((matchup) => matchup.matchupCode === "AAPNC-1");
+assert.equal(aa10.teamA, teams[0], "AA-4 winner should advance to left semifinal AA-10");
+assert.equal(aa10.teamB, "Winner AA-7", "AA-10 second slot should wait for the AA-7 survivor");
+assert.equal(aa9.teamA, teams[6], "AA-5 winner should advance to right semifinal AA-9");
+assert.equal(aa9.teamB, "Winner AA-8", "AA-9 second slot should wait for the AA-8 survivor");
+assert.equal(championship.teamA, "Winner AA-10", "Championship first slot should come from AA-10");
+assert.equal(championship.teamB, "Winner AA-9", "Championship second slot should come from AA-9");
+
 const circular = engine.resolveTournament({
   season: "2026",
   entries: engine.seedEntries(2, ["A", "B"]),

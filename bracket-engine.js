@@ -201,6 +201,72 @@
     return `Winners Round ${matchup.roundNumber}`;
   }
 
+  function applyPittsburghNabaAaPodRouting(matchups = []) {
+    const codes = new Set(matchups.map((matchup) => matchup.matchupCode));
+    const requiredCodes = ["AA-4", "AA-5", "AA-7", "AA-8", "AA-9", "AA-10", "AAPNC-1"];
+    if (!requiredCodes.every((code) => codes.has(code))) return matchups;
+    return matchups.map((matchup) => {
+      if (matchup.matchupCode === "AA-4") {
+        return { ...matchup, winnerDestination: "AA-10", winnerDestinationSlot: "A" };
+      }
+      if (matchup.matchupCode === "AA-5") {
+        return { ...matchup, winnerDestination: "AA-9", winnerDestinationSlot: "A" };
+      }
+      if (matchup.matchupCode === "AA-7") {
+        return { ...matchup, winnerDestination: "AA-10", winnerDestinationSlot: "B" };
+      }
+      if (matchup.matchupCode === "AA-8") {
+        return { ...matchup, winnerDestination: "AA-9", winnerDestinationSlot: "B" };
+      }
+      if (matchup.matchupCode === "AA-10") {
+        return {
+          ...matchup,
+          bracketSection: "winners",
+          bracketSide: "winners",
+          roundNumber: 3,
+          round: 3,
+          displayOrder: 1,
+          order: 1,
+          slotA: winnerSource("AA-4"),
+          slotB: winnerSource("AA-7"),
+          homeSource: winnerSource("AA-4"),
+          awaySource: winnerSource("AA-7"),
+          winnerDestination: "AAPNC-1",
+          winnerDestinationSlot: "A",
+          note: matchup.note || "AA-12 if needed"
+        };
+      }
+      if (matchup.matchupCode === "AA-9") {
+        return {
+          ...matchup,
+          bracketSection: "winners",
+          bracketSide: "winners",
+          roundNumber: 3,
+          round: 3,
+          displayOrder: 2,
+          order: 2,
+          slotA: winnerSource("AA-5"),
+          slotB: winnerSource("AA-8"),
+          homeSource: winnerSource("AA-5"),
+          awaySource: winnerSource("AA-8"),
+          winnerDestination: "AAPNC-1",
+          winnerDestinationSlot: "B",
+          note: matchup.note || "AA-11 if needed"
+        };
+      }
+      if (/^AAPNC-[123]$/.test(matchup.matchupCode)) {
+        return {
+          ...matchup,
+          slotA: winnerSource("AA-10"),
+          slotB: winnerSource("AA-9"),
+          homeSource: winnerSource("AA-10"),
+          awaySource: winnerSource("AA-9")
+        };
+      }
+      return matchup;
+    });
+  }
+
   function normalizeTournament(raw = {}) {
     const season = normalizeText(raw.season || new Date().getFullYear());
     const flatLegacy = Array.isArray(raw.rounds) && !Array.isArray(raw.matchups)
@@ -212,9 +278,14 @@
         matchupCode: matchup.matchupCode || matchup.label
       })))
       : [];
-    const matchups = (Array.isArray(raw.matchups) ? raw.matchups : flatLegacy)
+    let matchups = (Array.isArray(raw.matchups) ? raw.matchups : flatLegacy)
       .map((matchup, index) => normalizeMatchup(matchup, index))
       .sort((left, right) => (left.roundNumber - right.roundNumber) || (left.displayOrder - right.displayOrder));
+    const templateId = normalizeText(raw.templateId || raw.template_id || "");
+    if (templateId === "pittsburgh-naba-aa") {
+      matchups = applyPittsburghNabaAaPodRouting(matchups)
+        .sort((left, right) => (left.roundNumber - right.roundNumber) || (left.displayOrder - right.displayOrder));
+    }
     return {
       id: normalizeText(raw.id || "primary-playoff-bracket"),
       name: normalizeText(raw.name || raw.title || `${season} AA Championship Series`),
@@ -225,7 +296,7 @@
       division: normalizeText(raw.division || "AA"),
       tournamentType: normalizeText(raw.tournamentType || raw.tournament_type || raw.format || "double-elimination"),
       format: normalizeText(raw.format || raw.tournamentType || raw.tournament_type || "double-elimination"),
-      templateId: normalizeText(raw.templateId || raw.template_id || ""),
+      templateId,
       status: normalizeText(raw.status || (raw.isPublic ? "published" : "draft")),
       isPublic: raw.isPublic === undefined ? raw.status === "published" : Boolean(raw.isPublic),
       startsAt: normalizeText(raw.startsAt || raw.starts_at || raw.startDate || raw.start_date),
@@ -468,16 +539,16 @@
       m({ matchupCode: "AA-1", bracketSection: "winners", roundNumber: 1, displayOrder: 1, dateLabel: "7/18", slotA: seedSource(4), slotB: seedSource(5), winnerDestination: "AA-4", winnerDestinationSlot: "B", loserDestination: "AA-8", loserDestinationSlot: "A" }),
       m({ matchupCode: "AA-2", bracketSection: "winners", roundNumber: 1, displayOrder: 2, dateLabel: "7/18", slotA: seedSource(3), slotB: seedSource(6), winnerDestination: "AA-5", winnerDestinationSlot: "B", loserDestination: "AA-6", loserDestinationSlot: "A" }),
       m({ matchupCode: "AA-3", bracketSection: "winners", roundNumber: 1, displayOrder: 3, dateLabel: "7/18", slotA: seedSource(2), slotB: seedSource(7), winnerDestination: "AA-5", winnerDestinationSlot: "A", loserDestination: "AA-6", loserDestinationSlot: "B" }),
-      m({ matchupCode: "AA-4", bracketSection: "winners", roundNumber: 2, displayOrder: 1, dateLabel: "7/18", slotA: winnerSource("BYE-1"), slotB: winnerSource("AA-1"), winnerDestination: "AA-9", winnerDestinationSlot: "A", loserDestination: "AA-7", loserDestinationSlot: "A" }),
-      m({ matchupCode: "AA-5", bracketSection: "winners", roundNumber: 2, displayOrder: 2, dateLabel: "7/20", slotA: winnerSource("AA-3"), slotB: winnerSource("AA-2"), winnerDestination: "AA-9", winnerDestinationSlot: "B", loserDestination: "AA-8", loserDestinationSlot: "B" }),
+      m({ matchupCode: "AA-4", bracketSection: "winners", roundNumber: 2, displayOrder: 1, dateLabel: "7/18", slotA: winnerSource("BYE-1"), slotB: winnerSource("AA-1"), winnerDestination: "AA-10", winnerDestinationSlot: "A", loserDestination: "AA-7", loserDestinationSlot: "A" }),
+      m({ matchupCode: "AA-5", bracketSection: "winners", roundNumber: 2, displayOrder: 2, dateLabel: "7/20", slotA: winnerSource("AA-3"), slotB: winnerSource("AA-2"), winnerDestination: "AA-9", winnerDestinationSlot: "A", loserDestination: "AA-8", loserDestinationSlot: "B" }),
       m({ matchupCode: "AA-6", bracketSection: "losers", roundNumber: 1, displayOrder: 1, dateLabel: "7/19", slotA: loserSource("AA-2"), slotB: loserSource("AA-3"), winnerDestination: "AA-7", winnerDestinationSlot: "B" }),
-      m({ matchupCode: "AA-7", bracketSection: "losers", roundNumber: 2, displayOrder: 1, dateLabel: "7/25", slotA: loserSource("AA-4"), slotB: winnerSource("AA-6"), winnerDestination: "AA-10", winnerDestinationSlot: "A" }),
-      m({ matchupCode: "AA-8", bracketSection: "losers", roundNumber: 2, displayOrder: 2, dateLabel: "7/25", slotA: loserSource("AA-1"), slotB: loserSource("AA-5"), winnerDestination: "AA-10", winnerDestinationSlot: "B" }),
-      m({ matchupCode: "AA-9", bracketSection: "winners", roundNumber: 3, displayOrder: 1, dateLabel: "7/25", slotA: winnerSource("AA-4"), slotB: winnerSource("AA-5"), winnerDestination: "AAPNC-1", winnerDestinationSlot: "A", note: "AA-11 if needed" }),
-      m({ matchupCode: "AA-10", bracketSection: "losers", roundNumber: 3, displayOrder: 1, dateLabel: "7/25", slotA: winnerSource("AA-7"), slotB: winnerSource("AA-8"), winnerDestination: "AAPNC-1", winnerDestinationSlot: "B", note: "AA-12 if needed" }),
-      m({ matchupCode: "AAPNC-1", bracketSection: "championship", roundNumber: 1, displayOrder: 1, slotA: winnerSource("AA-9"), slotB: winnerSource("AA-10"), seriesBestOf: 3, seriesGameNumber: 1, note: "Best of 3" }),
-      m({ matchupCode: "AAPNC-2", bracketSection: "championship", roundNumber: 1, displayOrder: 2, slotA: winnerSource("AA-9"), slotB: winnerSource("AA-10"), seriesBestOf: 3, seriesGameNumber: 2, note: "If needed" }),
-      m({ matchupCode: "AAPNC-3", bracketSection: "championship", roundNumber: 1, displayOrder: 3, slotA: winnerSource("AA-9"), slotB: winnerSource("AA-10"), seriesBestOf: 3, seriesGameNumber: 3, note: "If needed" })
+      m({ matchupCode: "AA-7", bracketSection: "losers", roundNumber: 2, displayOrder: 1, dateLabel: "7/25", slotA: loserSource("AA-4"), slotB: winnerSource("AA-6"), winnerDestination: "AA-10", winnerDestinationSlot: "B" }),
+      m({ matchupCode: "AA-8", bracketSection: "losers", roundNumber: 2, displayOrder: 2, dateLabel: "7/25", slotA: loserSource("AA-1"), slotB: loserSource("AA-5"), winnerDestination: "AA-9", winnerDestinationSlot: "B" }),
+      m({ matchupCode: "AA-10", bracketSection: "winners", roundNumber: 3, displayOrder: 1, dateLabel: "7/25", slotA: winnerSource("AA-4"), slotB: winnerSource("AA-7"), winnerDestination: "AAPNC-1", winnerDestinationSlot: "A", note: "AA-12 if needed" }),
+      m({ matchupCode: "AA-9", bracketSection: "winners", roundNumber: 3, displayOrder: 2, dateLabel: "7/25", slotA: winnerSource("AA-5"), slotB: winnerSource("AA-8"), winnerDestination: "AAPNC-1", winnerDestinationSlot: "B", note: "AA-11 if needed" }),
+      m({ matchupCode: "AAPNC-1", bracketSection: "championship", roundNumber: 1, displayOrder: 1, slotA: winnerSource("AA-10"), slotB: winnerSource("AA-9"), seriesBestOf: 3, seriesGameNumber: 1, note: "Best of 3" }),
+      m({ matchupCode: "AAPNC-2", bracketSection: "championship", roundNumber: 1, displayOrder: 2, slotA: winnerSource("AA-10"), slotB: winnerSource("AA-9"), seriesBestOf: 3, seriesGameNumber: 2, note: "If needed" }),
+      m({ matchupCode: "AAPNC-3", bracketSection: "championship", roundNumber: 1, displayOrder: 3, slotA: winnerSource("AA-10"), slotB: winnerSource("AA-9"), seriesBestOf: 3, seriesGameNumber: 3, note: "If needed" })
     ];
     return resolveTournament(base);
   }
