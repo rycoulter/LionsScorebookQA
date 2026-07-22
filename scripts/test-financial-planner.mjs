@@ -32,6 +32,7 @@ mustMatch(indexHtml, /data-view="finance" hidden>Finance<\/button>/, "Finance ta
 mustMatch(indexHtml, /id="financeView" data-panel="finance" data-admin-only/, "Finance page should be admin-only");
 mustMatch(indexHtml, /id="financePlannerBody"/, "Finance planner should render into a dedicated body");
 mustMatch(indexHtml, /id="financeSaveBtn"[\s\S]*Save Planner/, "Finance planner should expose a save action");
+mustMatch(indexHtml, /id="financeExportTransactionsBtn"[\s\S]*Export Transactions/, "Finance planner should expose a transaction history export action");
 
 mustMatch(appJs, /ADMIN_TAB_VIEWS = new Set\([\s\S]*"finance"/, "Finance should be visible only in admin tab views");
 const publicReadViewsLine = appJs.split(/\r?\n/).find((line) => line.includes("PUBLIC_READ_VIEWS")) || "";
@@ -49,6 +50,7 @@ mustMatch(functionBody(appJs, "financeUmpireTotal"), /umpireRate[\s\S]*umpireGam
 mustMatch(functionBody(appJs, "financeJerseyTotal"), /jerseyPrice[\s\S]*jerseyCount/, "Finance should calculate jersey total as price times count");
 mustMatch(functionBody(appJs, "financeExpenseCategoryAmount"), /umpireFees[\s\S]*umpireRate[\s\S]*jerseyFees[\s\S]*financeJerseyTotal[\s\S]*custom:/, "Paid expense defaults should come from fixed charges, umpire rate, jersey total, or additional fees");
 mustMatch(functionBody(appJs, "normalizeFinancialPlan"), /customFees[\s\S]*expensePayments[\s\S]*transactions/, "Finance normalization should retain custom fees, paid expenses, and transaction history");
+mustMatch(functionBody(appJs, "normalizeFinancialPlan"), /left\.included === false[\s\S]*right\.included === false[\s\S]*left\.name\.localeCompare/, "Finance players should sort included players first and alphabetically");
 mustNotMatch(functionBody(appJs, "normalizeFinancialPlan"), /moneyOnHand/, "Finance normalization should not keep money-on-hand state");
 mustMatch(functionBody(appJs, "calculateFinancialPlanSummary"), /financeBaseChargeTotal[\s\S]*customFees[\s\S]*sharedPerPlayer[\s\S]*expensesPaidTotal[\s\S]*outstandingTotal/, "Finance summary should calculate shared charges, custom fees, paid expenses, and outstanding totals");
 mustNotMatch(functionBody(appJs, "calculateFinancialPlanSummary"), /moneyRemaining|moneyOnHand/, "Finance summary should not calculate money left");
@@ -68,12 +70,13 @@ mustMatch(renderFinancePlannerBody, /renderFinanceExpenseLogger/, "Finance view 
 mustMatch(renderFinancePlannerBody, /data-finance-tab="planner"[\s\S]*data-finance-tab="history"/, "Finance view should render planner and transaction history tabs");
 mustMatch(functionBody(appJs, "renderFinanceTransactionHistory"), /finance-history-table[\s\S]*transactions\.map/, "Finance should render a transaction history table");
 mustMatch(functionBody(appJs, "financeTransactionHistoryRows"), /transactions[\s\S]*expensePayments[\s\S]*team-expense/, "Finance history should include transaction rows and legacy paid expense rows");
+mustMatch(functionBody(appJs, "exportFinanceTransactionHistory"), /financeTransactionExportRows[\s\S]*downloadTextFile[\s\S]*text\/csv/, "Finance transaction export should download history as CSV");
 mustMatch(functionBody(appJs, "recordFinanceTransactionForInput"), /player-payment/, "Finance should record player payment transactions");
 mustMatch(functionBody(appJs, "handleFinancePlannerFocusIn"), /data-finance-clear-zero[\s\S]*financeInputIsZero[\s\S]*input\.value = ""/, "Finance amount inputs should clear a zero value on focus");
 mustMatch(functionBody(appJs, "handleFinancePlannerFocusOut"), /data-finance-clear-zero[\s\S]*input\.value = "0"/, "Finance amount inputs should restore zero when left blank");
 mustMatch(functionBody(appJs, "handleFinancePlannerClick"), /data-finance-log-expense[\s\S]*type: "team-expense"/, "Logging a paid expense should add a team-expense transaction");
 mustMatch(functionBody(appJs, "saveFinancialPlanOrAlert"), /upsertFinancialPlan[\s\S]*season_financial_plans/, "Saving should use the dedicated Supabase finance table");
-mustMatch(functionBody(appJs, "bindEvents"), /financePlannerBody[\s\S]*handleFinancePlannerFocusIn[\s\S]*handleFinancePlannerInput[\s\S]*financeSaveBtn[\s\S]*saveFinancialPlanOrAlert/, "Finance controls should be wired through delegated handlers");
+mustMatch(functionBody(appJs, "bindEvents"), /financePlannerBody[\s\S]*handleFinancePlannerFocusIn[\s\S]*handleFinancePlannerInput[\s\S]*financeSaveBtn[\s\S]*saveFinancialPlanOrAlert[\s\S]*financeExportTransactionsBtn[\s\S]*exportFinanceTransactionHistory/, "Finance controls should be wired through delegated handlers and export");
 mustMatch(functionBody(appJs, "switchView"), /nextView === "finance"[\s\S]*renderFinancePlanner/, "Finance planner should render when the admin tab is opened");
 
 mustMatch(supabaseStorageJs, /const FINANCIAL_PLAN_COLUMNS/, "Supabase adapter should define finance columns");

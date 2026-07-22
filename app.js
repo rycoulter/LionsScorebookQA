@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.144";
+const APP_VERSION = "v.1.1.145";
 const PLANNED_LEAGUE_SEASONS = ["2027"];
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
@@ -1227,6 +1227,7 @@ const els = {
   financePlannerStatus: document.getElementById("financePlannerStatus"),
   financeSaveBtn: document.getElementById("financeSaveBtn"),
   financeRefreshBtn: document.getElementById("financeRefreshBtn"),
+  financeExportTransactionsBtn: document.getElementById("financeExportTransactionsBtn"),
   addPlayerBtn: document.getElementById("addPlayerBtn"),
   playerForm: document.getElementById("playerForm"),
   rosterPlayerDetails: document.getElementById("rosterPlayerDetails"),
@@ -2702,13 +2703,15 @@ function normalizeFinancialPlan(plan = {}, roster = state?.roster || []) {
     rowsByPlayerId.set(player.id, normalizeFinancePlayerRow({}, player));
   });
 
-  const rosterOrder = new Map((Array.isArray(roster) ? roster : []).map((player, index) => [player.id, index]));
   const players = [...rowsByPlayerId.values()]
     .filter(Boolean)
     .sort((left, right) => {
-      const leftIndex = rosterOrder.has(left.playerId) ? rosterOrder.get(left.playerId) : 9999;
-      const rightIndex = rosterOrder.has(right.playerId) ? rosterOrder.get(right.playerId) : 9999;
-      return leftIndex - rightIndex || left.name.localeCompare(right.name);
+      const leftExcluded = left.included === false ? 1 : 0;
+      const rightExcluded = right.included === false ? 1 : 0;
+      if (leftExcluded !== rightExcluded) return leftExcluded - rightExcluded;
+      return left.name.localeCompare(right.name)
+        || String(left.number || "").localeCompare(String(right.number || ""), undefined, { numeric: true })
+        || String(left.playerId || "").localeCompare(String(right.playerId || ""));
     });
 
   return {
@@ -5911,6 +5914,7 @@ window.addEventListener("pageshow", () => {
   els.financePlannerBody?.addEventListener("click", handleFinancePlannerClick);
   els.financeSaveBtn?.addEventListener("click", saveFinancialPlanOrAlert);
   els.financeRefreshBtn?.addEventListener("click", () => requestFinancePlannerRefresh("manual", { force: true }));
+  els.financeExportTransactionsBtn?.addEventListener("click", exportFinanceTransactionHistory);
 
   els.addPlayerBtn.addEventListener("click", () => {
     resetPlayerForm();
@@ -9634,6 +9638,56 @@ function financeTransactionHistoryRows(plan = {}) {
     }));
   return [...paymentRows, ...expenseRows]
     .sort((left, right) => String(right.date).localeCompare(String(left.date)) || String(right.id).localeCompare(String(left.id)));
+}
+
+function financeCsvCell(value = "") {
+  const text = String(value ?? "");
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function financeTransactionExportRows(plan = financialPlanForSeason(financePlannerSeason)) {
+  return financeTransactionHistoryRows(plan).map((transaction) => {
+    const isExpense = transaction.type === "team-expense";
+    const detail = transaction.playerName
+      || transaction.label
+      || financeExpenseCategoryLabel(plan, transaction.category)
+      || "Finance transaction";
+    const category = isExpense
+      ? financeExpenseCategoryLabel(plan, transaction.category)
+      : "Player fee payment";
+    return {
+      season: financeSeasonId(plan.season),
+      date: transaction.date || todayValue(),
+      type: financeTransactionTypeLabel(transaction.type),
+      detail,
+      category,
+      amount: isExpense ? -Math.abs(financeNumber(transaction.amount)) : Math.abs(financeNumber(transaction.amount)),
+      notes: transaction.notes || ""
+    };
+  });
+}
+
+function exportFinanceTransactionHistory() {
+  const plan = financialPlanForSeason(financePlannerSeason);
+  const rows = financeTransactionExportRows(plan);
+  if (!rows.length) {
+    window.alert("No finance transactions are available to export yet.");
+    return;
+  }
+  const headers = ["Season", "Date", "Type", "Details", "Category", "Amount", "Notes"];
+  const csv = [
+    headers.join(","),
+    ...rows.map((row) => [
+      row.season,
+      row.date,
+      row.type,
+      row.detail,
+      row.category,
+      row.amount.toFixed(2),
+      row.notes
+    ].map(financeCsvCell).join(","))
+  ].join("\n");
+  downloadTextFile(`oakmont-lions-${financeSeasonId(plan.season)}-finance-transactions.csv`, csv, "text/csv;charset=utf-8");
 }
 
 function renderFinanceTransactionHistory(plan) {
