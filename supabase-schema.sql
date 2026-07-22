@@ -168,6 +168,25 @@ create table if not exists public.site_visits (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.season_financial_plans (
+  id text primary key,
+  season integer not null unique,
+  charges jsonb not null default '{}'::jsonb,
+  custom_fees jsonb not null default '[]'::jsonb,
+  expense_payments jsonb not null default '[]'::jsonb,
+  transactions jsonb not null default '[]'::jsonb,
+  players jsonb not null default '[]'::jsonb,
+  notes text not null default '',
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+alter table public.season_financial_plans
+add column if not exists custom_fees jsonb not null default '[]'::jsonb,
+add column if not exists expense_payments jsonb not null default '[]'::jsonb,
+add column if not exists transactions jsonb not null default '[]'::jsonb;
+
 create table if not exists public.tournaments (
   id text primary key default gen_random_uuid()::text,
   name text not null,
@@ -376,6 +395,7 @@ create unique index if not exists site_visits_session_idx on public.site_visits 
 create index if not exists site_visits_visit_date_idx on public.site_visits (visit_date desc);
 create index if not exists site_visits_created_at_idx on public.site_visits (created_at desc);
 create index if not exists site_visits_visitor_idx on public.site_visits (visitor_id);
+create index if not exists season_financial_plans_updated_at_idx on public.season_financial_plans (updated_at desc);
 create index if not exists tournaments_public_status_idx on public.tournaments (is_public, status, season desc);
 create index if not exists tournaments_updated_at_idx on public.tournaments (updated_at desc);
 create index if not exists tournament_entries_tournament_seed_idx on public.tournament_entries (tournament_id, seed);
@@ -418,6 +438,11 @@ for each row execute function public.set_updated_at();
 drop trigger if exists set_site_visits_updated_at on public.site_visits;
 create trigger set_site_visits_updated_at
 before update on public.site_visits
+for each row execute function public.set_updated_at();
+
+drop trigger if exists set_season_financial_plans_updated_at on public.season_financial_plans;
+create trigger set_season_financial_plans_updated_at
+before update on public.season_financial_plans
 for each row execute function public.set_updated_at();
 
 drop trigger if exists set_tournaments_updated_at on public.tournaments;
@@ -657,6 +682,7 @@ alter table public.league_standings enable row level security;
 alter table public.game_highlights enable row level security;
 alter table public.news_articles enable row level security;
 alter table public.site_visits enable row level security;
+alter table public.season_financial_plans enable row level security;
 alter table public.tournaments enable row level security;
 alter table public.tournament_entries enable row level security;
 alter table public.tournament_matchups enable row level security;
@@ -804,6 +830,39 @@ on public.site_visits
 for select
 to authenticated
 using (
+  exists (
+    select 1
+    from public.app_admins admins
+    where admins.email = lower((select auth.jwt() ->> 'email'))
+  )
+);
+
+drop policy if exists "Authenticated admin read season_financial_plans" on public.season_financial_plans;
+create policy "Authenticated admin read season_financial_plans"
+on public.season_financial_plans
+for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.app_admins admins
+    where admins.email = lower((select auth.jwt() ->> 'email'))
+  )
+);
+
+drop policy if exists "Authenticated write season_financial_plans" on public.season_financial_plans;
+create policy "Authenticated write season_financial_plans"
+on public.season_financial_plans
+for all
+to authenticated
+using (
+  exists (
+    select 1
+    from public.app_admins admins
+    where admins.email = lower((select auth.jwt() ->> 'email'))
+  )
+)
+with check (
   exists (
     select 1
     from public.app_admins admins

@@ -28,6 +28,19 @@
     "updated_at"
   ].join(",");
   const NEWS_ARTICLE_LEGACY_FULL_COLUMNS = `${NEWS_ARTICLE_LEGACY_COLUMNS},image_data_url,metadata`;
+  const FINANCIAL_PLAN_COLUMNS = [
+    "id",
+    "season",
+    "charges",
+    "custom_fees",
+    "expense_payments",
+    "transactions",
+    "players",
+    "notes",
+    "metadata",
+    "created_at",
+    "updated_at"
+  ].join(",");
 
   function deepClone(value) {
     if (value === undefined || value === null) return value;
@@ -315,6 +328,41 @@
       thumbnail_path: String(article?.thumbnailPath || article?.thumbnail_path || "").trim(),
       image_data_url: "",
       metadata: {
+        updated_from: "scorebook-app"
+      }
+    };
+  }
+
+  function financialPlanFromRow(row) {
+    if (!row?.id) return null;
+    return {
+      id: String(row.id || "").trim(),
+      season: String(row.season || "").trim(),
+      charges: row.charges && typeof row.charges === "object" ? deepClone(row.charges) : {},
+      customFees: Array.isArray(row.custom_fees) ? deepClone(row.custom_fees) : [],
+      expensePayments: Array.isArray(row.expense_payments) ? deepClone(row.expense_payments) : [],
+      transactions: Array.isArray(row.transactions) ? deepClone(row.transactions) : [],
+      players: Array.isArray(row.players) ? deepClone(row.players) : [],
+      notes: String(row.notes || "").trim(),
+      metadata: row.metadata && typeof row.metadata === "object" ? deepClone(row.metadata) : {},
+      createdAt: String(row.created_at || "").trim(),
+      updatedAt: String(row.updated_at || "").trim()
+    };
+  }
+
+  function buildFinancialPlanRow(plan = {}) {
+    const season = Number.parseInt(String(plan.season || currentSeasonValue()), 10) || currentSeasonValue();
+    return {
+      id: String(plan.id || `finance-${season}`).trim(),
+      season,
+      charges: plan.charges && typeof plan.charges === "object" ? deepClone(plan.charges) : {},
+      custom_fees: Array.isArray(plan.customFees || plan.custom_fees) ? deepClone(plan.customFees || plan.custom_fees) : [],
+      expense_payments: Array.isArray(plan.expensePayments || plan.expense_payments) ? deepClone(plan.expensePayments || plan.expense_payments) : [],
+      transactions: Array.isArray(plan.transactions || plan.transaction_history) ? deepClone(plan.transactions || plan.transaction_history) : [],
+      players: Array.isArray(plan.players) ? deepClone(plan.players) : [],
+      notes: String(plan.notes || "").trim(),
+      metadata: {
+        ...(plan.metadata && typeof plan.metadata === "object" ? deepClone(plan.metadata) : {}),
         updated_from: "scorebook-app"
       }
     };
@@ -807,6 +855,22 @@
     return response;
   }
 
+  async function fetchFinancialPlans() {
+    const client = getClient();
+    if (!client) return { data: [], error: new Error("Supabase client not ready.") };
+    const response = await client
+      .from("season_financial_plans")
+      .select(FINANCIAL_PLAN_COLUMNS)
+      .order("season", { ascending: false });
+    if (isMissingTableError(response.error, "season_financial_plans")) {
+      return { data: [], error: null, missingTable: true };
+    }
+    return {
+      ...response,
+      data: (response.data || []).map(financialPlanFromRow).filter((plan) => plan?.id)
+    };
+  }
+
   async function fetchPlayoffBrackets() {
     const client = getClient();
     if (!client) return { data: [], error: new Error("Supabase client not ready.") };
@@ -1215,6 +1279,29 @@
     return response;
   }
 
+  async function upsertFinancialPlan(plan) {
+    const client = getClient();
+    if (!client) return { data: null, error: new Error("Supabase client not ready.") };
+    const row = buildFinancialPlanRow(plan);
+    if (!row.id || !row.season) return { data: null, error: new Error("Financial plan is missing a season.") };
+    const response = await client
+      .from("season_financial_plans")
+      .upsert(row, { onConflict: "season" })
+      .select(FINANCIAL_PLAN_COLUMNS)
+      .single();
+    if (isMissingTableError(response.error, "season_financial_plans")) {
+      return {
+        data: null,
+        error: new Error("Supabase season_financial_plans table is not available to the app. Run supabase-schema.sql in this environment or refresh the Supabase API schema cache."),
+        missingTable: true
+      };
+    }
+    return {
+      ...response,
+      data: financialPlanFromRow(response.data)
+    };
+  }
+
   function parseImageDataUrl(dataUrl = "") {
     const match = String(dataUrl || "").match(/^data:(image\/(?:png|jpe?g|webp|gif));base64,([\s\S]+)$/i);
     if (!match) return null;
@@ -1311,6 +1398,7 @@
     fetchGames,
     fetchHighlights,
     fetchNewsArticles,
+    fetchFinancialPlans,
     fetchPlayoffBrackets,
     fetchBootstrap,
     fetchLeagueStandings,
@@ -1327,6 +1415,7 @@
     deleteHighlight,
     upsertNewsArticle,
     deleteNewsArticle,
+    upsertFinancialPlan,
     uploadNewsImageAsset,
     isAdminEmail
   };

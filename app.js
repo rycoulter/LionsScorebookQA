@@ -625,7 +625,8 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.136";
+const APP_VERSION = "v.1.1.144";
+const PLANNED_LEAGUE_SEASONS = ["2027"];
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
@@ -643,12 +644,13 @@ const VISIT_RECORDED_STORAGE_KEY = "oakmont-lions-visit-recorded-v1";
 const SITE_VISIT_SUMMARY_REFRESH_MS = 5 * 60 * 1000;
 const PUBLIC_TAB_VIEWS = new Set(["home", "news", "standings", "games", "roster", "stats", "highlights", "archive"]);
 const PUBLIC_READ_VIEWS = new Set(["home", "news", "standings", "games", "roster", "stats", "highlights", "archive", "bracket", "scorebook", "boxscore"]);
-const ADMIN_TAB_VIEWS = new Set(["home", "news", "standings", "newsEditor", "score", "games", "lineup", "roster", "stats", "highlights", "archive"]);
+const ADMIN_TAB_VIEWS = new Set(["home", "news", "standings", "newsEditor", "score", "games", "finance", "roster", "stats", "highlights", "archive"]);
 const VIEW_ROUTES = {
   home: "/",
   news: "/news",
   standings: "/standings",
   games: "/schedule",
+  finance: "/finance",
   roster: "/roster",
   stats: "/stats",
   highlights: "/highlights",
@@ -667,6 +669,8 @@ const ROUTE_VIEW_ALIASES = {
   "/schedule": "games",
   "/schedule-and-scores": "games",
   "/games": "games",
+  "/finance": "finance",
+  "/financial-planner": "finance",
   "/roster": "roster",
   "/stats": "stats",
   "/statistics": "stats",
@@ -694,6 +698,16 @@ const HIGHLIGHT_FILTERS = [
 ];
 const DEFAULT_HIGHLIGHT_CATEGORY = "top-plays";
 const DEFAULT_HIGHLIGHT_CATEGORIES = [DEFAULT_HIGHLIGHT_CATEGORY];
+const FINANCE_CHARGE_FIELDS = [
+  { key: "leagueFees", label: "League fees", type: "shared" },
+  { key: "playoffFees", label: "Playoff fees", type: "shared" }
+];
+const FINANCE_EXPENSE_CATEGORIES = [
+  { key: "leagueFees", label: "League Fees" },
+  { key: "umpireFees", label: "Umpires" },
+  { key: "jerseyFees", label: "Jerseys" },
+  { key: "playoffFees", label: "Playoff Fees" }
+];
 const supabaseStorage = window.ScorebookSupabaseStorage || null;
 const bracketEngine = window.ScorebookBracketEngine || null;
 
@@ -718,11 +732,16 @@ const FIELD_LOCATION_COORDINATES = {
 
 let state = seedState();
 let accessMode = loadAccessMode();
-let optimizedIds = [];
 let lineupAnalyzerGameId = "";
 let lineupAnalyzerPitcherId = "";
 let lineupAnalyzerDraft = null;
 let lineupAnalyzerNotice = "";
+let financePlannerSeason = "";
+let financePlannerNotice = "";
+let financePlannerLoaded = false;
+let financePlannerLoading = false;
+let financePlannerTab = "planner";
+let financeExpenseDraft = null;
 let playoffBracketDraft = null;
 let playoffBracketPreviewDraft = null;
 let playoffBracketViewSeason = "";
@@ -1204,21 +1223,10 @@ const els = {
   opponentMoveNameInput: document.getElementById("opponentMoveNameInput"),
   opponentMoveHint: document.getElementById("opponentMoveHint"),
   applyOpponentMoveBtn: document.getElementById("applyOpponentMoveBtn"),
-  lineupAnalyzerGameSelect: document.getElementById("lineupAnalyzerGameSelect"),
-  lineupAnalyzerStatus: document.getElementById("lineupAnalyzerStatus"),
-  lineupAnalyzerSaveBtn: document.getElementById("lineupAnalyzerSaveBtn"),
-  lineupAnalyzerAddHitterBtn: document.getElementById("lineupAnalyzerAddHitterBtn"),
-  lineupAnalyzerLineupRows: document.getElementById("lineupAnalyzerLineupRows"),
-  lineupAnalyzerAddPitcherBtn: document.getElementById("lineupAnalyzerAddPitcherBtn"),
-  lineupAnalyzerPitcherList: document.getElementById("lineupAnalyzerPitcherList"),
-  lineupAnalyzerPitcherTabs: document.getElementById("lineupAnalyzerPitcherTabs"),
-  lineupAnalyzerMatchupBody: document.getElementById("lineupAnalyzerMatchupBody"),
-  lineupAnalyzerMatchupMeta: document.getElementById("lineupAnalyzerMatchupMeta"),
-  lineupAnalyzerSummary: document.getElementById("lineupAnalyzerSummary"),
-  optimizeBtn: document.getElementById("optimizeBtn"),
-  optimizedLineup: document.getElementById("optimizedLineup"),
-  optimizerMode: document.getElementById("optimizerMode"),
-  applyOptimizedBtn: document.getElementById("applyOptimizedBtn"),
+  financePlannerBody: document.getElementById("financePlannerBody"),
+  financePlannerStatus: document.getElementById("financePlannerStatus"),
+  financeSaveBtn: document.getElementById("financeSaveBtn"),
+  financeRefreshBtn: document.getElementById("financeRefreshBtn"),
   addPlayerBtn: document.getElementById("addPlayerBtn"),
   playerForm: document.getElementById("playerForm"),
   rosterPlayerDetails: document.getElementById("rosterPlayerDetails"),
@@ -2367,6 +2375,7 @@ function seedState() {
     deletedGameTombstones: {},
     highlights: [],
     newsArticles: [],
+    financialPlans: [],
     playoffBracket: seedPlayoffBracket(),
     games: [],
     activeGameId: ""
@@ -2473,11 +2482,399 @@ function normalizeState(nextState) {
   nextState.completedGameSyncQueue = normalizeCompletedGameSyncQueue(nextState.completedGameSyncQueue, nextState.games);
   nextState.highlights = normalizeHighlights(nextState.highlights, nextState.games);
   nextState.newsArticles = normalizeNewsArticles(nextState.newsArticles, nextState.games);
+  nextState.financialPlans = normalizeFinancialPlans(nextState.financialPlans, nextState.roster);
   nextState.playoffBracket = normalizePlayoffBracket(nextState.playoffBracket, nextState.games);
   if (rosterWasReplaced) {
     nextState.games.forEach((game) => resetGameAwayLineupToRoster(game, nextState));
   }
   return nextState;
+}
+
+function financeSeasonId(season = currentLeagueSeason()) {
+  const normalized = String(season || currentLeagueSeason()).trim();
+  return /^\d{4}$/.test(normalized) ? normalized : String(currentLeagueSeason());
+}
+
+function seededLeagueSeasonSet(extraSeasons = []) {
+  const seasons = new Set([String(currentLeagueSeason()), ...PLANNED_LEAGUE_SEASONS.map(String)]);
+  (Array.isArray(extraSeasons) ? extraSeasons : [extraSeasons]).forEach((season) => {
+    const normalized = String(season || "").trim();
+    if (/^\d{4}$/.test(normalized)) seasons.add(normalized);
+  });
+  return seasons;
+}
+
+function defaultFinanceCharges() {
+  const charges = FINANCE_CHARGE_FIELDS.reduce((fields, field) => {
+    fields[field.key] = 0;
+    return fields;
+  }, {});
+  charges.umpireRate = 0;
+  charges.umpireGames = 0;
+  charges.jerseyPrice = 0;
+  charges.jerseyCount = 0;
+  return charges;
+}
+
+function normalizeFinanceCharges(charges = {}) {
+  const source = charges && typeof charges === "object" ? charges : {};
+  const normalized = {
+    ...defaultFinanceCharges(),
+    ...source
+  };
+  if (!financeNumber(normalized.umpireRate) && source.umpireFees !== undefined) {
+    normalized.umpireRate = financeNumber(normalized.umpireFees);
+  }
+  if (!financeNumber(normalized.jerseyPrice) && source.jerseyFees !== undefined) {
+    normalized.jerseyPrice = financeNumber(normalized.jerseyFees);
+  }
+  FINANCE_CHARGE_FIELDS.forEach((field) => {
+    normalized[field.key] = Math.max(0, financeNumber(normalized[field.key]));
+  });
+  normalized.umpireRate = Math.max(0, financeNumber(normalized.umpireRate));
+  const hasUmpireGames = source.umpireGames !== undefined && source.umpireGames !== null && source.umpireGames !== "";
+  normalized.umpireGames = Math.max(0, financeNumber(hasUmpireGames ? normalized.umpireGames : (normalized.umpireRate && source.umpireFees !== undefined ? 1 : 0)));
+  normalized.jerseyPrice = Math.max(0, financeNumber(normalized.jerseyPrice));
+  const hasJerseyCount = source.jerseyCount !== undefined && source.jerseyCount !== null && source.jerseyCount !== "";
+  normalized.jerseyCount = Math.max(0, financeNumber(hasJerseyCount ? normalized.jerseyCount : (normalized.jerseyPrice && source.jerseyFees !== undefined ? 1 : 0)));
+  delete normalized.umpireFees;
+  delete normalized.jerseyFees;
+  return normalized;
+}
+
+function financeUmpireTotal(charges = {}) {
+  const normalized = normalizeFinanceCharges(charges);
+  return Math.max(0, financeNumber(normalized.umpireRate) * financeNumber(normalized.umpireGames));
+}
+
+function financeJerseyTotal(charges = {}) {
+  const normalized = normalizeFinanceCharges(charges);
+  return Math.max(0, financeNumber(normalized.jerseyPrice) * financeNumber(normalized.jerseyCount));
+}
+
+function financeBaseChargeTotal(charges = {}) {
+  const normalized = normalizeFinanceCharges(charges);
+  return FINANCE_CHARGE_FIELDS.reduce((sum, field) => {
+    return sum + Math.max(0, financeNumber(normalized[field.key]));
+  }, 0) + financeUmpireTotal(normalized) + financeJerseyTotal(normalized);
+}
+
+function financeChargeLabel(key = "") {
+  if (key === "umpireFees") return "Umpires";
+  if (key === "jerseyFees") return "Jerseys";
+  const field = FINANCE_CHARGE_FIELDS.find((item) => item.key === key);
+  return field?.label || key;
+}
+
+function financeExpenseCategoryAmount(plan = {}, category = "") {
+  const normalized = financeExpenseCategoryFallback(category);
+  const charges = normalizeFinanceCharges(plan.charges || {});
+  if (normalized === "umpireFees") return Math.max(0, financeNumber(charges.umpireRate));
+  if (normalized === "jerseyFees") return financeJerseyTotal(charges);
+  if (FINANCE_CHARGE_FIELDS.some((field) => field.key === normalized)) return Math.max(0, financeNumber(charges[normalized]));
+  if (normalized.startsWith("custom:")) {
+    const feeId = normalized.replace(/^custom:/, "");
+    const fee = (plan.customFees || []).find((item) => item.id === feeId);
+    return Math.max(0, financeNumber(fee?.amount));
+  }
+  return 0;
+}
+
+function financeExpenseDefaultLabel(plan = {}, category = "") {
+  const amount = financeExpenseCategoryAmount(plan, category);
+  return amount > 0 ? `Default ${formatFinanceCurrency(amount)}` : "Enter amount";
+}
+
+function financeExpenseUsesGameRate(category = "") {
+  return financeExpenseCategoryFallback(category) === "umpireFees";
+}
+
+function financeExpenseUsesTotal(category = "") {
+  return financeExpenseCategoryFallback(category) === "jerseyFees";
+}
+
+function financeChargeInputOrder() {
+  const byKey = new Map(FINANCE_CHARGE_FIELDS.map((field) => [field.key, field]));
+  return [
+    byKey.get("leagueFees"),
+    { key: "umpireFees", label: "Umpires", type: "umpires" },
+    { key: "jerseyFees", label: "Jerseys", type: "jerseys" },
+    byKey.get("playoffFees")
+  ].filter(Boolean);
+}
+
+function financeChargeInputValue(plan = {}, field = {}) {
+  if (field.key === "umpireFees") return financeUmpireTotal(plan.charges || {});
+  if (field.key === "jerseyFees") return financeJerseyTotal(plan.charges || {});
+  return Math.max(0, financeNumber(plan.charges?.[field.key]));
+}
+
+function financeNumber(value) {
+  if (value === "" || value === undefined || value === null) return 0;
+  const number = Number(String(value).replace(/[$,]/g, ""));
+  return Number.isFinite(number) ? number : 0;
+}
+
+function financePlayerDefaultIncluded(player = {}) {
+  const positions = normalizePositions(player.positions || player.primaryPosition || "");
+  return player.active !== false && !positions.includes("COACH");
+}
+
+function normalizeFinancePlayerRow(row = {}, rosterPlayer = null) {
+  const player = rosterPlayer || {};
+  const playerId = String(row.playerId || row.player_id || player.id || "").trim();
+  if (!playerId && !row.name && !player.name) return null;
+  const included = row.included === undefined && row.is_included === undefined
+    ? financePlayerDefaultIncluded(player)
+    : row.included !== false && row.is_included !== false;
+  return {
+    playerId,
+    name: String(row.name || player.name || "Unknown player").trim(),
+    number: String(row.number || player.number || "").trim(),
+    included,
+    paid: Math.max(0, financeNumber(row.paid ?? row.amount_paid)),
+    adjustment: financeNumber(row.adjustment),
+    notes: String(row.notes || "").trim()
+  };
+}
+
+function normalizeFinanceCustomFee(row = {}) {
+  const id = String(row.id || createId("finance-fee")).trim();
+  const label = String(row.label || row.name || "").trim();
+  const amount = Math.max(0, financeNumber(row.amount));
+  if (!id && !label && !amount) return null;
+  return { id, label, amount };
+}
+
+function financeExpenseCategoryFallback(value = "") {
+  const normalized = String(value || "").trim();
+  if (!normalized) return FINANCE_EXPENSE_CATEGORIES[0].key;
+  return normalized;
+}
+
+function normalizeFinanceExpensePayment(row = {}) {
+  const id = String(row.id || createId("finance-expense")).trim();
+  const category = financeExpenseCategoryFallback(row.category || row.category_key || row.label || row.name);
+  const label = String(row.label || row.name || "").trim();
+  const amount = Math.max(0, financeNumber(row.amount));
+  const date = String(row.date || "").trim();
+  const notes = String(row.notes || "").trim();
+  if (!id && !category && !label && !amount && !date && !notes) return null;
+  return { id, category, label, amount, date, notes };
+}
+
+function normalizeFinanceTransaction(row = {}) {
+  const amount = financeNumber(row.amount);
+  const type = String(row.type || "").trim();
+  const id = String(row.id || createId("finance-txn")).trim();
+  const date = String(row.date || todayValue()).trim();
+  const label = String(row.label || "").trim();
+  const playerId = String(row.playerId || row.player_id || "").trim();
+  const playerName = String(row.playerName || row.player_name || "").trim();
+  const category = String(row.category || row.category_key || "").trim();
+  const notes = String(row.notes || "").trim();
+  if (!id && !type && !amount && !label && !playerName && !category && !notes) return null;
+  return {
+    id,
+    date,
+    type,
+    label,
+    amount,
+    playerId,
+    playerName,
+    category,
+    notes
+  };
+}
+
+function normalizeFinancialPlan(plan = {}, roster = state?.roster || []) {
+  const season = financeSeasonId(plan.season);
+  const rosterById = new Map((Array.isArray(roster) ? roster : []).map((player) => [player.id, player]));
+  const charges = normalizeFinanceCharges(plan.charges);
+
+  const rowsByPlayerId = new Map();
+  (Array.isArray(plan.players) ? plan.players : []).forEach((row) => {
+    const normalized = normalizeFinancePlayerRow(row, rosterById.get(String(row.playerId || row.player_id || "")));
+    if (normalized?.playerId) rowsByPlayerId.set(normalized.playerId, normalized);
+  });
+  (Array.isArray(roster) ? roster : []).forEach((player) => {
+    if (!player?.id || rowsByPlayerId.has(player.id)) return;
+    rowsByPlayerId.set(player.id, normalizeFinancePlayerRow({}, player));
+  });
+
+  const rosterOrder = new Map((Array.isArray(roster) ? roster : []).map((player, index) => [player.id, index]));
+  const players = [...rowsByPlayerId.values()]
+    .filter(Boolean)
+    .sort((left, right) => {
+      const leftIndex = rosterOrder.has(left.playerId) ? rosterOrder.get(left.playerId) : 9999;
+      const rightIndex = rosterOrder.has(right.playerId) ? rosterOrder.get(right.playerId) : 9999;
+      return leftIndex - rightIndex || left.name.localeCompare(right.name);
+    });
+
+  return {
+    id: String(plan.id || `finance-${season}`).trim(),
+    season,
+    charges,
+    customFees: (Array.isArray(plan.customFees || plan.custom_fees) ? (plan.customFees || plan.custom_fees) : [])
+      .map(normalizeFinanceCustomFee)
+      .filter(Boolean),
+    expensePayments: (Array.isArray(plan.expensePayments || plan.expense_payments) ? (plan.expensePayments || plan.expense_payments) : [])
+      .map(normalizeFinanceExpensePayment)
+      .filter(Boolean),
+    transactions: (Array.isArray(plan.transactions || plan.transaction_history) ? (plan.transactions || plan.transaction_history) : [])
+      .map(normalizeFinanceTransaction)
+      .filter(Boolean)
+      .sort((left, right) => String(right.date).localeCompare(String(left.date)) || String(right.id).localeCompare(String(left.id))),
+    players,
+    notes: String(plan.notes || "").trim(),
+    updatedAt: String(plan.updatedAt || plan.updated_at || "").trim()
+  };
+}
+
+function normalizeFinancialPlans(plans = [], roster = state?.roster || []) {
+  const planMap = new Map();
+  (Array.isArray(plans) ? plans : []).forEach((plan) => {
+    const normalized = normalizeFinancialPlan(plan, roster);
+    if (normalized?.season) planMap.set(normalized.season, normalized);
+  });
+  return [...planMap.values()].sort((left, right) => String(right.season).localeCompare(String(left.season)));
+}
+
+function upsertFinancialPlanInState(plan) {
+  const normalized = normalizeFinancialPlan(plan, state.roster);
+  state.financialPlans = normalizeFinancialPlans([
+    ...(state.financialPlans || []).filter((item) => financeSeasonId(item.season) !== normalized.season),
+    normalized
+  ], state.roster);
+  return normalized;
+}
+
+function financialPlanForSeason(season = financePlannerSeason || currentLeagueSeason()) {
+  const normalizedSeason = financeSeasonId(season);
+  const existing = (state.financialPlans || []).find((plan) => financeSeasonId(plan.season) === normalizedSeason);
+  const plan = normalizeFinancialPlan(existing || { season: normalizedSeason }, state.roster);
+  return upsertFinancialPlanInState(plan);
+}
+
+function financeSeasonOptions() {
+  const seasons = seededLeagueSeasonSet();
+  (state.games || []).forEach((game) => {
+    const season = String(game?.date || "").slice(0, 4);
+    if (/^\d{4}$/.test(season)) seasons.add(season);
+  });
+  (state.financialPlans || []).forEach((plan) => {
+    const season = financeSeasonId(plan.season);
+    if (season) seasons.add(season);
+  });
+  return [...seasons].sort((left, right) => right.localeCompare(left));
+}
+
+function formatFinanceCurrency(value) {
+  const number = financeNumber(value);
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: Number.isInteger(number) ? 0 : 2,
+    maximumFractionDigits: 2
+  }).format(number);
+}
+
+function financeInputValue(value) {
+  const number = financeNumber(value);
+  return Number.isInteger(number) ? String(number) : number.toFixed(2).replace(/\.?0+$/, "");
+}
+
+function financeInputIsZero(value = "") {
+  return /^-?0(?:\.0+)?$/.test(String(value || "").trim());
+}
+
+function financeExpenseCategoryOptions(plan = {}) {
+  const options = [...FINANCE_EXPENSE_CATEGORIES];
+  (plan.customFees || []).forEach((fee) => {
+    const label = String(fee.label || "").trim();
+    if (!label) return;
+    options.push({ key: `custom:${fee.id}`, label });
+  });
+  return options;
+}
+
+function financeExpenseCategoryLabel(plan = {}, category = "") {
+  const normalized = financeExpenseCategoryFallback(category);
+  const match = financeExpenseCategoryOptions(plan).find((option) => option.key === normalized);
+  if (match) return match.label;
+  if (normalized.startsWith("custom:")) return "Additional Fee";
+  return normalized;
+}
+
+function financeTransactionTypeLabel(type = "") {
+  if (type === "player-payment") return "Player Payment";
+  if (type === "team-expense") return "Paid Expense";
+  return "Finance";
+}
+
+function addFinanceTransaction(plan, transaction) {
+  const normalized = normalizeFinanceTransaction({
+    date: todayValue(),
+    ...transaction
+  });
+  if (!normalized || !normalized.amount) return plan;
+  plan.transactions = [
+    normalized,
+    ...(Array.isArray(plan.transactions) ? plan.transactions : [])
+  ];
+  return upsertFinancialPlanInState(plan);
+}
+
+function financePaidExpenseTotal(plan = {}) {
+  const transactionTotal = (Array.isArray(plan.transactions) ? plan.transactions : [])
+    .filter((transaction) => transaction.type === "team-expense")
+    .reduce((sum, transaction) => sum + Math.max(0, financeNumber(transaction.amount)), 0);
+  const legacyExpenseTotal = (Array.isArray(plan.expensePayments) ? plan.expensePayments : [])
+    .reduce((sum, expense) => sum + Math.max(0, financeNumber(expense.amount)), 0);
+  return transactionTotal + legacyExpenseTotal;
+}
+
+function calculateFinancialPlanSummary(plan = financialPlanForSeason()) {
+  const charges = normalizeFinanceCharges(plan.charges);
+  const includedPlayers = (plan.players || []).filter((row) => row.included !== false);
+  const includedCount = includedPlayers.length;
+  const sharedTotal = financeBaseChargeTotal(charges)
+    + (plan.customFees || []).reduce((sum, fee) => sum + Math.max(0, financeNumber(fee.amount)), 0);
+  const sharedPerPlayer = includedCount ? sharedTotal / includedCount : 0;
+  const playerRows = (plan.players || []).map((row) => {
+    const included = row.included !== false;
+    const owed = Math.max(0, (included ? sharedPerPlayer : 0) + financeNumber(row.adjustment));
+    const paid = Math.max(0, financeNumber(row.paid));
+    const balance = Math.max(0, owed - paid);
+    const status = !owed
+      ? "No charge"
+      : balance <= 0.005
+        ? "Paid"
+        : paid > 0
+          ? "Partial"
+          : "Due";
+    return {
+      ...row,
+      owed,
+      paid,
+      balance,
+      status
+    };
+  });
+  const expectedTotal = playerRows.reduce((sum, row) => sum + row.owed, 0);
+  const paidTotal = playerRows.reduce((sum, row) => sum + row.paid, 0);
+  const outstandingTotal = playerRows.reduce((sum, row) => sum + row.balance, 0);
+  const expensesPaidTotal = financePaidExpenseTotal(plan);
+  return {
+    includedCount,
+    sharedTotal,
+    sharedPerPlayer,
+    expectedTotal,
+    paidTotal,
+    outstandingTotal,
+    expensesPaidTotal,
+    playerRows
+  };
 }
 
 function normalizeNewsArticle(article = {}, games = state?.games || []) {
@@ -4677,6 +5074,7 @@ async function applySupabaseAdminState(user, options = {}) {
   requestLifecycleSupabaseRefresh("admin-ready", { force: true, skipWhenHidden: false });
   recordSiteVisitOnce("admin-ready", { force: true });
   requestSiteVisitSummaryRefresh("admin-ready", { force: true });
+  requestFinancePlannerRefresh("admin-ready", { force: true });
   return true;
 }
 
@@ -4723,6 +5121,9 @@ async function signOutAdmin() {
   siteVisitSummary = null;
   siteVisitSummaryState = "idle";
   siteVisitSummaryLoadedAt = 0;
+  financePlannerLoaded = false;
+  financePlannerLoading = false;
+  financePlannerNotice = "";
   saveStoredAdminEmail("");
   setAccessMode("public");
   try {
@@ -5503,44 +5904,13 @@ window.addEventListener("pageshow", () => {
   });
   els.finishGameBtn.addEventListener("click", finishGame);
 
-  els.lineupAnalyzerGameSelect?.addEventListener("change", () => {
-    lineupAnalyzerGameId = els.lineupAnalyzerGameSelect.value || "";
-    lineupAnalyzerPitcherId = "";
-    lineupAnalyzerDraft = null;
-    lineupAnalyzerNotice = "";
-    renderLineupAnalyzer();
-  });
-  els.lineupAnalyzerSaveBtn?.addEventListener("click", saveLineupAnalyzerGame);
-  els.lineupAnalyzerAddHitterBtn?.addEventListener("click", addLineupAnalyzerHitter);
-  els.lineupAnalyzerAddPitcherBtn?.addEventListener("click", addLineupAnalyzerPitcher);
-  els.lineupAnalyzerLineupRows?.addEventListener("change", handleLineupAnalyzerLineupChange);
-  els.lineupAnalyzerLineupRows?.addEventListener("click", handleLineupAnalyzerLineupClick);
-  els.lineupAnalyzerPitcherList?.addEventListener("input", handleLineupAnalyzerPitcherInput);
-  els.lineupAnalyzerPitcherList?.addEventListener("change", handleLineupAnalyzerPitcherInput);
-  els.lineupAnalyzerPitcherList?.addEventListener("click", handleLineupAnalyzerPitcherClick);
-  els.lineupAnalyzerPitcherTabs?.addEventListener("click", handleLineupAnalyzerPitcherTabClick);
-  els.lineupAnalyzerMatchupBody?.addEventListener("input", handleLineupAnalyzerMatchupInput);
-
-  els.optimizeBtn.addEventListener("click", () => {
-    optimizedIds = buildOptimizedLineup();
-    renderOptimizedLineup();
-  });
-
-  els.applyOptimizedBtn.addEventListener("click", () => {
-    if (!requireAdminAccess("Admin sign-in required to apply lineup changes.")) return;
-    if (!optimizedIds.length) optimizedIds = buildOptimizedLineup();
-    const draft = ensureLineupAnalyzerDraft();
-    if (!draft) return;
-    const positionsByPlayer = new Map(draft.lineupUsage.map((entry) => [entry.playerId, entry.position]));
-    draft.lineupUsage = optimizedIds.map((playerId, index) => ({
-      id: createId("lineup-use"),
-      order: index + 1,
-      playerId,
-      position: positionsByPlayer.get(playerId) || playerPrimaryPosition(state.roster.find((player) => player.id === playerId)) || "DH",
-      started: true
-    }));
-    renderLineupAnalyzer();
-  });
+  els.financePlannerBody?.addEventListener("focusin", handleFinancePlannerFocusIn);
+  els.financePlannerBody?.addEventListener("focusout", handleFinancePlannerFocusOut);
+  els.financePlannerBody?.addEventListener("input", handleFinancePlannerInput);
+  els.financePlannerBody?.addEventListener("change", handleFinancePlannerChange);
+  els.financePlannerBody?.addEventListener("click", handleFinancePlannerClick);
+  els.financeSaveBtn?.addEventListener("click", saveFinancialPlanOrAlert);
+  els.financeRefreshBtn?.addEventListener("click", () => requestFinancePlannerRefresh("manual", { force: true }));
 
   els.addPlayerBtn.addEventListener("click", () => {
     resetPlayerForm();
@@ -5896,6 +6266,7 @@ function switchView(view, options = {}) {
   });
   els.views.forEach((panel) => panel.classList.toggle("is-visible", panel.dataset.panel === nextView));
   if (nextView === "stats") renderStatsSurface();
+  if (nextView === "finance") renderFinancePlanner();
   if (updateRoute) updateBrowserRouteForView(nextView, { replace: replaceRoute });
   if (nextView === "standings") refreshScoutingData({ silent: true });
   if (previousView !== nextView) {
@@ -8975,9 +9346,720 @@ async function removeRosterPlayer(playerId) {
   if (editingRosterPlayerId === playerId) resetPlayerForm();
   markSharedAppStateDirty();
   saveState();
-  optimizedIds = buildOptimizedLineup();
   render();
   await syncSharedRosterChangeOrAlert("remove-roster-player");
+}
+
+function financePlannerStatusMessage() {
+  if (!isAdminMode()) return "Admin sign-in required.";
+  if (financePlannerLoading) return "Loading finance planner from Supabase...";
+  if (financePlannerNotice) return financePlannerNotice;
+  if (!supabaseStorage?.isReady?.()) return "Planner is saved locally on this device. Supabase is not ready.";
+  if (!supabaseAdminEmail && !indexAdminAccessEnabled()) return "Sign in as admin to sync finance data across devices.";
+  if (!supabaseAdminEmail) return "Local admin mode is active. Sign in to Supabase to sync across devices.";
+  return financePlannerLoaded ? "Finance planner synced from Supabase." : "Planner ready. Save to sync changes.";
+}
+
+function renderFinancePlannerStatus() {
+  if (!els.financePlannerStatus) return;
+  els.financePlannerStatus.textContent = financePlannerStatusMessage();
+  els.financePlannerStatus.dataset.state = financePlannerLoading ? "loading" : financePlannerNotice ? "notice" : "ready";
+}
+
+async function requestFinancePlannerRefresh(reason = "finance", options = {}) {
+  if (!isAdminMode()) return null;
+  if (!supabaseStorage?.isReady?.() || !supabaseStorage.fetchFinancialPlans) {
+    if (options.force) {
+      financePlannerNotice = "Supabase is not ready, so the planner is using local device data.";
+      renderFinancePlannerStatus();
+    }
+    return null;
+  }
+  if (!supabaseAdminEmail) {
+    if (options.force) {
+      financePlannerNotice = "Sign in with Supabase admin credentials to load shared finance data.";
+      renderFinancePlannerStatus();
+    }
+    return null;
+  }
+  if (financePlannerLoading) return null;
+  if (financePlannerLoaded && !options.force) return null;
+  financePlannerLoading = true;
+  financePlannerNotice = "";
+  renderFinancePlannerStatus();
+  try {
+    const { data, error, missingTable } = await supabaseStorage.fetchFinancialPlans();
+    if (error) {
+      financePlannerLoaded = true;
+      financePlannerNotice = error.message || "Unable to load finance planner.";
+      console.warn(`Unable to load finance planner (${reason}).`, error);
+      return null;
+    }
+    if (missingTable) {
+      financePlannerLoaded = true;
+      financePlannerNotice = "Run supabase-schema.sql to create the season_financial_plans table.";
+      return null;
+    }
+    state.financialPlans = normalizeFinancialPlans(data || [], state.roster);
+    financePlannerLoaded = true;
+    saveState({ markLiveGamesDirty: false, capturePendingScoring: false });
+    return state.financialPlans;
+  } catch (error) {
+    financePlannerLoaded = true;
+    financePlannerNotice = error?.message || "Unable to load finance planner.";
+    console.warn(`Finance planner refresh failed (${reason}).`, error);
+    return null;
+  } finally {
+    financePlannerLoading = false;
+    if (currentView === "finance") renderFinancePlanner();
+    else renderFinancePlannerStatus();
+  }
+}
+
+function financeStatusClass(status = "") {
+  const key = String(status || "").toLowerCase();
+  if (key === "paid") return "is-paid";
+  if (key === "partial") return "is-partial";
+  if (key === "no charge") return "is-neutral";
+  return "is-due";
+}
+
+function renderFinanceChargeInput(field, plan) {
+  const charge = plan.charges?.[field.key] || 0;
+  return `<label class="finance-charge-field">
+    <span>${escapeHtml(field.label)}</span>
+    <small>Split across included players</small>
+    <input type="number" min="0" step="0.01" inputmode="decimal" value="${escapeHtml(financeInputValue(charge))}" data-finance-charge="${escapeHtml(field.key)}" data-finance-clear-zero aria-label="${escapeHtml(field.label)}">
+  </label>`;
+}
+
+function renderFinanceUmpireChargeInput(plan) {
+  const charges = normalizeFinanceCharges(plan.charges);
+  const total = financeUmpireTotal(charges);
+  return `<div class="finance-charge-field finance-split-charge-field finance-umpire-charge-field">
+    <div class="finance-field-label-row">
+      <span>Umpires</span>
+      <small>${escapeHtml(formatFinanceCurrency(total))} total</small>
+    </div>
+    <div class="finance-umpire-input-grid">
+      <label>
+        <span>Per Game</span>
+        <input type="number" min="0" step="0.01" inputmode="decimal" value="${escapeHtml(financeInputValue(charges.umpireRate))}" data-finance-charge="umpireRate" data-finance-clear-zero aria-label="Umpire price per game">
+      </label>
+      <label>
+        <span>Games</span>
+        <input type="number" min="0" step="1" inputmode="numeric" value="${escapeHtml(financeInputValue(charges.umpireGames))}" data-finance-charge="umpireGames" aria-label="Number of games with umpire fees">
+      </label>
+    </div>
+  </div>`;
+}
+
+function renderFinanceJerseyChargeInput(plan) {
+  const charges = normalizeFinanceCharges(plan.charges);
+  const total = financeJerseyTotal(charges);
+  return `<div class="finance-charge-field finance-split-charge-field finance-jersey-charge-field">
+    <div class="finance-field-label-row">
+      <span>Jerseys</span>
+      <small>${escapeHtml(formatFinanceCurrency(total))} total</small>
+    </div>
+    <div class="finance-split-charge-input-grid">
+      <label>
+        <span>Per Jersey</span>
+        <input type="number" min="0" step="0.01" inputmode="decimal" value="${escapeHtml(financeInputValue(charges.jerseyPrice))}" data-finance-charge="jerseyPrice" data-finance-clear-zero aria-label="Jersey price">
+      </label>
+      <label>
+        <span>Count</span>
+        <input type="number" min="0" step="1" inputmode="numeric" value="${escapeHtml(financeInputValue(charges.jerseyCount))}" data-finance-charge="jerseyCount" aria-label="Number of jerseys">
+      </label>
+    </div>
+  </div>`;
+}
+
+function renderFinanceChargeControl(field, plan) {
+  if (field.key === "umpireFees") return renderFinanceUmpireChargeInput(plan);
+  if (field.key === "jerseyFees") return renderFinanceJerseyChargeInput(plan);
+  return renderFinanceChargeInput(field, plan);
+}
+
+function defaultFinanceExpenseDraft(plan = {}) {
+  const category = FINANCE_EXPENSE_CATEGORIES[0].key;
+  return {
+    category,
+    amount: financeExpenseCategoryAmount(plan, category),
+    date: todayValue(),
+    notes: ""
+  };
+}
+
+function financeExpenseDraftForPlan(plan = {}) {
+  const options = financeExpenseCategoryOptions(plan);
+  const fallback = defaultFinanceExpenseDraft(plan);
+  const draft = financeExpenseDraft && typeof financeExpenseDraft === "object"
+    ? { ...fallback, ...financeExpenseDraft }
+    : fallback;
+  if (!options.some((option) => option.key === draft.category)) {
+    draft.category = fallback.category;
+    draft.amount = fallback.amount;
+  }
+  draft.date = String(draft.date || todayValue()).trim();
+  draft.amount = Math.max(0, financeNumber(draft.amount));
+  draft.notes = String(draft.notes || "").trim();
+  financeExpenseDraft = draft;
+  return draft;
+}
+
+function resetFinanceExpenseDraft(plan = {}) {
+  financeExpenseDraft = defaultFinanceExpenseDraft(plan);
+  return financeExpenseDraft;
+}
+
+function renderFinanceCustomFeeRow(fee, index) {
+  return `<div class="finance-custom-fee-row" data-finance-custom-fee="${escapeHtml(fee.id)}">
+    <span class="finance-row-index">${index + 1}</span>
+    <label>
+      <span>Fee</span>
+      <input type="text" value="${escapeHtml(fee.label || "")}" placeholder="Field rental, baseballs, playoff shirts..." data-finance-custom-fee-id="${escapeHtml(fee.id)}" data-finance-custom-fee-field="label" aria-label="Custom fee name">
+    </label>
+    <label>
+      <span>Amount</span>
+      <input type="number" min="0" step="0.01" inputmode="decimal" value="${escapeHtml(financeInputValue(fee.amount))}" data-finance-custom-fee-id="${escapeHtml(fee.id)}" data-finance-custom-fee-field="amount" data-finance-clear-zero aria-label="Custom fee amount">
+    </label>
+    <button type="button" class="icon-button finance-row-remove" data-finance-remove-fee="${escapeHtml(fee.id)}" aria-label="Remove custom fee">x</button>
+  </div>`;
+}
+
+function renderFinanceExpenseLogger(plan) {
+  const expense = financeExpenseDraftForPlan(plan);
+  const category = financeExpenseCategoryFallback(expense.category);
+  const categoryOptions = financeExpenseCategoryOptions(plan);
+  const defaultAmount = financeExpenseCategoryAmount(plan, category);
+  const defaultLabel = financeExpenseUsesGameRate(category)
+    ? `Game rate ${formatFinanceCurrency(defaultAmount)}`
+    : financeExpenseUsesTotal(category)
+      ? `Total ${formatFinanceCurrency(defaultAmount)}`
+    : financeExpenseDefaultLabel(plan, category);
+  return `<div class="finance-expense-row finance-expense-logger">
+    <label class="finance-expense-category-field">
+      <span>Paid For</span>
+      <select data-finance-expense-draft-field="category" aria-label="Expense payment category">
+        ${categoryOptions.map((option) => `<option value="${escapeHtml(option.key)}" ${option.key === category ? "selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}
+        ${categoryOptions.some((option) => option.key === category) ? "" : `<option value="${escapeHtml(category)}" selected>${escapeHtml(financeExpenseCategoryLabel(plan, category))}</option>`}
+      </select>
+    </label>
+    <label class="finance-expense-amount-field">
+      <span>Amount <small>${escapeHtml(defaultLabel)}</small></span>
+      <span class="finance-expense-amount-control">
+        <input type="number" min="0" step="0.01" inputmode="decimal" value="${escapeHtml(financeInputValue(expense.amount))}" placeholder="${escapeHtml(financeInputValue(defaultAmount))}" data-finance-expense-draft-field="amount" data-finance-clear-zero aria-label="Expense payment amount">
+        <button type="button" class="secondary-action compact-action finance-use-default-button" data-finance-use-default-expense>Use</button>
+      </span>
+    </label>
+    <label class="finance-expense-date-field">
+      <span>Date</span>
+      <input type="date" value="${escapeHtml(expense.date || "")}" data-finance-expense-draft-field="date" aria-label="Expense payment date">
+    </label>
+    <label class="finance-expense-notes-field">
+      <span>Notes</span>
+      <input type="text" value="${escapeHtml(expense.notes || "")}" placeholder="Check, cash, Venmo, game note..." data-finance-expense-draft-field="notes" aria-label="Paid expense notes">
+    </label>
+    <button type="button" class="primary-action compact-action finance-log-expense-button" data-finance-log-expense>Log Paid Expense</button>
+  </div>`;
+}
+
+function renderFinanceLedgerRow(row) {
+  const playerLabel = `${row.number ? `#${row.number} ` : ""}${row.name}`;
+  const balanceClass = row.balance > 0.005 ? "is-due" : "is-paid";
+  return `<tr class="${row.included ? "" : "is-excluded"}" data-finance-player-row="${escapeHtml(row.playerId)}">
+    <th scope="row" class="finance-player-cell">
+      <strong>${escapeHtml(playerLabel)}</strong>
+    </th>
+    <td data-label="Owes"><strong>${escapeHtml(formatFinanceCurrency(row.owed))}</strong></td>
+    <td data-label="Paid">
+      <input type="number" min="0" step="0.01" inputmode="decimal" value="${escapeHtml(financeInputValue(row.paid))}" data-finance-player-id="${escapeHtml(row.playerId)}" data-finance-player-field="paid" data-finance-original-paid="${escapeHtml(financeInputValue(row.paid))}" data-finance-clear-zero aria-label="${escapeHtml(`Paid amount for ${playerLabel}`)}">
+    </td>
+    <td data-label="Balance"><strong class="finance-balance-amount ${balanceClass}">${escapeHtml(formatFinanceCurrency(row.balance))}</strong></td>
+    <td data-label="Status"><span class="finance-status-pill ${financeStatusClass(row.status)}">${escapeHtml(row.status)}</span></td>
+    <td data-label="Adjust">
+      <input type="number" step="0.01" inputmode="decimal" value="${escapeHtml(financeInputValue(row.adjustment))}" data-finance-player-id="${escapeHtml(row.playerId)}" data-finance-player-field="adjustment" data-finance-clear-zero aria-label="${escapeHtml(`Adjustment for ${playerLabel}`)}">
+    </td>
+    <td data-label="Notes">
+      <input type="text" value="${escapeHtml(row.notes || "")}" data-finance-player-id="${escapeHtml(row.playerId)}" data-finance-player-field="notes" aria-label="${escapeHtml(`Payment notes for ${playerLabel}`)}">
+    </td>
+    <td data-label="Split" class="finance-split-cell">
+      <label class="finance-split-toggle" title="${escapeHtml(row.included ? "Included in split" : "Excluded from split")}">
+        <input type="checkbox" ${row.included ? "checked" : ""} data-finance-player-id="${escapeHtml(row.playerId)}" data-finance-player-field="included">
+        <span>${row.included ? "In" : "Out"}</span>
+      </label>
+    </td>
+    <td data-label="Action">
+      <button type="button" class="secondary-action compact-action finance-paid-action" data-finance-mark-paid="${escapeHtml(row.playerId)}">Full</button>
+    </td>
+  </tr>`;
+}
+
+function renderFinanceTransactionRow(transaction, plan) {
+  const isExpense = transaction.type === "team-expense";
+  const amountLabel = `${isExpense ? "-" : "+"}${formatFinanceCurrency(Math.abs(financeNumber(transaction.amount)))}`;
+  const detail = transaction.playerName
+    || transaction.label
+    || financeExpenseCategoryLabel(plan, transaction.category)
+    || "Finance transaction";
+  const meta = isExpense
+    ? financeExpenseCategoryLabel(plan, transaction.category)
+    : "Player fee payment";
+  return `<tr>
+    <td>${escapeHtml(formatGameDateDisplay(transaction.date || todayValue()))}</td>
+    <td><span class="finance-transaction-type ${isExpense ? "is-expense" : "is-payment"}">${escapeHtml(financeTransactionTypeLabel(transaction.type))}</span></td>
+    <td>
+      <strong>${escapeHtml(detail)}</strong>
+      <span>${escapeHtml(meta)}</span>
+    </td>
+    <td class="finance-transaction-amount ${isExpense ? "is-expense" : "is-payment"}">${escapeHtml(amountLabel)}</td>
+    <td>${escapeHtml(transaction.notes || "")}</td>
+  </tr>`;
+}
+
+function financeTransactionHistoryRows(plan = {}) {
+  const paymentRows = (Array.isArray(plan.transactions) ? plan.transactions : [])
+    .filter(Boolean);
+  const expenseRows = (Array.isArray(plan.expensePayments) ? plan.expensePayments : [])
+    .filter((expense) => financeNumber(expense.amount) > 0)
+    .map((expense) => ({
+      id: `expense:${expense.id}`,
+      date: expense.date || todayValue(),
+      type: "team-expense",
+      label: financeExpenseCategoryLabel(plan, expense.category),
+      amount: financeNumber(expense.amount),
+      category: expense.category,
+      notes: expense.notes || ""
+    }));
+  return [...paymentRows, ...expenseRows]
+    .sort((left, right) => String(right.date).localeCompare(String(left.date)) || String(right.id).localeCompare(String(left.id)));
+}
+
+function renderFinanceTransactionHistory(plan) {
+  const transactions = financeTransactionHistoryRows(plan);
+  if (!transactions.length) {
+    return `<article class="finance-card finance-history-card">
+      <div class="finance-empty">Transaction history will appear after player payments or paid expenses are recorded.</div>
+    </article>`;
+  }
+  return `<article class="finance-card finance-history-card">
+    <div class="mini-head">
+      <div>
+        <p class="eyebrow">Transactions</p>
+        <h3>Payment history</h3>
+      </div>
+      <span class="player-meta">${escapeHtml(transactions.length)} records</span>
+    </div>
+    <div class="finance-history-wrap">
+      <table class="finance-history-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Details</th>
+            <th>Amount</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${transactions.map((transaction) => renderFinanceTransactionRow(transaction, plan)).join("")}
+        </tbody>
+      </table>
+    </div>
+  </article>`;
+}
+
+function renderFinancePlanner() {
+  if (!els.financePlannerBody) return;
+  if (!isAdminMode()) {
+    els.financePlannerBody.innerHTML = "";
+    renderFinancePlannerStatus();
+    return;
+  }
+  financePlannerSeason = financeSeasonId(financePlannerSeason || currentLeagueSeason());
+  if (!financePlannerLoaded && !financePlannerLoading) requestFinancePlannerRefresh("finance-view");
+  const plan = financialPlanForSeason(financePlannerSeason);
+  const summary = calculateFinancialPlanSummary(plan);
+  const seasons = financeSeasonOptions();
+  const updated = plan.updatedAt ? `Last saved ${formatSyncTimestamp(plan.updatedAt)}` : "Not saved to Supabase yet";
+  const summaryCards = [
+    { label: "Included Players", value: summary.includedCount },
+    { label: "Total Fees", value: formatFinanceCurrency(summary.sharedTotal) },
+    { label: "Per Player Share", value: formatFinanceCurrency(summary.sharedPerPlayer) },
+    { label: "Expected", value: formatFinanceCurrency(summary.expectedTotal) },
+    { label: "Collected", value: formatFinanceCurrency(summary.paidTotal) },
+    { label: "Outstanding", value: formatFinanceCurrency(summary.outstandingTotal), className: summary.outstandingTotal > 0.005 ? "is-alert" : "" },
+    { label: "Paid Expenses", value: formatFinanceCurrency(summary.expensesPaidTotal) }
+  ].map((card) => `<article class="finance-summary-card ${card.className || ""}"><span>${escapeHtml(card.label)}</span><strong>${escapeHtml(String(card.value))}</strong></article>`).join("");
+  const plannerTabSelected = financePlannerTab !== "history";
+  const plannerContent = plannerTabSelected ? `
+    <section class="finance-planner-grid">
+      <div class="finance-side-stack">
+        <article class="finance-card finance-fees-card">
+          <div class="mini-head">
+            <div>
+              <p class="eyebrow">Fees</p>
+              <h3>Season charges</h3>
+            </div>
+          </div>
+          <div class="finance-charge-grid">
+            ${financeChargeInputOrder().map((field) => renderFinanceChargeControl(field, plan)).join("")}
+          </div>
+          <div class="finance-subsection-head">
+            <div>
+              <strong>Additional fees</strong>
+              <span>Name each extra item instead of using one catch-all.</span>
+            </div>
+            <button type="button" class="secondary-action compact-action" data-finance-add-fee>Add New Fee</button>
+          </div>
+          <div class="finance-custom-fee-list">
+            ${(plan.customFees || []).map(renderFinanceCustomFeeRow).join("") || `<div class="finance-empty finance-inline-empty">No additional fees yet.</div>`}
+          </div>
+          <label class="finance-notes-field">
+            <span>Planner notes</span>
+            <textarea data-finance-notes rows="4" placeholder="League deadline, jersey notes, payment links, or coach reminders.">${escapeHtml(plan.notes || "")}</textarea>
+          </label>
+        </article>
+        <article class="finance-card finance-cash-card">
+          <div class="mini-head">
+            <div>
+              <p class="eyebrow">Cash Flow</p>
+              <h3>Log paid expense</h3>
+            </div>
+          </div>
+          <div class="finance-expense-list">
+            ${renderFinanceExpenseLogger(plan)}
+          </div>
+        </article>
+      </div>
+      <article class="finance-card finance-ledger-card">
+        <div class="mini-head">
+          <div>
+            <p class="eyebrow">Ledger</p>
+            <h3>Player balances</h3>
+          </div>
+          <span class="player-meta">${escapeHtml(summary.playerRows.length)} roster rows</span>
+        </div>
+        <div class="finance-ledger-wrap">
+          <table class="finance-ledger-table">
+            <thead>
+              <tr>
+                <th>Player</th>
+                <th>Owes</th>
+                <th>Paid</th>
+                <th>Balance</th>
+                <th>Status</th>
+                <th>Adjust</th>
+                <th>Notes</th>
+                <th>Split</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${summary.playerRows.map(renderFinanceLedgerRow).join("") || `<tr><td colspan="9" class="finance-empty">Add roster players before using the planner.</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </section>` : renderFinanceTransactionHistory(plan);
+
+  els.financePlannerBody.innerHTML = `
+    <section class="finance-toolbar">
+      <label>
+        <span>Season</span>
+        <select data-finance-season>
+          ${seasons.map((season) => `<option value="${escapeHtml(season)}" ${season === financePlannerSeason ? "selected" : ""}>${escapeHtml(season)} Season</option>`).join("")}
+        </select>
+      </label>
+      <div class="finance-toolbar-copy">
+        <strong>${escapeHtml(financePlannerSeason)} Financial Plan</strong>
+        <span>${escapeHtml(updated)}</span>
+      </div>
+      <button type="button" class="secondary-action compact-action" data-finance-apply-roster>Sync Roster</button>
+    </section>
+    <section class="finance-summary-grid" aria-label="Finance summary">
+      ${summaryCards}
+    </section>
+    <nav class="finance-view-tabs" aria-label="Finance planner views">
+      <button type="button" class="${plannerTabSelected ? "active" : ""}" data-finance-tab="planner">Planner</button>
+      <button type="button" class="${financePlannerTab === "history" ? "active" : ""}" data-finance-tab="history">Transaction History</button>
+    </nav>
+    ${plannerContent}
+  `;
+  renderFinancePlannerStatus();
+}
+
+function updateFinancePlanFromInput(input) {
+  const plan = financialPlanForSeason(financePlannerSeason);
+  const chargeKey = input.dataset.financeCharge;
+  if (chargeKey) {
+    plan.charges[chargeKey] = Math.max(0, financeNumber(input.value));
+    upsertFinancialPlanInState(plan);
+    if (financeExpenseDraft?.category) {
+      financeExpenseDraft.amount = financeExpenseCategoryAmount(plan, financeExpenseDraft.category);
+    }
+    return true;
+  }
+  const customFeeId = input.dataset.financeCustomFeeId;
+  const customFeeField = input.dataset.financeCustomFeeField;
+  if (customFeeId && customFeeField) {
+    const fee = (plan.customFees || []).find((item) => item.id === customFeeId);
+    if (!fee) return false;
+    if (customFeeField === "label") fee.label = String(input.value || "").trim();
+    if (customFeeField === "amount") fee.amount = Math.max(0, financeNumber(input.value));
+    upsertFinancialPlanInState(plan);
+    if (financeExpenseDraft?.category === `custom:${fee.id}`) {
+      financeExpenseDraft.amount = financeExpenseCategoryAmount(plan, financeExpenseDraft.category);
+    }
+    return true;
+  }
+  const expenseDraftField = input.dataset.financeExpenseDraftField;
+  if (expenseDraftField) {
+    const draft = financeExpenseDraftForPlan(plan);
+    if (expenseDraftField === "category") {
+      draft.category = financeExpenseCategoryFallback(input.value);
+      draft.amount = financeExpenseCategoryAmount(plan, draft.category);
+    } else if (expenseDraftField === "amount") {
+      draft.amount = Math.max(0, financeNumber(input.value));
+    } else if (expenseDraftField === "date") {
+      draft.date = String(input.value || "").trim();
+    } else if (expenseDraftField === "notes") {
+      draft.notes = String(input.value || "").trim();
+    }
+    financeExpenseDraft = draft;
+    return true;
+  }
+  if (input.matches("[data-finance-notes]")) {
+    plan.notes = String(input.value || "").trim();
+    upsertFinancialPlanInState(plan);
+    return true;
+  }
+  const playerId = input.dataset.financePlayerId;
+  const field = input.dataset.financePlayerField;
+  if (!playerId || !field) return false;
+  const row = plan.players.find((playerRow) => playerRow.playerId === playerId);
+  if (!row) return false;
+  if (field === "included") row.included = Boolean(input.checked);
+  else if (field === "paid") row.paid = Math.max(0, financeNumber(input.value));
+  else if (field === "adjustment") row.adjustment = financeNumber(input.value);
+  else if (field === "notes") row.notes = String(input.value || "").trim();
+  upsertFinancialPlanInState(plan);
+  return true;
+}
+
+function recordFinanceTransactionForInput(input) {
+  const plan = financialPlanForSeason(financePlannerSeason);
+  if (input.dataset.financePlayerField === "paid") {
+    const previousPaid = financeNumber(input.dataset.financeOriginalPaid);
+    const nextPaid = financeNumber(input.value);
+    const amount = nextPaid - previousPaid;
+    if (amount <= 0.005) return false;
+    const row = plan.players.find((playerRow) => playerRow.playerId === input.dataset.financePlayerId);
+    if (!row) return false;
+    addFinanceTransaction(plan, {
+      type: "player-payment",
+      amount,
+      playerId: row.playerId,
+      playerName: `${row.number ? `#${row.number} ` : ""}${row.name}`,
+      label: row.name,
+      notes: row.notes || ""
+    });
+    return true;
+  }
+  if (input.dataset.financeExpenseField === "amount") {
+    return false;
+  }
+  return false;
+}
+
+function handleFinancePlannerInput(event) {
+  const input = event.target.closest("[data-finance-charge], [data-finance-custom-fee-field], [data-finance-expense-draft-field], [data-finance-notes], [data-finance-player-field]");
+  if (!input) return;
+  if (updateFinancePlanFromInput(input)) {
+    financePlannerNotice = input.matches("[data-finance-expense-draft-field]")
+      ? "Paid expense ready to log."
+      : "Unsaved finance changes on this device.";
+    renderFinancePlannerStatus();
+  }
+}
+
+function handleFinancePlannerFocusIn(event) {
+  const input = event.target.closest("[data-finance-clear-zero]");
+  if (!input || !els.financePlannerBody?.contains(input)) return;
+  if (financeInputIsZero(input.value)) input.value = "";
+}
+
+function handleFinancePlannerFocusOut(event) {
+  const input = event.target.closest("[data-finance-clear-zero]");
+  if (!input || !els.financePlannerBody?.contains(input)) return;
+  if (String(input.value || "").trim() === "") input.value = "0";
+}
+
+function handleFinancePlannerChange(event) {
+  const seasonSelect = event.target.closest("[data-finance-season]");
+  if (seasonSelect) {
+    financePlannerSeason = financeSeasonId(seasonSelect.value);
+    financePlannerNotice = "";
+    renderFinancePlanner();
+    return;
+  }
+  const input = event.target.closest("[data-finance-charge], [data-finance-custom-fee-field], [data-finance-expense-draft-field], [data-finance-notes], [data-finance-player-field]");
+  if (!input) return;
+  updateFinancePlanFromInput(input);
+  const transactionRecorded = recordFinanceTransactionForInput(input);
+  if (transactionRecorded) financePlannerNotice = "Transaction history updated.";
+  if (!input.matches("[data-finance-expense-draft-field]")) {
+    saveState({ markLiveGamesDirty: false, capturePendingScoring: false });
+  }
+  renderFinancePlanner();
+}
+
+function handleFinancePlannerClick(event) {
+  const tabButton = event.target.closest("[data-finance-tab]");
+  if (tabButton) {
+    financePlannerTab = tabButton.dataset.financeTab === "history" ? "history" : "planner";
+    renderFinancePlanner();
+    return;
+  }
+  const addFeeButton = event.target.closest("[data-finance-add-fee]");
+  if (addFeeButton) {
+    const plan = financialPlanForSeason(financePlannerSeason);
+    plan.customFees = [
+      ...(plan.customFees || []),
+      { id: createId("finance-fee"), label: "", amount: 0 }
+    ];
+    upsertFinancialPlanInState(plan);
+    financePlannerNotice = "Added a new fee line.";
+    saveState({ markLiveGamesDirty: false, capturePendingScoring: false });
+    renderFinancePlanner();
+    return;
+  }
+  const removeFeeButton = event.target.closest("[data-finance-remove-fee]");
+  if (removeFeeButton) {
+    const plan = financialPlanForSeason(financePlannerSeason);
+    plan.customFees = (plan.customFees || []).filter((fee) => fee.id !== removeFeeButton.dataset.financeRemoveFee);
+    upsertFinancialPlanInState(plan);
+    financePlannerNotice = "Removed fee line.";
+    saveState({ markLiveGamesDirty: false, capturePendingScoring: false });
+    renderFinancePlanner();
+    return;
+  }
+  const defaultExpenseButton = event.target.closest("[data-finance-use-default-expense]");
+  if (defaultExpenseButton) {
+    const plan = financialPlanForSeason(financePlannerSeason);
+    const draft = financeExpenseDraftForPlan(plan);
+    draft.amount = financeExpenseCategoryAmount(plan, draft.category);
+    financeExpenseDraft = draft;
+    financePlannerNotice = `${financeExpenseCategoryLabel(plan, draft.category)} default amount applied.`;
+    renderFinancePlanner();
+    return;
+  }
+  const logExpenseButton = event.target.closest("[data-finance-log-expense]");
+  if (logExpenseButton) {
+    const plan = financialPlanForSeason(financePlannerSeason);
+    const draft = financeExpenseDraftForPlan(plan);
+    const amount = financeNumber(draft.amount);
+    if (amount <= 0.005) {
+      financePlannerNotice = "Enter an expense amount before logging it.";
+      renderFinancePlanner();
+      return;
+    }
+    const label = financeExpenseCategoryLabel(plan, draft.category);
+    addFinanceTransaction(plan, {
+      type: "team-expense",
+      amount,
+      date: draft.date || todayValue(),
+      category: draft.category,
+      label,
+      notes: draft.notes || ""
+    });
+    resetFinanceExpenseDraft(plan);
+    financePlannerNotice = `${label} paid expense logged.`;
+    saveState({ markLiveGamesDirty: false, capturePendingScoring: false });
+    renderFinancePlanner();
+    return;
+  }
+  const applyRosterButton = event.target.closest("[data-finance-apply-roster]");
+  if (applyRosterButton) {
+    const plan = financialPlanForSeason(financePlannerSeason);
+    upsertFinancialPlanInState(normalizeFinancialPlan(plan, state.roster));
+    financePlannerNotice = "Roster synced into the finance planner.";
+    saveState({ markLiveGamesDirty: false, capturePendingScoring: false });
+    renderFinancePlanner();
+    return;
+  }
+  const paidButton = event.target.closest("[data-finance-mark-paid]");
+  if (!paidButton) return;
+  const playerId = paidButton.dataset.financeMarkPaid;
+  const plan = financialPlanForSeason(financePlannerSeason);
+  const summary = calculateFinancialPlanSummary(plan);
+  const row = plan.players.find((playerRow) => playerRow.playerId === playerId);
+  const calculated = summary.playerRows.find((playerRow) => playerRow.playerId === playerId);
+  if (!row || !calculated) return;
+  const previousPaid = financeNumber(row.paid);
+  row.paid = calculated.owed;
+  const amount = row.paid - previousPaid;
+  if (amount > 0.005) {
+    addFinanceTransaction(plan, {
+      type: "player-payment",
+      amount,
+      playerId: row.playerId,
+      playerName: `${row.number ? `#${row.number} ` : ""}${row.name}`,
+      label: row.name,
+      notes: "Marked paid in full"
+    });
+  }
+  upsertFinancialPlanInState(plan);
+  financePlannerNotice = `${row.name} marked paid in full.`;
+  saveState({ markLiveGamesDirty: false, capturePendingScoring: false });
+  renderFinancePlanner();
+}
+
+async function saveFinancialPlanOrAlert() {
+  if (!requireAdminAccess("Admin sign-in required to save the finance planner.")) return;
+  const plan = upsertFinancialPlanInState(financialPlanForSeason(financePlannerSeason));
+  saveState({ markLiveGamesDirty: false, capturePendingScoring: false });
+  if (!supabaseStorage?.isReady?.() || !supabaseStorage.upsertFinancialPlan) {
+    financePlannerNotice = "Saved locally on this device. Supabase is not ready for shared finance sync.";
+    renderFinancePlanner();
+    window.alert(financePlannerNotice);
+    return;
+  }
+  if (!supabaseAdminEmail) {
+    financePlannerNotice = "Saved locally on this device. Sign in with Supabase admin credentials to sync finance data across devices.";
+    renderFinancePlanner();
+    window.alert(financePlannerNotice);
+    return;
+  }
+  if (!requireSharedAdminSession("Sign in as an approved admin before syncing finance data.")) return;
+  if (els.financeSaveBtn) els.financeSaveBtn.disabled = true;
+  financePlannerNotice = "Saving finance planner...";
+  renderFinancePlannerStatus();
+  try {
+    const { data, error, missingTable } = await supabaseStorage.upsertFinancialPlan(plan);
+    if (error) {
+      const message = missingTable
+        ? "Supabase season_financial_plans table is not available. Run supabase-schema.sql and refresh the API schema cache."
+        : error.message || "Unable to save finance planner.";
+      financePlannerNotice = message;
+      renderFinancePlannerStatus();
+      window.alert(message);
+      return;
+    }
+    upsertFinancialPlanInState(data || plan);
+    financePlannerLoaded = true;
+    financePlannerNotice = "Finance planner saved to Supabase.";
+    saveState({ markLiveGamesDirty: false, capturePendingScoring: false });
+    renderFinancePlanner();
+  } catch (error) {
+    const message = error?.message || "Unable to save finance planner.";
+    financePlannerNotice = message;
+    renderFinancePlannerStatus();
+    window.alert(message);
+  } finally {
+    if (els.financeSaveBtn) els.financeSaveBtn.disabled = false;
+  }
 }
 
 function render() {
@@ -9021,11 +10103,9 @@ function render() {
   renderHighlightsManager();
   renderGameHighlightsModal();
   renderLineupBuilder();
+  if (currentView === "finance") renderFinancePlanner();
   renderScoutingReport();
   renderTraditionalScorebook();
-  renderLineupAnalyzer();
-  if (!optimizedIds.length) optimizedIds = buildOptimizedLineup();
-  renderOptimizedLineup();
   if (!scoreGame || gameIsScoreLocked(scoreGame) || !isAdminMode()) setScoreGameLocked(true, scoreGame);
   else setScoreGameLocked(false, scoreGame);
 }
@@ -13878,7 +14958,6 @@ async function togglePlayerActive(playerId, isActive) {
   if (game) game.batterIndex = Math.min(game.batterIndex, Math.max(state.lineup.length - 1, 0));
   markSharedAppStateDirty();
   saveState();
-  optimizedIds = buildOptimizedLineup();
   render();
   await syncSharedRosterChangeOrAlert("toggle-player-active");
 }
@@ -13888,7 +14967,7 @@ function statCell(label, value) {
 }
 
 function availableArchiveSeasons() {
-  const seasons = new Set([String(currentLeagueSeason())]);
+  const seasons = seededLeagueSeasonSet();
   state.games.filter(gameIsFinal).forEach((game) => {
     const season = String(game?.date || "").slice(0, 4);
     if (/^\d{4}$/.test(season)) seasons.add(season);
@@ -14373,7 +15452,7 @@ function renderPlayoffBracket() {
 }
 
 function bracketSeasonOptions() {
-  const seasons = new Set([String(currentLeagueSeason()), state.playoffBracket?.season || ""]);
+  const seasons = seededLeagueSeasonSet(state.playoffBracket?.season || "");
   state.games.forEach((game) => {
     const season = String(game?.date || "").slice(0, 4);
     if (/^\d{4}$/.test(season)) seasons.add(season);
@@ -15390,7 +16469,7 @@ function renderScheduleResultsList(games = []) {
 }
 
 function availableScheduleSeasons() {
-  const seasons = new Set([String(currentLeagueSeason())]);
+  const seasons = seededLeagueSeasonSet();
   state.games.forEach((game) => {
     const season = String(game?.date || "").slice(0, 4);
     if (/^\d{4}$/.test(season)) seasons.add(season);
@@ -15433,7 +16512,7 @@ function populateScheduleCalendarMonthSelect() {
 }
 
 function availableStatsSeasons() {
-  const seasons = new Set([String(currentLeagueSeason())]);
+  const seasons = seededLeagueSeasonSet();
   state.games
     .filter((game) => game?.status !== "scheduled")
     .forEach((game) => {
@@ -21821,97 +22900,6 @@ function saveLineupAnalyzerGame() {
   render();
   requestSharedSnapshotSync("lineup-analyzer");
   requestCompletedGameSyncRetry("lineup-analyzer");
-}
-
-function buildOptimizedLineup() {
-  const candidates = state.roster
-    .filter((player) => state.lineup.includes(player.id))
-    .map((player) => {
-      const stats = statsForPlayer(player.id);
-      return {
-        player,
-        stats,
-        overall: playerValue(player),
-        obp: safeRate(stats.obp) * 100 + player.grades.contact * 0.35,
-        power: safeRate(stats.slg) * 75 + player.grades.power,
-        speed: player.grades.speed + stats.sb * 4 - stats.cs * 5,
-        contact: (1 - safeRate(stats.kRate)) * 60 + contactQuality(stats) * 45 + player.grades.contact * 0.45
-      };
-    });
-
-  const selected = [];
-  const takeBest = (scorer) => {
-    const remaining = candidates.filter((item) => !selected.includes(item.player.id));
-    if (!remaining.length) return;
-    remaining.sort((a, b) => scorer(b) - scorer(a));
-    selected.push(remaining[0].player.id);
-  };
-
-  takeBest((item) => item.obp * 1.3 + item.speed + item.contact);
-  takeBest((item) => item.obp * 1.2 + item.contact * 1.1);
-  takeBest((item) => item.overall + item.contact + item.power * 0.5);
-  takeBest((item) => item.power * 1.35 + item.overall);
-  takeBest((item) => item.overall + item.power);
-
-  candidates
-    .filter((item) => !selected.includes(item.player.id))
-    .sort((a, b) => b.overall - a.overall)
-    .forEach((item) => selected.push(item.player.id));
-
-  if (selected.length >= 9) {
-    const lastThree = selected.slice(6).sort((a, b) => {
-      const playerA = state.roster.find((player) => player.id === a);
-      const playerB = state.roster.find((player) => player.id === b);
-      return playerValue(playerB) + playerB.grades.speed * 0.25 - (playerValue(playerA) + playerA.grades.speed * 0.25);
-    });
-    return [...selected.slice(0, 6), ...lastThree];
-  }
-  return selected;
-}
-
-function renderOptimizedLineup() {
-  if (!optimizedIds.length) optimizedIds = buildOptimizedLineup();
-  const defensiveMap = assignDefense(optimizedIds);
-  els.optimizerMode.textContent = "Stat-informed order";
-  els.optimizedLineup.innerHTML = optimizedIds
-    .map((id) => {
-      const player = state.roster.find((item) => item.id === id);
-      if (!player) return "";
-      const stats = statsForPlayer(id);
-      const role = battingRole(optimizedIds.indexOf(id));
-      return `<li>
-        <strong>${escapeHtml(player.name)}</strong>
-        <div class="player-meta">${role} | ${escapeHtml(defensiveMap[id] || "UTIL")} | OBP ${formatRate(stats.obp)} | SLG ${formatRate(stats.slg)} | Value ${Math.round(playerValue(player))}</div>
-      </li>`;
-    })
-    .join("");
-}
-
-function battingRole(index) {
-  const roles = ["Table setter", "Contact bridge", "Best all-around bat", "Run producer", "Damage support", "Pressure bat", "Defensive balance", "Second leadoff", "Turnover speed"];
-  return roles[index] || "Depth matchup";
-}
-
-function assignDefense(ids) {
-  const positions = ["C", "P", "SS", "CF", "2B", "3B", "1B", "LF", "RF"];
-  const assignment = {};
-  const used = new Set();
-  positions.forEach((position) => {
-    const best = ids
-      .map((id) => state.roster.find((player) => player.id === id))
-      .filter(Boolean)
-      .filter((player) => !used.has(player.id))
-      .filter((player) => playerHasPosition(player, position))
-      .sort((a, b) => b.grades.defense - a.grades.defense)[0];
-    if (best) {
-      assignment[best.id] = position;
-      used.add(best.id);
-    }
-  });
-  ids.forEach((id) => {
-    if (!assignment[id]) assignment[id] = "UTIL";
-  });
-  return assignment;
 }
 
 function playerValue(player) {
