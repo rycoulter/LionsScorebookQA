@@ -26,6 +26,8 @@ const snapshotBody = functionBody(appJs, "renderHomeOffseasonSnapshot");
 const experienceBody = functionBody(appJs, "renderHomeOffseasonExperience");
 const heroBody = functionBody(appJs, "renderHomeOffseasonHero");
 
+mustMatch(appJs, /openingDay:\s*"2027-04-25"/, "Offseason countdown should target April 25, 2027");
+mustNotMatch(heroBody, /home-offseason-countdown-list/, "Offseason countdown should not render the three target list items");
 mustMatch(heroBody, /Game Archive[\s\S]*archive", "primary"[\s\S]*Playoff Bracket[\s\S]*bracket", "primary"[\s\S]*View Stats[\s\S]*stats", "primary"/, "Offseason hero CTAs should use matching gold primary buttons");
 mustMatch(snapshotBody, /Season at a Glance/, "Offseason home should render a Season at a Glance card");
 mustMatch(snapshotBody, /label:\s*"Wins"[\s\S]*label:\s*"Losses"[\s\S]*label:\s*"Win %"[\s\S]*label:\s*"Runs"/, "Season glance should include core record and run metrics");

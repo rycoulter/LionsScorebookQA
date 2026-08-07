@@ -528,8 +528,8 @@
       tournamentType: "custom-bracket",
       format: "double-elimination",
       templateId: "pittsburgh-naba-aa",
-      status: normalizeText(options.status || "draft"),
-      isPublic: Boolean(options.isPublic),
+      status: normalizeText(options.status || "published"),
+      isPublic: options.isPublic === undefined ? true : Boolean(options.isPublic),
       championshipFormat: normalizeText(options.championshipFormat || "Best of 3"),
       entries
     };
@@ -592,7 +592,8 @@
       tournamentType: "single-elimination",
       format: "single-elimination",
       templateId: `single-${teamCount}`,
-      status: normalizeText(options.status || "draft"),
+      status: normalizeText(options.status || "published"),
+      isPublic: options.isPublic === undefined ? true : Boolean(options.isPublic),
       entries,
       matchups
     });

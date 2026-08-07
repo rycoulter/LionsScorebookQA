@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.169";
+const APP_VERSION = "v.1.1.170";
 const PLANNED_LEAGUE_SEASONS = ["2027"];
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const HOME_OFFSEASON_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
@@ -633,7 +633,7 @@ const HOME_OFFSEASON_TEAM_IMAGE = "assets/backgrounds/lions-2026-team-photo.jpg"
 const HOME_SEASON_CONFIG = {
   status: "offseason",
   nextSeason: "2027",
-  openingDay: "2027-04-10",
+  openingDay: "2027-04-25",
   registrationLabel: "Registration Open",
   scheduleLabel: "Schedule Coming Soon",
   workoutsLabel: "Offseason Workouts"
@@ -888,6 +888,7 @@ let lastSupabaseRefreshAt = 0;
 let lastSharedBaselineAt = 0;
 let sharedWriteBaselineReady = false;
 let sharedAppStateDirtyInSession = false;
+let sharedPlayoffBracketDirtyInSession = false;
 let scoringStepHoldTimer = null;
 let scoringStepHoldButton = null;
 let scoringStepHoldConsumedButton = null;
@@ -3041,8 +3042,8 @@ function seedPlayoffBracket(season = String(currentLeagueSeason())) {
     division: "AA",
     tournamentType: "double-elimination",
     format: "double-elimination",
-    status: "draft",
-    isPublic: false,
+    status: "published",
+    isPublic: true,
     championshipFormat: "Best of 3",
     entries: bracketEngine?.seedEntries?.(7) || [],
     matchups: [],
@@ -3876,6 +3877,27 @@ function hasMeaningfulSupabaseSnapshot(snapshot) {
   return false;
 }
 
+function hasMeaningfulPlayoffBracket(bracket = null) {
+  if (!bracket || typeof bracket !== "object") return false;
+  const directMatchups = Array.isArray(bracket.matchups) ? bracket.matchups : [];
+  const roundMatchups = Array.isArray(bracket.rounds)
+    ? bracket.rounds.flatMap((round) => Array.isArray(round?.matchups) ? round.matchups : [])
+    : [];
+  return [...directMatchups, ...roundMatchups].some((matchup) => {
+    if (!matchup || typeof matchup !== "object") return false;
+    return Boolean(
+      matchup.matchupCode
+      || matchup.label
+      || matchup.teamA
+      || matchup.teamB
+      || matchup.linkedGameId
+      || matchup.isBye
+      || matchup.slotA
+      || matchup.slotB
+    );
+  });
+}
+
 function sharedRosterMissing(snapshot) {
   if (!snapshot?.appState || typeof snapshot.appState !== "object") return true;
   const rosterRowsMissing = !Array.isArray(snapshot.rosterPlayers) || !snapshot.rosterPlayers.length;
@@ -3887,6 +3909,11 @@ function sharedRosterMissing(snapshot) {
 
 function markSharedAppStateDirty() {
   sharedAppStateDirtyInSession = true;
+}
+
+function markSharedPlayoffBracketDirty() {
+  sharedPlayoffBracketDirtyInSession = true;
+  markSharedAppStateDirty();
 }
 
 function markSharedGamesDirty(gameIds = []) {
@@ -3939,7 +3966,10 @@ function clearSharedSessionPending(options = {}) {
     syncedGameIds = [],
     deletedGameIds = []
   } = options;
-  if (clearAppState) sharedAppStateDirtyInSession = false;
+  if (clearAppState) {
+    sharedAppStateDirtyInSession = false;
+    sharedPlayoffBracketDirtyInSession = false;
+  }
   (Array.isArray(syncedGameIds) ? syncedGameIds : [syncedGameIds]).filter(Boolean).forEach((gameId) => {
     pendingSharedGameIds.delete(gameId);
   });
@@ -3956,8 +3986,10 @@ function overlaySessionSharedChanges(baseState, localState = state) {
     nextState.roster = deepClone(currentLocalState.roster || []);
     nextState.lineup = deepClone(currentLocalState.lineup || []);
     nextState.rosterVersion = currentLocalState.rosterVersion ?? nextState.rosterVersion;
-    nextState.playoffBracket = deepClone(currentLocalState.playoffBracket || null);
     nextState.seasonStorylines = deepClone(currentLocalState.seasonStorylines || []);
+  }
+  if (sharedPlayoffBracketDirtyInSession && hasMeaningfulPlayoffBracket(currentLocalState.playoffBracket)) {
+    nextState.playoffBracket = deepClone(currentLocalState.playoffBracket);
   }
 
   if (!pendingSharedGameIds.size && !pendingDeletedSharedGameIds.size) {
@@ -4328,7 +4360,9 @@ function buildSharedSnapshot(sourceState = state) {
     activeGameId: activeSharedGame?.id || "",
     games: sharedGames,
     seasonStorylines: normalizeSeasonStorylines(sourceState?.seasonStorylines || []),
-    playoffBracket: deepClone(sourceState?.playoffBracket || null)
+    playoffBracket: hasMeaningfulPlayoffBracket(sourceState?.playoffBracket)
+      ? deepClone(sourceState.playoffBracket)
+      : null
   };
 }
 
@@ -10603,11 +10637,6 @@ function renderHomeOffseasonHero(season = String(currentLeagueSeason()), record 
       <strong>${escapeHtml(countdownLabel)}</strong>
       <span>Days</span>
       <small>${escapeHtml(HOME_SEASON_CONFIG.openingDay ? formatGameDateWithYear(HOME_SEASON_CONFIG.openingDay) : "Date coming soon")}</small>
-      <div class="home-offseason-countdown-list">
-        <span>${escapeHtml(HOME_SEASON_CONFIG.registrationLabel || "Registration Open")}</span>
-        <span>${escapeHtml(HOME_SEASON_CONFIG.scheduleLabel || "Schedule Coming Soon")}</span>
-        <span>${escapeHtml(HOME_SEASON_CONFIG.workoutsLabel || "Offseason Workouts")}</span>
-      </div>
     </aside>
   </section>`;
 }
@@ -17257,11 +17286,14 @@ function seedDoubleElimBracketDraftTemplate() {
   const draft = ensurePlayoffBracketDraft();
   const season = draft.season || String(currentLeagueSeason());
   const templateId = draft.templateId || "pittsburgh-naba-aa";
+  const startsFromPlaceholder = !hasMeaningfulPlayoffBracket(draft);
   const template = bracketEngine?.createTemplate
     ? bracketEngine.createTemplate(templateId, {
       ...draft,
       season,
       title: draft.title || `${season} AA Championship Series`,
+      status: startsFromPlaceholder ? "published" : draft.status,
+      isPublic: startsFromPlaceholder ? true : draft.isPublic,
       entries: ensurePlayoffBracketDraftEntries(draft)
     })
     : draft;
@@ -17273,6 +17305,7 @@ function seedDoubleElimBracketDraftTemplate() {
 function seedPlayoffBracketDraftFromGames() {
   if (!requireAdminAccess("Admin sign-in required to edit the playoff bracket.")) return;
   const draft = ensurePlayoffBracketDraft();
+  const startsFromPlaceholder = !hasMeaningfulPlayoffBracket(draft);
   const standingsTeams = leagueStandingsRows
     .filter((row) => row.teamName)
     .sort((left, right) => Number(left.rank || 999) - Number(right.rank || 999))
@@ -17287,6 +17320,10 @@ function seedPlayoffBracketDraftFromGames() {
     teamName: teams[index] || entry.teamName || `#${index + 1} Seed`,
     teamId: teams[index] ? teams[index].toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") : entry.teamId
   }));
+  if (startsFromPlaceholder) {
+    draft.status = "published";
+    draft.isPublic = true;
+  }
   if (bracketEngine?.resolveTournament) playoffBracketDraft = bracketEngine.resolveTournament(draft);
   markPlayoffBracketDraftDirty();
   renderPlayoffBracketEditor();
@@ -17551,7 +17588,7 @@ function savePlayoffBracket() {
   playoffBracketDraft = deepClone(normalized);
   playoffBracketPreviewDraft = null;
   playoffBracketNotice = "Bracket saved.";
-  markSharedAppStateDirty();
+  markSharedPlayoffBracketDirty();
   saveStateWithOptions({ markLiveGamesDirty: false, capturePendingScoring: false });
   render();
   syncSharedPlayoffBracketChangeOrAlert("playoff-bracket").catch((error) => {

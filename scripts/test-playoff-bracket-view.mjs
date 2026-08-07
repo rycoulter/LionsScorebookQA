@@ -56,11 +56,15 @@ mustMatch(appJs, /PUBLIC_READ_VIEWS = new Set\([\s\S]*"bracket"/, "Bracket view 
 mustMatch(appJs, /VIEW_ROUTES = \{[\s\S]*bracket:\s*"\/bracket"/, "Bracket should have a canonical route");
 mustMatch(appJs, /ROUTE_VIEW_ALIASES = \{[\s\S]*"\/playoff-bracket":\s*"bracket"/, "Bracket route aliases should be available");
 mustMatch(appJs, /format:\s*"double-elimination"/, "Bracket state should be marked double-elimination");
+mustMatch(functionBody(appJs, "seedPlayoffBracket"), /status:\s*"published"[\s\S]*isPublic:\s*true/, "New playoff brackets should default to public/published");
+mustMatch(bracketEngineJs, /status:\s*normalizeText\(options\.status \|\| "published"\)[\s\S]*isPublic:\s*options\.isPublic === undefined \? true : Boolean\(options\.isPublic\)/, "Bracket templates should default to public/published unless the editor changes them");
 mustMatch(functionBody(appJs, "normalizeBracketStatus"), /"bye"/, "Bracket status should support byes");
 mustMatch(functionBody(appJs, "normalizeBracketSideKey"), /losers[\s\S]*championship[\s\S]*bye/, "Bracket side normalization should support losers, championship, and bye regions");
 mustMatch(functionBody(appJs, "normalizeBracketMatchup"), /bracketSection[\s\S]*roundNumber[\s\S]*displayOrder[\s\S]*winnerSide/, "Bracket matchup normalization should preserve engine routing fields");
+mustMatch(functionBody(appJs, "hasMeaningfulPlayoffBracket"), /directMatchups[\s\S]*roundMatchups[\s\S]*matchupCode[\s\S]*slotA[\s\S]*slotB/, "Meaningful bracket detection should distinguish saved matchups from the empty seed placeholder");
 mustMatch(functionBody(appJs, "normalizePlayoffBracket"), /sourceMatchups[\s\S]*normalizeBracketMatchup[\s\S]*bracketEngine\.resolveTournament/, "Saved bracket display should resolve from canonical matchups");
-mustMatch(functionBody(appJs, "seedDoubleElimBracketDraftTemplate"), /bracketEngine\.createTemplate/, "Template action should load through the bracket engine");
+mustMatch(functionBody(appJs, "seedDoubleElimBracketDraftTemplate"), /startsFromPlaceholder[\s\S]*bracketEngine\.createTemplate[\s\S]*status:\s*startsFromPlaceholder \? "published" : draft\.status[\s\S]*isPublic:\s*startsFromPlaceholder \? true : draft\.isPublic/, "Template action should publish when replacing an empty placeholder bracket");
+mustMatch(functionBody(appJs, "seedPlayoffBracketDraftFromGames"), /startsFromPlaceholder[\s\S]*draft\.status = "published"[\s\S]*draft\.isPublic = true/, "Seed-from-games should publish when replacing an empty placeholder bracket");
 mustMatch(functionBody(appJs, "playoffBracketRegions"), /"bye", "winners", "losers", "championship"/, "Public renderer should group bracket regions");
 mustMatch(functionBody(appJs, "bracketPlaceholderTeam"), /Winner|Loser|seed|tbd/i, "Future bracket slots should be detected as placeholders");
 mustMatch(functionBody(appJs, "renderBracketTeamRow"), /bracketPlaceholderTeam\(team\)[\s\S]*bracketTrophyIconMarkup/, "Future bracket slots should use trophy icons instead of team logos");
@@ -103,14 +107,17 @@ mustMatch(functionBody(appJs, "renderPlayoffBracketEditor"), /const showEditor =
 mustMatch(functionBody(appJs, "renderGuidedPlayoffBracketEditor"), /Step 1[\s\S]*Tournament Details[\s\S]*Step 2[\s\S]*Teams and Seeding[\s\S]*Step 5[\s\S]*Review and Publish/, "Editor should render a guided tournament workflow");
 mustMatch(functionBody(appJs, "renderPlayoffBracketSeedRows"), /data-bracket-entry-action="up"[\s\S]*data-bracket-entry-action="down"/, "Seeds should support accessible up/down ordering");
 mustMatch(functionBody(appJs, "renderBracketEditorMatchup"), /Winner to[\s\S]*Loser to[\s\S]*data-bracket-matchup-key="winner"/, "Matchup editor should expose readable routes and winner selection");
-mustMatch(functionBody(appJs, "buildSharedSnapshot"), /playoffBracket:\s*deepClone\(sourceState\?\.playoffBracket/, "Shared snapshot should include the playoff bracket");
+mustMatch(functionBody(appJs, "overlaySessionSharedChanges"), /sharedPlayoffBracketDirtyInSession[\s\S]*hasMeaningfulPlayoffBracket\(currentLocalState\.playoffBracket\)[\s\S]*nextState\.playoffBracket = deepClone\(currentLocalState\.playoffBracket\)/, "Only explicit bracket saves should overlay bracket data during shared sync");
+mustMatch(functionBody(appJs, "buildSharedSnapshot"), /playoffBracket:\s*hasMeaningfulPlayoffBracket\(sourceState\?\.playoffBracket\)[\s\S]*deepClone\(sourceState\.playoffBracket\)[\s\S]*: null/, "Shared snapshots should not publish the empty seeded bracket placeholder");
 mustMatch(functionBody(appJs, "syncSharedSnapshot"), /upsertPlayoffBracket[\s\S]*snapshot\.playoffBracket/, "Shared sync should write playoff bracket rows to Supabase tournament tables");
-mustMatch(functionBody(appJs, "savePlayoffBracket"), /syncSharedPlayoffBracketChangeOrAlert\("playoff-bracket"\)/, "Saving the bracket should request tournament-table sync with visible failure handling");
+mustMatch(functionBody(appJs, "savePlayoffBracket"), /markSharedPlayoffBracketDirty\(\)[\s\S]*syncSharedPlayoffBracketChangeOrAlert\("playoff-bracket"\)/, "Saving the bracket should mark a bracket-specific dirty flag and request tournament-table sync with visible failure handling");
 
-mustMatch(supabaseStorageJs, /playoff_bracket: deepClone\(state\?\.playoffBracket/, "Shared app state should write playoff bracket metadata");
+mustMatch(supabaseStorageJs, /function hasMeaningfulPlayoffBracket\(bracket = null\)[\s\S]*directMatchups[\s\S]*roundMatchups/, "Supabase storage should guard against empty placeholder brackets");
+mustMatch(supabaseStorageJs, /playoff_bracket: hasMeaningfulPlayoffBracket\(state\?\.playoffBracket\)[\s\S]*deepClone\(state\.playoffBracket\)[\s\S]*: null/, "Shared app state should only write meaningful playoff bracket metadata");
 mustMatch(supabaseStorageJs, /remoteMetadata\.playoff_bracket[\s\S]*nextState\.playoffBracket/, "Shared app state should read playoff bracket metadata");
 mustMatch(supabaseStorageJs, /function fetchPlayoffBrackets\(\)[\s\S]*from\("tournaments"\)[\s\S]*from\("tournament_entries"\)[\s\S]*from\("tournament_matchups"\)/, "Supabase bootstrap should read playoff bracket tournament tables");
 mustMatch(supabaseStorageJs, /function upsertPlayoffBracket\(bracket\)[\s\S]*from\("tournaments"\)[\s\S]*from\("tournament_entries"\)[\s\S]*from\("tournament_matchups"\)/, "Supabase sync should write playoff bracket tournament tables");
+mustMatch(functionBody(supabaseStorageJs, "pushSnapshot"), /hasMeaningfulPlayoffBracket\(state\?\.playoffBracket\)[\s\S]*upsertPlayoffBracket\(state\.playoffBracket\)/, "Low-level snapshot pushes should not wipe tournament rows with an empty placeholder bracket");
 mustMatch(supabaseStorageJs, /mergeRemoteSnapshot\(baseState, appStateRow, gamesRows, rosterRows = \[\], highlightRows = \[\], newsRows = undefined, playoffBrackets = undefined\)/, "Remote snapshot merge should accept playoff bracket rows from tournament tables");
 mustMatch(notFoundHtml, /bracket:\s*true/, "Deep-link fallback should allow /bracket");
 

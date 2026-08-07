@@ -207,6 +207,32 @@
     return Boolean(row?.is_final || isFinalGameStatus(row?.status) || isFinalGameData(row?.game_data));
   }
 
+  function hasMeaningfulPlayoffBracket(bracket = null) {
+    if (!bracket || typeof bracket !== "object") return false;
+    const directMatchups = Array.isArray(bracket.matchups) ? bracket.matchups : [];
+    const roundMatchups = Array.isArray(bracket.rounds)
+      ? bracket.rounds.flatMap((round) => Array.isArray(round?.matchups) ? round.matchups : [])
+      : [];
+    return [...directMatchups, ...roundMatchups].some((matchup) => {
+      if (!matchup || typeof matchup !== "object") return false;
+      return Boolean(
+        matchup.matchupCode
+        || matchup.matchup_code
+        || matchup.label
+        || matchup.teamA
+        || matchup.team_a
+        || matchup.teamB
+        || matchup.team_b
+        || matchup.linkedGameId
+        || matchup.linked_game_id
+        || matchup.isBye
+        || matchup.is_bye
+        || matchup.slotA
+        || matchup.slotB
+      );
+    });
+  }
+
   function buildAppStateRow(state) {
     const deletedGameTombstones = deepClone(state?.deletedGameTombstones || {});
     const currentGameIds = Array.isArray(state?.games)
@@ -224,7 +250,9 @@
         current_game_ids: currentGameIds,
         deleted_game_tombstones: deletedGameTombstones,
         season_storylines: deepClone(state?.seasonStorylines || []),
-        playoff_bracket: deepClone(state?.playoffBracket || null)
+        playoff_bracket: hasMeaningfulPlayoffBracket(state?.playoffBracket)
+          ? deepClone(state.playoffBracket)
+          : null
       }
     };
   }
@@ -1156,7 +1184,7 @@
       upsertGames(state?.games || [])
     ]);
     const baseWriteError = appStateResponse.error || rosterPlayersResponse.error || gamesResponse.error || null;
-    const playoffBracketResponse = !baseWriteError && state?.playoffBracket
+    const playoffBracketResponse = !baseWriteError && hasMeaningfulPlayoffBracket(state?.playoffBracket)
       ? await upsertPlayoffBracket(state.playoffBracket)
       : { data: null, error: null };
     return {

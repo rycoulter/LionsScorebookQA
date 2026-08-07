@@ -2347,25 +2347,6 @@ main {
   font-weight: 800;
 }
 
-.home-offseason-countdown-list {
-  display: grid;
-  gap: 8px;
-  width: 100%;
-  margin-top: 12px;
-}
-
-.home-offseason-countdown-list span {
-  min-height: 34px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 8px;
-  padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 0.82rem;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
 .home-offseason-snapshot,
 .home-offseason-card {
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -3790,10 +3771,6 @@ main {
   .home-offseason-countdown-card {
     min-height: 0;
     padding: 18px;
-  }
-
-  .home-offseason-countdown-list {
-    grid-template-columns: 1fr;
   }
 
   .home-offseason-playoff-summary,
