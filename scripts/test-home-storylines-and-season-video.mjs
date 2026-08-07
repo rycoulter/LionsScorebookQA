@@ -27,11 +27,15 @@ function functionBody(source, functionName) {
 
 mustMatch(indexHtml, /id="seasonStorylineManager"[\s\S]*id="seasonStorylineForm"[\s\S]*id="seasonStorylineList"/, "News Editor should include an admin season storyline manager");
 mustMatch(indexHtml, /id="seasonStorylineImageUploadInput" type="file" accept="image\/\*"[\s\S]*id="seasonStorylineImagePreview"/, "Season storyline manager should use an image upload field with preview");
+mustMatch(indexHtml, /id="seasonStorylineCopyAutomaticBtn"[\s\S]*id="seasonStorylineToggleAutomaticBtn"/, "Season storyline manager should expose automatic customize/hide controls");
 mustMatch(indexHtml, /id="highlightSeasonVideoInput"[\s\S]*Season Highlight Video/, "Highlight manager should include a season highlight video checkbox");
 
 mustMatch(functionBody(appJs, "normalizeState"), /seasonStorylines = normalizeSeasonStorylines/, "App state should normalize season storylines");
+mustMatch(functionBody(appJs, "normalizeState"), /seasonStorylineSettings = normalizeSeasonStorylineSettings/, "App state should normalize season storyline settings");
 mustMatch(functionBody(appJs, "homeOffseasonMomentCards"), /state\.seasonStorylines[\s\S]*customStorylines\.length[\s\S]*customStorylines\.map/, "Home storylines should prefer admin-managed storylines");
+mustMatch(functionBody(appJs, "homeOffseasonMomentCards"), /seasonStorylinesUseAutomatic\(\)[\s\S]*automaticHomeOffseasonMomentCards/, "Home storylines should allow admins to hide automatic fallback storylines");
 mustMatch(functionBody(appJs, "renderHomeOffseasonBestMoments"), /<h2>Season Storylines<\/h2>/, "Home storylines should keep the Season Storylines title");
+mustMatch(functionBody(appJs, "renderHomeOffseasonBestMoments"), /if \(!moments\.length\) return ""/, "Home storylines section should disappear when automatic storylines are hidden and no custom cards exist");
 mustNotMatch(functionBody(appJs, "renderHomeOffseasonBestMoments"), /Best Moments/, "Home storylines should not show a Best Moments label above the title");
 mustMatch(functionBody(appJs, "renderHomeOffseasonFeaturedVideo"), /selectedSeasonHighlightVideo\(highlightSourceData\(\)\)/, "Home video should use the season highlight selector");
 mustMatch(functionBody(appJs, "renderHomeOffseasonFeaturedVideo"), /home-offseason-video-heading[\s\S]*Season Highlights[\s\S]*home-offseason-video-media/, "Season Highlights heading should appear above the video media");
@@ -41,15 +45,22 @@ mustMatch(functionBody(appJs, "saveHighlightRecord"), /seasonFeatured: Boolean\(
 mustMatch(functionBody(appJs, "handleSeasonStorylineImageUpload"), /resizeNewsImageFile\(file\)[\s\S]*renderSeasonStorylineImagePreview/, "Season storyline upload should resize and preview selected images");
 mustMatch(functionBody(appJs, "prepareSeasonStorylineImageValue"), /prepareNewsArticleImageFields\(`storyline-\$\{storylineId\}`/, "Season storyline images should upload through the shared image asset helper");
 mustMatch(functionBody(appJs, "saveSeasonStoryline"), /prepareSeasonStorylineImageValue[\s\S]*image: storylineImage/, "Saving a season storyline should persist the uploaded image URL");
+mustMatch(functionBody(appJs, "copyAutomaticSeasonStorylines"), /automaticHomeOffseasonMomentCards[\s\S]*season-storyline-copy-automatic/, "Admins should be able to copy automatic homepage storylines into editable custom records");
+mustMatch(functionBody(appJs, "toggleAutomaticSeasonStorylines"), /seasonStorylineSettings[\s\S]*season-storyline-hide-automatic/, "Admins should be able to hide automatic homepage storylines");
+mustMatch(functionBody(appJs, "deleteSeasonStoryline"), /automaticEnabled: false/, "Deleting the last custom storyline should keep automatic storylines hidden");
 mustMatch(functionBody(appJs, "persistSeasonStorylines"), /markSharedAppStateDirty\(\)[\s\S]*syncSharedSnapshot/, "Season storylines should sync through the shared app-state snapshot");
 
 mustMatch(functionBody(storageJs, "buildAppStateRow"), /season_storylines: deepClone\(state\?\.seasonStorylines \|\| \[\]\)/, "Supabase app_state metadata should store season storylines");
+mustMatch(functionBody(storageJs, "buildAppStateRow"), /season_storyline_settings: deepClone\(state\?\.seasonStorylineSettings/, "Supabase app_state metadata should store season storyline settings");
 mustMatch(functionBody(storageJs, "mergeRemoteSnapshot"), /seasonStorylines = Array\.isArray\(remoteMetadata\.season_storylines\)/, "Supabase merge should hydrate season storylines");
+mustMatch(functionBody(storageJs, "mergeRemoteSnapshot"), /seasonStorylineSettings = remoteMetadata\.season_storyline_settings/, "Supabase merge should hydrate season storyline settings");
 mustMatch(functionBody(storageJs, "buildHighlightRow"), /season_featured: Boolean/, "Supabase highlight rows should include the season_featured flag");
 mustMatch(storageJs, /clearSeasonFeaturedHighlights/, "Supabase storage should expose a helper to clear previous season video flags");
 mustMatch(schemaSql, /season_featured boolean not null default false/, "Supabase schema should add the season_featured column");
 
 mustMatch(stylesCss, /\.season-storyline-manager\s*\{[\s\S]*grid-column: 1 \/ -1/, "Storyline manager should span the News Editor layout");
+mustMatch(stylesCss, /\.season-storyline-toolbar\s*\{[\s\S]*flex-wrap: wrap/, "Storyline automatic controls should wrap cleanly");
+mustMatch(stylesCss, /\.season-storyline-auto-preview\s*\{[\s\S]*display: grid/, "Automatic storyline preview should be grouped cleanly");
 mustMatch(stylesCss, /\.season-storyline-image-preview\s*\{[\s\S]*min-height: 96px/, "Storyline image preview should be compact inside the admin form");
 mustMatch(stylesCss, /\.highlight-season-video-option\s*\{[\s\S]*border: 1px solid rgba\(245, 189, 33, 0\.24\)/, "Season video checkbox should match the Lions admin theme");
 mustMatch(stylesCss, /\.home-offseason-video-heading\s*\{[\s\S]*padding: 16px 18px 12px/, "Season video heading should be styled above the media area");

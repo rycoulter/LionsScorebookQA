@@ -44,6 +44,7 @@ mustMatch(bracketEngineJs, /ScorebookBracketEngine/, "Dedicated bracket engine s
 mustMatch(bracketEngineJs, /function createPittsburghNabaAaTemplate/, "Engine should include a Pittsburgh NABA AA preset");
 mustMatch(bracketEngineJs, /function resolveTournament/, "Engine should resolve bracket participants");
 mustMatch(bracketEngineJs, /function applyMatchupResult/, "Engine should apply matchup results");
+mustMatch(bracketEngineJs, /function summarizeChampionshipSeries/, "Engine should summarize best-of-three championship winners");
 mustMatch(bracketEngineJs, /winnerSource\("AA-1"\)|winnerSource\('AA-1'\)/, "Preset should route winners by matchup code");
 mustMatch(bracketEngineJs, /loserSource\("AA-1"\)|loserSource\('AA-1'\)/, "Preset should route losers by matchup code");
 mustMatch(bracketEngineJs, /matchupCode:\s*"AA-10"[\s\S]*slotA:\s*winnerSource\("AA-4"\)[\s\S]*slotB:\s*winnerSource\("AA-7"\)/, "Left semifinal should be AA-4 winner vs AA-7 survivor");
@@ -73,7 +74,7 @@ mustMatch(functionBody(appJs, "renderBracketRound"), /data-bracket-round-index[\
 mustMatch(functionBody(appJs, "renderBracketRegion"), /--round-count[\s\S]*playoff-bracket-region-canvas[\s\S]*playoff-bracket-connector-layer[\s\S]*playoff-bracket-columns/, "Bracket regions should render a measured canvas, connector layer, and round grid");
 mustMatch(functionBody(appJs, "playoffBracketUsesTwoWingLayout"), /pittsburgh-naba-aa[\s\S]*AA-9[\s\S]*AA-10[\s\S]*AAPNC-1/, "NABA AA brackets should use the two-wing public layout");
 mustMatch(functionBody(appJs, "renderBracketWingCanvas"), /wing === "right" \? "rtl" : "ltr"[\s\S]*playoff-bracket-wing-canvas[\s\S]*data-bracket-flow/, "Two-wing bracket sides should expose directional connector flow");
-mustMatch(functionBody(appJs, "renderBracketCenterStage"), /AAPNC-1[\s\S]*AAPNC-2[\s\S]*AAPNC-3/, "Two-wing bracket center should render championship series cards");
+mustMatch(functionBody(appJs, "renderBracketCenterStage"), /playoffBracketChampionshipResult[\s\S]*AA Champions[\s\S]*championName[\s\S]*renderBracketMatchup\(matchup, \{ championshipResult \}\)/, "Two-wing bracket center should render championship series cards and champion badge");
 mustMatch(functionBody(appJs, "renderTwoWingPlayoffBracketBoard"), /Left Bracket[\s\S]*renderBracketCenterStage[\s\S]*Right Bracket/, "NABA AA bracket board should render left, center, and right sections");
 mustMatch(functionBody(appJs, "renderPlayoffBracketBoard"), /playoff-bracket-board playoff-bracket-board-double/, "Bracket board markup should be reusable by Past Games and the bracket page");
 mustMatch(functionBody(appJs, "positionPlayoffBracketAtChampionship"), /playoff-bracket-center-stage[\s\S]*centerPoint[\s\S]*grid\.scrollLeft/, "Two-wing bracket views should initially center on the championship stage");
@@ -95,7 +96,10 @@ mustMatch(functionBody(appJs, "renderHomeOffseasonPlayoffCenter"), /home-offseas
 mustNotMatch(functionBody(appJs, "renderHomeOffseasonPlayoffCenter"), /renderPlayoffBracketBoard/, "Home offseason playoff center should not use the full bracket board");
 mustMatch(functionBody(appJs, "renderHomeOffseasonCompactBracket"), /home-compact-bracket[\s\S]*View Full Bracket[\s\S]*home-compact-bracket-scroll[\s\S]*is-two-wing/, "Home compact bracket should render a scrollable two-wing card with a full-bracket action");
 mustMatch(functionBody(appJs, "homeOffseasonCompactTwoWingLayout"), /"BYE-1", "AA-1", "AA-6"[\s\S]*"AA-4", "AA-7"[\s\S]*"AA-10"[\s\S]*"AA-9"[\s\S]*"AA-5", "AA-8"[\s\S]*"AA-3", "AA-2"[\s\S]*"AAPNC-1", "AAPNC-2", "AAPNC-3"/, "Home compact bracket should preserve the two-sided NABA bracket flow");
-mustMatch(functionBody(appJs, "renderHomeOffseasonCompactChampionship"), /data-home-compact-bracket-center[\s\S]*Championship[\s\S]*slice\(0, 1\)/, "Home compact bracket should expose a centered championship stage");
+mustMatch(functionBody(appJs, "playoffBracketChampionshipResult"), /championshipResult[\s\S]*summarizeChampionshipSeries[\s\S]*championTeamName/, "App should expose a shared championship result for all bracket views");
+mustMatch(functionBody(appJs, "renderHomeOffseasonCompactChampionship"), /data-home-compact-bracket-center[\s\S]*Championship[\s\S]*championName[\s\S]*matchups\.map\(\(matchup\) => renderHomeOffseasonCompactMatchup\(matchup, \{ championshipResult \}\)\)/, "Home compact bracket should stack championship games and highlight the series winner");
+mustNotMatch(functionBody(appJs, "renderHomeOffseasonCompactChampionship"), /slice\(0, 1\)/, "Home compact bracket should not hide games two and three of the championship series");
+mustMatch(functionBody(appJs, "renderHomeOffseasonCompactTeam"), /is-series-champion/, "Home compact bracket should style series champion rows separately from single-game winners");
 mustMatch(functionBody(appJs, "positionHomeCompactBracketAtChampionship"), /data-home-compact-bracket-center[\s\S]*scrollLeft/, "Home compact bracket centering should use the compact championship stage");
 mustMatch(functionBody(appJs, "renderPlayoffBracket"), /positionPlayoffBracketAtChampionship\(els\.playoffBracketGrid\)[\s\S]*queuePlayoffBracketConnectorRender/, "Public bracket page should initially center on the championship stage and redraw connectors");
 mustMatch(functionBody(appJs, "renderPlayoffBracketAction"), /gameIsPostseason\(game\)[\s\S]*data-game-action="bracket"/, "Reusable bracket action should be postseason-only");
@@ -105,6 +109,7 @@ mustMatch(functionBody(appJs, "normalizeState"), /nextState\.playoffBracket = no
 mustMatch(functionBody(appJs, "previewPlayoffBracketDraft"), /playoffBracketPreviewDraft = normalizePlayoffBracket\(draft, state\.games\)[\s\S]*openPlayoffBracket\(\{ preview: true \}\)/, "Preview should render the unsaved draft without saving it");
 mustMatch(functionBody(appJs, "renderPlayoffBracketEditor"), /const showEditor = admin && gameFilter === "postseason" && scheduleBracketEditorOpen/, "Editor should only show from the Post Season builder action");
 mustMatch(functionBody(appJs, "renderGuidedPlayoffBracketEditor"), /Step 1[\s\S]*Tournament Details[\s\S]*Step 2[\s\S]*Teams and Seeding[\s\S]*Step 5[\s\S]*Review and Publish/, "Editor should render a guided tournament workflow");
+mustMatch(functionBody(appJs, "renderGuidedPlayoffBracketEditor"), /playoffBracketChampionshipResult[\s\S]*playoff-bracket-series-status/, "Editor review should summarize championship series progress and champion");
 mustMatch(functionBody(appJs, "renderPlayoffBracketSeedRows"), /data-bracket-entry-action="up"[\s\S]*data-bracket-entry-action="down"/, "Seeds should support accessible up/down ordering");
 mustMatch(functionBody(appJs, "renderBracketEditorMatchup"), /Winner to[\s\S]*Loser to[\s\S]*data-bracket-matchup-key="winner"/, "Matchup editor should expose readable routes and winner selection");
 mustMatch(functionBody(appJs, "overlaySessionSharedChanges"), /sharedPlayoffBracketDirtyInSession[\s\S]*hasMeaningfulPlayoffBracket\(currentLocalState\.playoffBracket\)[\s\S]*nextState\.playoffBracket = deepClone\(currentLocalState\.playoffBracket\)/, "Only explicit bracket saves should overlay bracket data during shared sync");
@@ -142,6 +147,9 @@ mustMatch(stylesCss, /\.playoff-bracket-columns\s*\{[\s\S]*grid-template-columns
 mustMatch(stylesCss, /\.playoff-bracket-matchups\s*\{[\s\S]*padding-top: var\(--bracket-round-offset/, "Bracket rounds should use offset spacing instead of stacked space-around");
 mustMatch(stylesCss, /\.playoff-bracket-column:not\(:last-child\) \.playoff-bracket-node-wrap::after\s*\{[\s\S]*content: none/, "Old pseudo-element connector lines should be disabled");
 mustMatch(stylesCss, /\.playoff-bracket-team-placeholder-icon\s*\{/, "Future bracket team slots should have trophy icon styling");
+mustMatch(stylesCss, /\.playoff-bracket-team\.is-series-champion\s*\{/, "Full bracket should highlight the championship series winner");
+mustMatch(stylesCss, /\.home-compact-bracket-team\.is-series-champion\s*\{/, "Home compact bracket should highlight the championship series winner");
+mustMatch(stylesCss, /\.playoff-bracket-series-status\s*\{/, "Bracket editor should style the championship series summary");
 mustMatch(stylesCss, /\.archive-postseason-bracket\s*\{/, "Past Games postseason bracket should have dedicated spacing");
 mustMatch(stylesCss, /\.archive-postseason-bracket\.is-minimized\s*\{/, "Minimized Past Games bracket should have compact spacing");
 mustMatch(stylesCss, /\.archive-bracket-toggle\s*\{/, "Past Games bracket minimize control should be styled");

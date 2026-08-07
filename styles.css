@@ -2736,6 +2736,21 @@ main {
   white-space: nowrap;
 }
 
+.home-compact-bracket-champion {
+  display: inline-flex;
+  justify-self: center;
+  min-height: 23px;
+  align-items: center;
+  border: 1px solid rgba(245, 189, 33, 0.38);
+  border-radius: 999px;
+  padding: 0 10px;
+  background: rgba(245, 189, 33, 0.12);
+  color: var(--lion-gold);
+  font-size: 0.68rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
 .home-compact-bracket-center-stack {
   display: grid;
   gap: 7px;
@@ -2824,6 +2839,14 @@ main {
 
 .home-compact-bracket-team.is-winner {
   background: linear-gradient(90deg, rgba(245, 189, 33, 0.16), rgba(255, 255, 255, 0.055));
+}
+
+.home-compact-bracket-team.is-series-champion {
+  border: 1px solid rgba(245, 189, 33, 0.42);
+  background:
+    radial-gradient(circle at 8% 50%, rgba(245, 189, 33, 0.3), transparent 36%),
+    linear-gradient(90deg, rgba(245, 189, 33, 0.22), rgba(255, 255, 255, 0.07));
+  box-shadow: 0 0 18px rgba(245, 189, 33, 0.13);
 }
 
 .home-compact-bracket-team-main {
@@ -5001,6 +5024,13 @@ button:disabled .inline-chevron-icon {
   grid-column: 1 / -1;
 }
 
+.season-storyline-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
 .season-storyline-form {
   display: grid;
   grid-template-columns: minmax(180px, 0.8fr) minmax(220px, 1.2fr) minmax(220px, 1fr);
@@ -5051,8 +5081,18 @@ button:disabled .inline-chevron-icon {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
+.season-storyline-auto-preview {
+  display: grid;
+  gap: 10px;
+}
+
 .season-storyline-list-item {
   grid-template-columns: 84px minmax(0, 1fr) auto;
+}
+
+.season-storyline-list-item.is-automatic {
+  border-style: dashed;
+  opacity: 0.92;
 }
 
 @media (max-width: 900px) {
@@ -6750,6 +6790,33 @@ button:disabled .inline-chevron-icon {
   color: rgba(255, 255, 255, 0.78);
 }
 
+.playoff-bracket-series-status {
+  display: grid;
+  gap: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.playoff-bracket-series-status span {
+  color: var(--lion-gold);
+  font-size: 0.72rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.playoff-bracket-series-status strong {
+  color: var(--white);
+  font-size: 0.95rem;
+  line-height: 1.25;
+}
+
+.playoff-bracket-series-status.is-complete {
+  border-color: rgba(245, 189, 33, 0.34);
+  background: rgba(245, 189, 33, 0.08);
+}
+
 @media (max-width: 1180px) {
   .playoff-bracket-detail-grid,
   .playoff-bracket-admin-fields {
@@ -7033,6 +7100,12 @@ button:disabled .inline-chevron-icon {
   font-weight: 1000;
 }
 
+.playoff-bracket-center-stage.has-champion .playoff-bracket-center-badge {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.6), transparent 34%),
+    linear-gradient(135deg, #f5bd21, #ffe789);
+}
+
 .playoff-bracket-center-card-list {
   display: grid;
   gap: 10px;
@@ -7254,6 +7327,15 @@ button:disabled .inline-chevron-icon {
 .playoff-bracket-team.is-winner {
   color: var(--lion-gold);
   background: rgba(245, 189, 33, 0.1);
+}
+
+.playoff-bracket-team.is-series-champion {
+  border: 1px solid rgba(245, 189, 33, 0.42);
+  color: var(--lion-gold);
+  background:
+    radial-gradient(circle at 7% 50%, rgba(245, 189, 33, 0.26), transparent 36%),
+    rgba(245, 189, 33, 0.12);
+  box-shadow: 0 0 20px rgba(245, 189, 33, 0.12);
 }
 
 .playoff-bracket-team-main {

@@ -66,6 +66,19 @@ assert.equal(aa9.teamB, "Winner AA-8", "AA-9 second slot should wait for the AA-
 assert.equal(championship.teamA, "Winner AA-10", "Championship first slot should come from AA-10");
 assert.equal(championship.teamB, "Winner AA-9", "Championship second slot should come from AA-9");
 
+tournament = engine.applyMatchupResult(tournament, "AA-6", { scoreA: 1, scoreB: 3, status: "final" });
+tournament = engine.applyMatchupResult(tournament, "AA-7", { scoreA: 4, scoreB: 2, status: "final" });
+tournament = engine.applyMatchupResult(tournament, "AA-8", { scoreA: 1, scoreB: 5, status: "final" });
+tournament = engine.applyMatchupResult(tournament, "AA-10", { scoreA: 2, scoreB: 6, status: "final" });
+tournament = engine.applyMatchupResult(tournament, "AA-9", { scoreA: 7, scoreB: 3, status: "final" });
+tournament = engine.applyMatchupResult(tournament, "AAPNC-1", { scoreA: 4, scoreB: 3, status: "final" });
+tournament = engine.applyMatchupResult(tournament, "AAPNC-2", { scoreA: 8, scoreB: 6, status: "final" });
+assert.equal(tournament.championshipResult.isComplete, true, "Best-of-three should complete after one team wins two games");
+assert.equal(tournament.championshipResult.winsA, 2, "Championship series should count Team A wins");
+assert.equal(tournament.championshipResult.winsB, 0, "Championship series should count Team B wins");
+assert.equal(tournament.championshipResult.championTeamName, teams[4], "Championship result should name the team that wins two of three");
+assert.equal(tournament.matchups.find((matchup) => matchup.matchupCode === "AAPNC-3").winner, "", "Unplayed third championship game should stay available but unresolved");
+
 const circular = engine.resolveTournament({
   season: "2026",
   entries: engine.seedEntries(2, ["A", "B"]),

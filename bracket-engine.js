@@ -384,6 +384,57 @@
     return { participantA, participantB, winnerSide, loserSide, winnerParticipant, loserParticipant };
   }
 
+  function matchupHasDecision(matchup = {}) {
+    const explicit = normalizeSlot(matchup.winnerSide || matchup.winner);
+    if (explicit) return true;
+    const scoreA = scoreNumber(matchup.scoreA);
+    const scoreB = scoreNumber(matchup.scoreB);
+    return scoreA !== null && scoreB !== null && scoreA !== scoreB;
+  }
+
+  function summarizeChampionshipSeries(matchups = []) {
+    const championshipMatchups = matchups
+      .filter((matchup) => normalizeSection(matchup.bracketSection || matchup.bracketSide) === "championship")
+      .sort((left, right) => (Number(left.seriesGameNumber || 0) - Number(right.seriesGameNumber || 0)) || (Number(left.displayOrder || 0) - Number(right.displayOrder || 0)));
+    const first = championshipMatchups[0] || {};
+    const bestOf = Math.max(1, ...championshipMatchups.map((matchup) => Number(matchup.seriesBestOf || 1) || 1));
+    const winsNeeded = Math.floor(bestOf / 2) + 1;
+    const wins = { A: 0, B: 0 };
+    championshipMatchups.forEach((matchup) => {
+      const winnerSide = inferWinnerSide(matchup);
+      if (!winnerSide || !matchupHasDecision(matchup)) return;
+      wins[winnerSide] += 1;
+    });
+    const championSide = wins.A >= winsNeeded ? "A" : wins.B >= winsNeeded ? "B" : "";
+    const championTeamName = championSide === "A" ? first.teamA : championSide === "B" ? first.teamB : "";
+    const championTeamId = championSide === "A" ? first.resolvedHomeTeamId || first.slotA?.teamId || first.winnerTeamId : championSide === "B" ? first.resolvedAwayTeamId || first.slotB?.teamId || first.winnerTeamId : "";
+    const championSeed = championSide === "A" ? first.seedA : championSide === "B" ? first.seedB : "";
+    return {
+      bestOf,
+      winsNeeded,
+      winsA: wins.A,
+      winsB: wins.B,
+      teamA: first.teamA || "",
+      teamB: first.teamB || "",
+      seedA: first.seedA || "",
+      seedB: first.seedB || "",
+      championSide,
+      championTeamId: normalizeText(championTeamId),
+      championTeamName: normalizeText(championTeamName),
+      championSeed: normalizeText(championSeed),
+      isComplete: Boolean(championSide),
+      gamesPlayed: championshipMatchups.filter(matchupHasDecision).length,
+      games: championshipMatchups.map((matchup) => ({
+        matchupCode: matchup.matchupCode,
+        seriesGameNumber: matchup.seriesGameNumber,
+        scoreA: matchup.scoreA,
+        scoreB: matchup.scoreB,
+        winnerSide: inferWinnerSide(matchup),
+        status: matchup.status
+      }))
+    };
+  }
+
   function validateTournament(tournament) {
     const errors = [];
     const seedCounts = new Map();
@@ -447,9 +498,11 @@
         teamA: result.participantA?.teamName || "TBD",
         seedA: result.participantA?.seed ? String(result.participantA.seed) : "",
         sourceLabelA: result.participantA?.sourceLabel || sourceLabel(matchup.slotA),
+        resolvedHomeTeamId: result.participantA?.teamId || "",
         teamB: matchup.isBye ? "" : (result.participantB?.teamName || "TBD"),
         seedB: matchup.isBye ? "" : (result.participantB?.seed ? String(result.participantB.seed) : ""),
         sourceLabelB: matchup.isBye ? "BYE" : (result.participantB?.sourceLabel || sourceLabel(matchup.slotB)),
+        resolvedAwayTeamId: result.participantB?.teamId || "",
         winner: result.winnerSide,
         winnerSide: result.winnerSide,
         winnerTeamId: result.winnerParticipant?.teamId || "",
@@ -485,6 +538,7 @@
       ...tournament,
       matchups: resolvedMatchups,
       rounds,
+      championshipResult: summarizeChampionshipSeries(resolvedMatchups),
       validation: context.errors
     };
   }
@@ -622,6 +676,7 @@
     normalizeTournament,
     resolveTournament,
     applyMatchupResult,
+    summarizeChampionshipSeries,
     validateTournament,
     seedEntries,
     seedSource,

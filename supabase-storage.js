@@ -250,6 +250,7 @@
         current_game_ids: currentGameIds,
         deleted_game_tombstones: deletedGameTombstones,
         season_storylines: deepClone(state?.seasonStorylines || []),
+        season_storyline_settings: deepClone(state?.seasonStorylineSettings || { automaticEnabled: true }),
         playoff_bracket: hasMeaningfulPlayoffBracket(state?.playoffBracket)
           ? deepClone(state.playoffBracket)
           : null
@@ -740,6 +741,9 @@
     nextState.seasonStorylines = Array.isArray(remoteMetadata.season_storylines)
       ? deepClone(remoteMetadata.season_storylines)
       : deepClone(nextState.seasonStorylines || []);
+    nextState.seasonStorylineSettings = remoteMetadata.season_storyline_settings && typeof remoteMetadata.season_storyline_settings === "object"
+      ? deepClone(remoteMetadata.season_storyline_settings)
+      : deepClone(nextState.seasonStorylineSettings || { automaticEnabled: true });
     if (Array.isArray(newsRows)) {
       nextState.newsArticles = newsRows.map(newsArticleFromRow).filter((article) => article?.id);
     } else {
