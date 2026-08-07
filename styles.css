@@ -92,6 +92,33 @@ textarea:disabled {
   min-width: 0;
 }
 
+.brand-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  border: 0;
+  border-radius: 10px;
+  padding: 2px 4px;
+  background: transparent;
+  color: inherit;
+  transition:
+    color 180ms ease,
+    filter 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.brand-menu-btn:hover,
+.brand-menu-btn:focus-visible {
+  color: var(--lion-gold);
+  filter: brightness(1.08);
+}
+
+.brand-menu-btn:focus-visible {
+  outline: 2px solid rgba(245, 189, 33, 0.72);
+  outline-offset: 4px;
+}
+
 .brand-copy {
   display: flex;
   align-items: center;
@@ -103,6 +130,95 @@ textarea:disabled {
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.mobile-admin-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  z-index: 45;
+  width: min(420px, calc(100vw - 24px));
+  transform: translateX(-50%);
+}
+
+.mobile-admin-menu-card {
+  border: 1px solid rgba(245, 189, 33, 0.28);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(7, 10, 24, 0.98);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
+}
+
+.mobile-admin-menu-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: var(--lion-gold);
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mobile-admin-menu-close {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.82);
+  font-weight: 950;
+  line-height: 1;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.mobile-admin-menu-close:hover,
+.mobile-admin-menu-close:focus-visible {
+  border-color: rgba(245, 189, 33, 0.55);
+  background: rgba(245, 189, 33, 0.12);
+  color: var(--lion-gold);
+}
+
+.mobile-admin-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mobile-admin-menu-grid button {
+  min-height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--white);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-align: left;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.mobile-admin-menu-grid button:hover,
+.mobile-admin-menu-grid button:focus-visible {
+  border-color: rgba(245, 189, 33, 0.58);
+  background: rgba(245, 189, 33, 0.13);
+  color: var(--lion-gold);
+  box-shadow: 0 0 0 1px rgba(245, 189, 33, 0.12);
+}
+
+body[data-access-mode="public"] .mobile-admin-menu {
+  display: none !important;
 }
 
 .mobile-season-chip,
@@ -21839,20 +21955,30 @@ select option:checked {
   }
 
   .topbar {
+    position: relative;
+    z-index: 35;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "brand actions";
     align-items: center;
     gap: 10px 12px;
     padding: 16px 16px 10px;
   }
 
-  .brand-block {
+  .topbar .brand-block {
+    grid-area: brand;
     grid-column: 1 / -1;
     grid-row: 1;
     justify-self: center;
     gap: 8px;
     align-items: center;
     padding-inline: 48px;
+  }
+
+  .brand-menu-btn {
+    min-height: 54px;
+    padding: 4px 8px;
+    touch-action: manipulation;
   }
 
   .brand-logo {
@@ -21869,11 +21995,13 @@ select option:checked {
     transform: translateY(2px);
   }
 
-  .topbar-actions {
+  .topbar .topbar-actions {
+    grid-area: actions;
     grid-column: 2;
     grid-row: 1;
     justify-self: end;
     align-self: start;
+    z-index: 2;
   }
 
   .app-version {
@@ -27320,6 +27448,124 @@ select option:checked {
   .finance-row-index,
   .finance-row-remove {
     display: none;
+  }
+
+  .finance-ledger-wrap {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .finance-ledger-table,
+  .finance-ledger-table thead,
+  .finance-ledger-table tbody,
+  .finance-ledger-table tr,
+  .finance-ledger-table th,
+  .finance-ledger-table td {
+    display: block;
+  }
+
+  .finance-ledger-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.82rem;
+  }
+
+  .finance-ledger-table thead {
+    display: none;
+  }
+
+  .finance-ledger-table tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  .finance-ledger-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 10px;
+    background: rgba(9, 15, 31, 0.86);
+  }
+
+  .finance-ledger-table tbody tr:nth-child(even) td,
+  .finance-ledger-table tbody tr:nth-child(even) th,
+  .finance-ledger-table tbody tr.is-excluded td,
+  .finance-ledger-table tbody tr.is-excluded th {
+    background: transparent;
+  }
+
+  .finance-ledger-table tbody tr.is-excluded {
+    opacity: 0.72;
+  }
+
+  .finance-ledger-table th,
+  .finance-ledger-table td {
+    border-bottom: 0;
+    padding: 0;
+    min-width: 0;
+  }
+
+  .finance-ledger-table th:first-child,
+  .finance-ledger-table th.finance-player-cell {
+    position: static;
+    grid-column: 1 / -1;
+    width: auto;
+    background: transparent;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0 0 7px;
+  }
+
+  .finance-ledger-table td::before {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--lion-gold);
+    content: attr(data-label);
+    font-size: 0.58rem;
+    font-weight: 950;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .finance-ledger-table td[data-label="Notes"] {
+    grid-column: 1 / -1;
+  }
+
+  .finance-ledger-table td.finance-empty {
+    grid-column: 1 / -1;
+    padding: 16px;
+  }
+
+  .finance-ledger-table input {
+    min-height: 36px;
+    padding: 6px 8px;
+    font-size: 0.82rem;
+  }
+
+  .finance-status-pill {
+    width: auto;
+    min-width: 92px;
+    min-height: 30px;
+  }
+
+  .finance-split-cell {
+    text-align: left;
+  }
+
+  .finance-split-toggle {
+    max-width: none;
+    min-height: 30px;
+  }
+
+  .finance-paid-action {
+    width: 100%;
+    min-height: 36px;
+  }
+
+  .finance-history-table {
+    min-width: 620px;
   }
 }
 

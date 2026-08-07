@@ -109,5 +109,8 @@ mustMatch(stylesCss, /\.finance-contribution-logger[\s\S]*\.finance-log-contribu
 mustMatch(stylesCss, /\.finance-expense-logger[\s\S]*\.finance-log-expense-button/, "Finance should style the single paid expense logger");
 mustMatch(stylesCss, /\.finance-view-tabs[\s\S]*\.finance-history-table/, "Finance should style the planner tabs and transaction history table");
 mustMatch(stylesCss, /@media \(max-width: 700px\)[\s\S]*\.finance-summary-grid[\s\S]*grid-template-columns: repeat\(2/, "Finance planner should adapt on mobile");
+mustMatch(stylesCss, /@media \(max-width: 700px\)[\s\S]*\.finance-ledger-table thead[\s\S]*display: none/, "Finance ledger should hide table headers on mobile");
+mustMatch(stylesCss, /@media \(max-width: 700px\)[\s\S]*\.finance-ledger-table tbody tr[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/, "Finance ledger player rows should render as mobile cards");
+mustMatch(stylesCss, /@media \(max-width: 700px\)[\s\S]*\.finance-ledger-table td::before[\s\S]*content: attr\(data-label\)/, "Finance mobile cards should label each stat field");
 
 console.log("Financial planner checks passed.");

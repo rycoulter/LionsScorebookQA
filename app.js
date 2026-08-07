@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.174";
+const APP_VERSION = "v.1.1.175";
 const PLANNED_LEAGUE_SEASONS = ["2027"];
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const HOME_OFFSEASON_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
@@ -941,6 +941,10 @@ const els = {
   views: [...document.querySelectorAll(".view")],
   homeScoreGameBtn: document.getElementById("homeScoreGameBtn"),
   homeStartGameBtn: document.getElementById("homeStartGameBtn"),
+  mobileAdminMenuBtn: document.getElementById("mobileAdminMenuBtn"),
+  mobileAdminMenu: document.getElementById("mobileAdminMenu"),
+  mobileAdminMenuCloseBtn: document.getElementById("mobileAdminMenuCloseBtn"),
+  mobileAdminMenuItems: [...document.querySelectorAll("[data-mobile-admin-view]")],
   accountMenuBtn: document.getElementById("accountMenuBtn"),
   accessModeBadge: document.getElementById("accessModeBadge"),
   adminUnlockBtn: document.getElementById("adminUnlockBtn"),
@@ -4967,6 +4971,31 @@ function visibleTabViews() {
   return isAdminMode() ? ADMIN_TAB_VIEWS : PUBLIC_TAB_VIEWS;
 }
 
+function closeMobileAdminMenu() {
+  if (els.mobileAdminMenu) els.mobileAdminMenu.hidden = true;
+  if (els.mobileAdminMenuBtn) els.mobileAdminMenuBtn.setAttribute("aria-expanded", "false");
+}
+
+function openMobileAdminMenu() {
+  if (!els.mobileAdminMenu || !els.mobileAdminMenuBtn) return;
+  if (!isAdminMode()) {
+    openAdminAuthModal("Sign in as admin to open mobile admin shortcuts.");
+    return;
+  }
+  els.mobileAdminMenu.hidden = false;
+  els.mobileAdminMenuBtn.setAttribute("aria-expanded", "true");
+}
+
+function toggleMobileAdminMenu() {
+  if (!els.mobileAdminMenu || !els.mobileAdminMenuBtn) return;
+  if (!isAdminMode()) {
+    openAdminAuthModal("Sign in as admin to open mobile admin shortcuts.");
+    return;
+  }
+  if (els.mobileAdminMenu.hidden) openMobileAdminMenu();
+  else closeMobileAdminMenu();
+}
+
 function browserRoutingEnabled() {
   if (typeof window === "undefined" || !window.history?.pushState) return false;
   return window.location.protocol === "http:" || window.location.protocol === "https:";
@@ -5346,6 +5375,12 @@ function renderAccessMode() {
     els.accountMenuBtn.setAttribute("aria-label", admin ? (indexAdmin ? "QA admin access active" : "Exit admin mode") : "Admin sign in");
     els.accountMenuBtn.title = admin ? (indexAdmin ? "QA admin access active" : "Exit admin mode") : "Admin sign in";
   }
+  if (els.mobileAdminMenuBtn) {
+    els.mobileAdminMenuBtn.dataset.admin = admin ? "true" : "false";
+    els.mobileAdminMenuBtn.setAttribute("aria-label", admin ? "Open admin shortcuts" : "Admin sign in");
+    els.mobileAdminMenuBtn.title = admin ? "Open admin shortcuts" : "Admin sign in";
+  }
+  if (!admin) closeMobileAdminMenu();
   if (els.boxScoreBackBtn) els.boxScoreBackBtn.textContent = `Back to ${boxScoreReturnLabel()}`;
   if (els.boxScoreMobileReturnBtn) els.boxScoreMobileReturnBtn.textContent = boxScoreReturnLabel();
   if (els.tabs?.length) {
@@ -5391,6 +5426,17 @@ function bindEvents() {
   });
   els.mobileBottomNavTabs.forEach((tab) => {
     tab.addEventListener("click", () => switchView(tab.dataset.view));
+  });
+  els.mobileAdminMenuBtn?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleMobileAdminMenu();
+  });
+  els.mobileAdminMenuCloseBtn?.addEventListener("click", closeMobileAdminMenu);
+  els.mobileAdminMenu?.addEventListener("click", (event) => {
+    const shortcut = event.target.closest("[data-mobile-admin-view]");
+    if (!shortcut) return;
+    closeMobileAdminMenu();
+    switchView(shortcut.dataset.mobileAdminView);
   });
   window.addEventListener("popstate", () => {
     switchView(routeViewFromLocation(), { updateRoute: false });
@@ -6369,11 +6415,18 @@ window.addEventListener("pageshow", () => {
   els.closeGameHighlightsBtn?.addEventListener("click", closeGameHighlightsModal);
 
   document.addEventListener("click", (event) => {
+    if (!els.mobileAdminMenu?.hidden && !event.target.closest("#mobileAdminMenu") && !event.target.closest("#mobileAdminMenuBtn")) {
+      closeMobileAdminMenu();
+    }
     if (event.target.closest(".sub-custom-select")) return;
     closeCustomSubSelects();
   });
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
+    if (els.mobileAdminMenu && !els.mobileAdminMenu.hidden) {
+      closeMobileAdminMenu();
+      return;
+    }
     if (els.quickScoreModal && !els.quickScoreModal.hidden) {
       closeQuickScoreModal();
       return;
