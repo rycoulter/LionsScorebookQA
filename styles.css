@@ -27054,6 +27054,15 @@ select option:checked {
   overflow-wrap: anywhere;
 }
 
+.finance-ledger-subvalue {
+  display: block;
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 0.58rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
 .finance-ledger-table input[type="text"] {
   min-width: 0;
   width: 100%;

@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.173";
+const APP_VERSION = "v.1.1.174";
 const PLANNED_LEAGUE_SEASONS = ["2027"];
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const HOME_OFFSEASON_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
@@ -2928,6 +2928,7 @@ function calculateFinancialPlanSummary(plan = financialPlanForSeason()) {
   const outstandingTotal = playerRows.reduce((sum, row) => sum + row.balance, 0);
   const expensesPaidTotal = financePaidExpenseTotal(plan);
   const contributionTotal = financeContributionTotal(plan);
+  const totalIn = paidTotal + contributionTotal;
   return {
     includedCount,
     sharedTotal,
@@ -2935,6 +2936,7 @@ function calculateFinancialPlanSummary(plan = financialPlanForSeason()) {
     expectedTotal,
     paidTotal,
     contributionTotal,
+    totalIn,
     outstandingTotal,
     expensesPaidTotal,
     playerRows
@@ -9813,7 +9815,10 @@ function renderFinanceLedgerRow(row) {
     <td data-label="Paid">
       <input type="number" min="0" step="0.01" inputmode="decimal" value="${escapeHtml(financeInputValue(row.paid))}" data-finance-player-id="${escapeHtml(row.playerId)}" data-finance-player-field="paid" data-finance-original-paid="${escapeHtml(financeInputValue(row.paid))}" data-finance-clear-zero aria-label="${escapeHtml(`Paid amount for ${playerLabel}`)}">
     </td>
-    <td data-label="Contrib."><strong>${escapeHtml(formatFinanceCurrency(row.contribution))}</strong></td>
+    <td data-label="Contrib.">
+      <strong>${escapeHtml(formatFinanceCurrency(row.contribution))}</strong>
+      <span class="finance-ledger-subvalue">${escapeHtml(formatFinanceCurrency(row.totalIn))} total in</span>
+    </td>
     <td data-label="Balance"><strong class="finance-balance-amount ${balanceClass}">${escapeHtml(formatFinanceCurrency(row.balance))}</strong></td>
     <td data-label="Status"><span class="finance-status-pill ${financeStatusClass(row.status)}">${escapeHtml(row.status)}</span></td>
     <td data-label="Adjust">
@@ -9986,6 +9991,7 @@ function renderFinancePlanner() {
     { label: "Expected", value: formatFinanceCurrency(summary.expectedTotal) },
     { label: "Collected", value: formatFinanceCurrency(summary.paidTotal) },
     { label: "Contributions", value: formatFinanceCurrency(summary.contributionTotal) },
+    { label: "Total In", value: formatFinanceCurrency(summary.totalIn) },
     { label: "Outstanding", value: formatFinanceCurrency(summary.outstandingTotal), className: summary.outstandingTotal > 0.005 ? "is-alert" : "" },
     { label: "Paid Expenses", value: formatFinanceCurrency(summary.expensesPaidTotal) }
   ].map((card) => `<article class="finance-summary-card ${card.className || ""}"><span>${escapeHtml(card.label)}</span><strong>${escapeHtml(String(card.value))}</strong></article>`).join("");
@@ -10309,7 +10315,7 @@ function handleFinancePlannerClick(event) {
       notes: draft.notes || ""
     });
     resetFinanceContributionDraft(plan);
-    financePlannerNotice = `${row.name} contribution logged.`;
+    financePlannerNotice = `${row.name} contribution logged. Save Planner to sync it across devices.`;
     saveState({ markLiveGamesDirty: false, capturePendingScoring: false });
     renderFinancePlanner();
     return;

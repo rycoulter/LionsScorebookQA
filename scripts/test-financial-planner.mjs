@@ -52,7 +52,7 @@ mustMatch(functionBody(appJs, "financeExpenseCategoryAmount"), /umpireFees[\s\S]
 mustMatch(functionBody(appJs, "normalizeFinancialPlan"), /customFees[\s\S]*expensePayments[\s\S]*transactions/, "Finance normalization should retain custom fees, paid expenses, and transaction history");
 mustMatch(functionBody(appJs, "normalizeFinancialPlan"), /left\.included === false[\s\S]*right\.included === false[\s\S]*left\.name\.localeCompare/, "Finance players should sort included players first and alphabetically");
 mustNotMatch(functionBody(appJs, "normalizeFinancialPlan"), /moneyOnHand/, "Finance normalization should not keep money-on-hand state");
-mustMatch(functionBody(appJs, "calculateFinancialPlanSummary"), /financeBaseChargeTotal[\s\S]*customFees[\s\S]*sharedPerPlayer[\s\S]*financePlayerContributionTotal[\s\S]*outstandingTotal[\s\S]*expensesPaidTotal[\s\S]*contributionTotal/, "Finance summary should calculate shared charges, custom fees, player contributions, paid expenses, and outstanding totals");
+mustMatch(functionBody(appJs, "calculateFinancialPlanSummary"), /financeBaseChargeTotal[\s\S]*customFees[\s\S]*sharedPerPlayer[\s\S]*financePlayerContributionTotal[\s\S]*outstandingTotal[\s\S]*expensesPaidTotal[\s\S]*contributionTotal[\s\S]*totalIn/, "Finance summary should calculate shared charges, custom fees, player contributions, paid expenses, total in, and outstanding totals");
 mustNotMatch(functionBody(appJs, "calculateFinancialPlanSummary"), /moneyRemaining|moneyOnHand/, "Finance summary should not calculate money left");
 const renderFinancePlannerBody = functionBody(appJs, "renderFinancePlanner");
 mustMatch(renderFinancePlannerBody, /finance-summary-grid/, "Finance view should render the summary controls");
@@ -66,7 +66,7 @@ mustMatch(functionBody(appJs, "renderFinanceJerseyChargeInput"), /data-finance-c
 mustMatch(functionBody(appJs, "renderFinanceCustomFeeRow"), /data-finance-custom-fee-field="amount"[\s\S]*data-finance-clear-zero/, "Additional fee amount inputs should clear zero on focus");
 mustMatch(functionBody(appJs, "renderFinanceContributionLogger"), /select[\s\S]*data-finance-contribution-draft-field="playerId"[\s\S]*data-finance-contribution-draft-field="amount"[\s\S]*data-finance-clear-zero[\s\S]*data-finance-log-contribution/, "Player contributions should use a player dropdown, zero-clearing amount input, and log action");
 mustMatch(functionBody(appJs, "renderFinanceExpenseLogger"), /select[\s\S]*data-finance-expense-draft-field="category"[\s\S]*data-finance-expense-draft-field="amount"[\s\S]*data-finance-clear-zero[\s\S]*data-finance-use-default-expense[\s\S]*data-finance-log-expense/, "Paid expenses should use a single logger with category dropdown, zero-clearing amount input, default amount action, and log action");
-mustMatch(functionBody(appJs, "renderFinanceLedgerRow"), /data-finance-player-field="paid"[\s\S]*data-finance-clear-zero[\s\S]*Contrib\.[\s\S]*data-finance-player-field="adjustment"[\s\S]*data-finance-clear-zero/, "Player paid and adjustment amount inputs should clear zero on focus while contribution totals display in the ledger");
+mustMatch(functionBody(appJs, "renderFinanceLedgerRow"), /data-finance-player-field="paid"[\s\S]*data-finance-clear-zero[\s\S]*Contrib\.[\s\S]*finance-ledger-subvalue[\s\S]*total in[\s\S]*data-finance-player-field="adjustment"[\s\S]*data-finance-clear-zero/, "Player paid and adjustment amount inputs should clear zero on focus while contribution and total-in values display in the ledger");
 mustNotMatch(appJs, /data-finance-add-expense|data-finance-remove-expense|data-finance-expense-field=/, "Finance view should not render retired paid expense rows");
 mustMatch(renderFinancePlannerBody, /renderFinanceExpenseLogger/, "Finance view should render the paid expense logger");
 mustMatch(renderFinancePlannerBody, /data-finance-tab="planner"[\s\S]*data-finance-tab="history"/, "Finance view should render planner and transaction history tabs");
@@ -103,6 +103,7 @@ mustMatch(stylesCss, /\.finance-ledger-wrap[\s\S]*overflow: visible/, "Finance l
 mustMatch(stylesCss, /\.finance-ledger-table[\s\S]*min-width: 0[\s\S]*table-layout: fixed/, "Finance ledger should fit inside the card");
 mustMatch(stylesCss, /\.finance-split-toggle[\s\S]*border-radius: 999px/, "Split indicator should be a compact pill");
 mustMatch(stylesCss, /\.finance-balance-amount\.is-due[\s\S]*#f87171/, "Outstanding balances should be highlighted red");
+mustMatch(stylesCss, /\.finance-ledger-subvalue[\s\S]*font-size: 0\.58rem/, "Finance ledger should style the player total-in helper line");
 mustMatch(stylesCss, /\.finance-split-charge-field[\s\S]*\.finance-split-charge-input-grid/, "Finance should align split charge fields");
 mustMatch(stylesCss, /\.finance-contribution-logger[\s\S]*\.finance-log-contribution-button/, "Finance should style the player contribution logger");
 mustMatch(stylesCss, /\.finance-expense-logger[\s\S]*\.finance-log-expense-button/, "Finance should style the single paid expense logger");
