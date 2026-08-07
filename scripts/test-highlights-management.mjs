@@ -88,7 +88,8 @@ mustMatch(supabaseStorageJs, /function fetchHighlights/, "Supabase storage shoul
 mustMatch(supabaseStorageJs, /\.from\("game_highlights"\)/, "Supabase storage should target game_highlights");
 mustMatch(supabaseStorageJs, /function upsertHighlight/, "Supabase storage should upsert highlight records");
 mustMatch(supabaseStorageJs, /const categories = normalizeHighlightCategoryList\(highlight\?\.categories/, "Supabase highlight rows should include selected tags");
-mustMatch(supabaseStorageJs, /categories,\s*\n\s*inning:/, "Supabase highlight rows should include multiple categories");
+mustMatch(supabaseStorageJs, /categories,[\s\S]*inning:/, "Supabase highlight rows should include multiple categories");
+mustMatch(supabaseStorageJs, /season_featured: Boolean/, "Supabase highlight rows should include a season highlight video flag");
 mustMatch(supabaseStorageJs, /isMissingColumnError\(response\.error, "category"\)/, "Highlight saves should tolerate a stale Supabase schema cache while category is rolling out");
 mustMatch(supabaseStorageJs, /isMissingColumnError\(response\.error, "categories"\)/, "Highlight saves should tolerate a stale Supabase schema cache while tags are rolling out");
 mustMatch(supabaseStorageJs, /function deleteHighlight/, "Supabase storage should delete highlight records");
@@ -97,6 +98,7 @@ mustMatch(supabaseStorageJs, /Supabase game_highlights table is not available to
 mustMatch(supabaseSchemaSql, /create table if not exists public\.game_highlights/i, "Schema should create game_highlights");
 mustMatch(supabaseSchemaSql, /category text not null default 'top-plays'/i, "Schema should store a highlight category");
 mustMatch(supabaseSchemaSql, /categories jsonb not null default '\["top-plays"\]'::jsonb/i, "Schema should store multiple highlight tags");
+mustMatch(supabaseSchemaSql, /season_featured boolean not null default false/i, "Schema should store the season highlight video flag");
 mustMatch(supabaseSchemaSql, /alter table public\.game_highlights enable row level security/i, "game_highlights should have RLS enabled");
 mustMatch(supabaseSchemaSql, /Public read game_highlights/i, "game_highlights should have a public read policy");
 mustMatch(supabaseSchemaSql, /Authenticated write game_highlights[\s\S]*public\.app_admins/i, "game_highlights writes should be restricted to app admins");

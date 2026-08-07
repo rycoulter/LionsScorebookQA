@@ -20,8 +20,10 @@ const mobileLeaderMap = functionBody(appJs, "mobileLeaderMap");
 const mobileHittingLeaderMap = functionBody(appJs, "mobileHittingLeaderMap");
 const mobilePitchingLeaderMap = functionBody(appJs, "mobilePitchingLeaderMap");
 
-assert.match(renderSeasonStats, /mobileHittingLeaderMap\([\s\S]*getMobileHittingRows\("all", mobileHitGameFilter\),[\s\S]*mobileLeaderMinimumGames[\s\S]*\)/, "mobile hitting leaders should be calculated from qualified players in the selected game context");
-assert.match(renderSeasonStats, /mobilePitchingLeaderMap\([\s\S]*getMobilePitchingRows\("all", mobilePitGameFilter\),[\s\S]*mobilePitchingLeaderMinimumGames[\s\S]*\)/, "mobile pitching leaders should be calculated from qualified pitchers in the selected game context");
+assert.match(renderSeasonStats, /const allMobileHittingRows = mobileHitGameFilter === "all"[\s\S]*getMobileHittingRows\("all", mobileHitGameFilter\)/, "mobile hitting rows should be calculated from the selected game context");
+assert.match(renderSeasonStats, /mobileHittingLeaderMap\(\s*allMobileHittingRows,\s*mobileLeaderMinimumGames\s*\)/, "mobile hitting leaders should use the selected-context row set");
+assert.match(renderSeasonStats, /const allMobilePitchingRows = mobilePitGameFilter === "all"[\s\S]*getMobilePitchingRows\("all", mobilePitGameFilter\)/, "mobile pitching rows should be calculated from the selected game context");
+assert.match(renderSeasonStats, /mobilePitchingLeaderMap\(\s*allMobilePitchingRows,\s*mobilePitchingLeaderMinimumGames\s*\)/, "mobile pitching leaders should use the selected-context row set");
 assert.match(renderSeasonStats, /mobileStatPill\("AVG"[\s\S]*mobileStatIsLeader\(mobileHittingLeaders, "avg", player\.id\)/, "AVG labels should highlight when a player leads or ties");
 assert.match(renderSeasonStats, /mobileStatPill\("K", hit\.k[\s\S]*mobileStatIsLeader\(mobileHittingLeaders, "k", player\.id\)/, "hitter K labels should use leader highlighting");
 assert.match(renderSeasonStats, /mobileStatPill\("ERA"[\s\S]*mobileStatIsLeader\(mobilePitchingLeaders, "era", player\.id\)/, "ERA labels should highlight when a pitcher leads or ties");

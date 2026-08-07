@@ -128,6 +128,7 @@ create table if not exists public.game_highlights (
   description text not null default '',
   category text not null default 'top-plays',
   categories jsonb not null default '["top-plays"]'::jsonb,
+  season_featured boolean not null default false,
   inning text not null default '',
   play_type text not null default '',
   player_ids jsonb not null default '[]'::jsonb,
@@ -280,6 +281,7 @@ add column if not exists title text not null default '',
 add column if not exists description text not null default '',
 add column if not exists category text not null default 'top-plays',
 add column if not exists categories jsonb not null default '["top-plays"]'::jsonb,
+add column if not exists season_featured boolean not null default false,
 add column if not exists inning text not null default '',
 add column if not exists play_type text not null default '',
 add column if not exists player_ids jsonb not null default '[]'::jsonb,
@@ -295,6 +297,7 @@ alter column youtube_video_id set default '',
 alter column description set default '',
 alter column category set default 'top-plays',
 alter column categories set default '["top-plays"]'::jsonb,
+alter column season_featured set default false,
 alter column inning set default '',
 alter column play_type set default '',
 alter column player_ids set default '[]'::jsonb,
@@ -388,6 +391,7 @@ create index if not exists league_standings_updated_at_idx on public.league_stan
 create index if not exists game_highlights_game_idx on public.game_highlights (game_id, created_at desc);
 create index if not exists game_highlights_category_idx on public.game_highlights (category, created_at desc);
 create index if not exists game_highlights_categories_idx on public.game_highlights using gin (categories);
+create index if not exists game_highlights_season_featured_idx on public.game_highlights (season_featured, updated_at desc);
 create index if not exists game_highlights_updated_at_idx on public.game_highlights (updated_at desc);
 create index if not exists news_articles_category_date_idx on public.news_articles (category, article_date desc, created_at desc);
 create index if not exists news_articles_updated_at_idx on public.news_articles (updated_at desc);

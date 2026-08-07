@@ -17,6 +17,10 @@ function mustMatch(source, pattern, label) {
   assert.match(source, pattern, label);
 }
 
+function mustNotMatch(source, pattern, label) {
+  assert.doesNotMatch(source, pattern, label);
+}
+
 function functionBody(source, functionName) {
   const start = source.indexOf(`function ${functionName}(`);
   assert.notEqual(start, -1, `${functionName} should exist`);
@@ -63,19 +67,33 @@ mustMatch(functionBody(appJs, "renderBracketTeamRow"), /bracketPlaceholderTeam\(
 mustMatch(functionBody(appJs, "renderBracketMatchup"), /data-game-action="boxscore"[\s\S]*playoff-bracket-card-link/, "Linked bracket games should open box scores from the card");
 mustMatch(functionBody(appJs, "renderBracketRound"), /data-bracket-round-index[\s\S]*--bracket-round-offset[\s\S]*data-bracket-matchup-index/, "Bracket rounds should expose deterministic spacing offsets inside grid columns");
 mustMatch(functionBody(appJs, "renderBracketRegion"), /--round-count[\s\S]*playoff-bracket-region-canvas[\s\S]*playoff-bracket-connector-layer[\s\S]*playoff-bracket-columns/, "Bracket regions should render a measured canvas, connector layer, and round grid");
+mustMatch(functionBody(appJs, "playoffBracketUsesTwoWingLayout"), /pittsburgh-naba-aa[\s\S]*AA-9[\s\S]*AA-10[\s\S]*AAPNC-1/, "NABA AA brackets should use the two-wing public layout");
+mustMatch(functionBody(appJs, "renderBracketWingCanvas"), /wing === "right" \? "rtl" : "ltr"[\s\S]*playoff-bracket-wing-canvas[\s\S]*data-bracket-flow/, "Two-wing bracket sides should expose directional connector flow");
+mustMatch(functionBody(appJs, "renderBracketCenterStage"), /AAPNC-1[\s\S]*AAPNC-2[\s\S]*AAPNC-3/, "Two-wing bracket center should render championship series cards");
+mustMatch(functionBody(appJs, "renderTwoWingPlayoffBracketBoard"), /Left Bracket[\s\S]*renderBracketCenterStage[\s\S]*Right Bracket/, "NABA AA bracket board should render left, center, and right sections");
 mustMatch(functionBody(appJs, "renderPlayoffBracketBoard"), /playoff-bracket-board playoff-bracket-board-double/, "Bracket board markup should be reusable by Past Games and the bracket page");
-mustMatch(functionBody(appJs, "renderPlayoffBracketRegionConnectors"), /playoff-bracket-connector-layer[\s\S]*playoff-bracket-node-wrap[\s\S]*getBoundingClientRect/, "Connector layer should be measured from actual rendered matchup cards");
+mustMatch(functionBody(appJs, "positionPlayoffBracketAtChampionship"), /playoff-bracket-center-stage[\s\S]*centerPoint[\s\S]*grid\.scrollLeft/, "Two-wing bracket views should initially center on the championship stage");
+mustMatch(functionBody(appJs, "renderPlayoffBracketCanvasConnectors"), /playoff-bracket-connector-layer[\s\S]*playoff-bracket-node-wrap[\s\S]*getBoundingClientRect/, "Connector layer should be measured from actual rendered matchup cards");
+mustMatch(functionBody(appJs, "renderPlayoffBracketCanvasConnectors"), /bracketFlow === "rtl"[\s\S]*sourceRect\.left[\s\S]*targetRect\.right/, "Connector layer should support right-to-left bracket flow");
 mustMatch(functionBody(appJs, "setupPlayoffBracketConnectorObservers"), /ResizeObserver[\s\S]*playoff-bracket-region-canvas[\s\S]*playoff-bracket-node-wrap/, "Connector layer should recalculate when the bracket canvas or cards resize");
 mustMatch(functionBody(appJs, "queuePlayoffBracketConnectorRender"), /requestAnimationFrame[\s\S]*renderPlayoffBracketConnectors/, "Connector rendering should be queued after layout");
 mustMatch(functionBody(appJs, "renderArchivePostseasonBracket"), /playoffBracketDisplayData\(archiveSeasonFilter[\s\S]*renderPlayoffBracketBoard/, "Past Games postseason filter should render the bracket above archived games");
-mustMatch(functionBody(appJs, "renderArchivePostseasonBracket"), /archiveBracketGrid\.scrollLeft = 0/, "Past Games bracket should open at the left edge of the scroll area");
+mustMatch(functionBody(appJs, "renderArchivePostseasonBracket"), /positionPlayoffBracketAtChampionship\(els\.archiveBracketGrid\)/, "Past Games bracket should initially center on the championship stage");
 mustMatch(functionBody(appJs, "updateArchivePostseasonBracketCollapseUi"), /archivePostseasonBracketCollapsed[\s\S]*archiveBracketToggleBtn[\s\S]*archiveBracketGrid\.hidden/, "Past Games bracket should support inline minimize and expand behavior");
 mustMatch(functionBody(appJs, "renderArchivePostseasonBracket"), /queuePlayoffBracketConnectorRender/, "Past Games postseason bracket should redraw connectors after rendering");
 mustMatch(functionBody(appJs, "gameMatchesArchiveFilters"), /selectedSeason[\s\S]*startsWith[\s\S]*gameIsPostseason/, "Past Games should filter by selected season before regular/postseason type");
 
 mustMatch(functionBody(appJs, "renderHome"), /gameIsPostseason\(next\)[\s\S]*homeNextGameBracketBtn/, "Home bracket button should only show for postseason games");
 mustMatch(functionBody(appJs, "renderHome"), /nextIsPostseason[\s\S]*homeHeroPanel[\s\S]*homeNextGamePostseasonBadge/, "Home next-game card should toggle postseason visual treatment");
-mustMatch(functionBody(appJs, "renderPlayoffBracket"), /playoffBracketGrid\.scrollLeft = 0[\s\S]*queuePlayoffBracketConnectorRender/, "Public bracket page should open at the left edge and redraw connectors");
+mustNotMatch(functionBody(appJs, "renderHome"), /home-offseason-bracket-frame/, "Home offseason dashboard should not render or center the full bracket frame");
+mustMatch(functionBody(appJs, "renderHome"), /positionHomeCompactBracketAtChampionship[\s\S]*home-compact-bracket-scroll/, "Home offseason dashboard should center the compact bracket scroller on the championship");
+mustMatch(functionBody(appJs, "renderHomeOffseasonPlayoffCenter"), /home-offseason-playoff-compact-card[\s\S]*renderHomeOffseasonCompactBracket/, "Home offseason playoff center should use the compact bracket preview");
+mustNotMatch(functionBody(appJs, "renderHomeOffseasonPlayoffCenter"), /renderPlayoffBracketBoard/, "Home offseason playoff center should not use the full bracket board");
+mustMatch(functionBody(appJs, "renderHomeOffseasonCompactBracket"), /home-compact-bracket[\s\S]*View Full Bracket[\s\S]*home-compact-bracket-scroll[\s\S]*is-two-wing/, "Home compact bracket should render a scrollable two-wing card with a full-bracket action");
+mustMatch(functionBody(appJs, "homeOffseasonCompactTwoWingLayout"), /"BYE-1", "AA-1", "AA-6"[\s\S]*"AA-4", "AA-7"[\s\S]*"AA-10"[\s\S]*"AA-9"[\s\S]*"AA-5", "AA-8"[\s\S]*"AA-3", "AA-2"[\s\S]*"AAPNC-1", "AAPNC-2", "AAPNC-3"/, "Home compact bracket should preserve the two-sided NABA bracket flow");
+mustMatch(functionBody(appJs, "renderHomeOffseasonCompactChampionship"), /data-home-compact-bracket-center[\s\S]*Championship[\s\S]*slice\(0, 1\)/, "Home compact bracket should expose a centered championship stage");
+mustMatch(functionBody(appJs, "positionHomeCompactBracketAtChampionship"), /data-home-compact-bracket-center[\s\S]*scrollLeft/, "Home compact bracket centering should use the compact championship stage");
+mustMatch(functionBody(appJs, "renderPlayoffBracket"), /positionPlayoffBracketAtChampionship\(els\.playoffBracketGrid\)[\s\S]*queuePlayoffBracketConnectorRender/, "Public bracket page should initially center on the championship stage and redraw connectors");
 mustMatch(functionBody(appJs, "renderPlayoffBracketAction"), /gameIsPostseason\(game\)[\s\S]*data-game-action="bracket"/, "Reusable bracket action should be postseason-only");
 mustMatch(functionBody(appJs, "handleGameActionClick"), /gameAction === "bracket"[\s\S]*openPlayoffBracket\(\)/, "Game action handler should open the bracket");
 mustMatch(functionBody(appJs, "handlePlayoffBracketEditorInput"), /key === "winner"[\s\S]*matchup\.winnerSide = matchup\.winner/, "Winner edits should persist both winner fields for advancement");

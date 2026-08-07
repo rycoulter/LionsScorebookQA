@@ -3,24 +3,24 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <link rel="manifest" href="manifest.json?v=2026.07.22-build-309">
-    <link rel="icon" href="favicon.ico?v=2026.07.22-build-309" sizes="any">
-    <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png?v=2026.07.22-build-309">
-    <link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-48.png?v=2026.07.22-build-309">
-    <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=2026.07.22-build-309">
+    <link rel="manifest" href="manifest.json?v=2026.08.07-build-333">
+    <link rel="icon" href="favicon.ico?v=2026.08.07-build-333" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png?v=2026.08.07-build-333">
+    <link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-48.png?v=2026.08.07-build-333">
+    <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=2026.08.07-build-333">
     <meta name="theme-color" content="#1f2937">
   <title>Oakmont Lions</title>
     <link rel="preconnect" href="https://images.unsplash.com">
-    <link rel="stylesheet" href="styles.css?v=2026.07.22-build-309">
+    <link rel="stylesheet" href="styles.css?v=2026.08.07-build-333">
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
         <div class="brand-block">
-          <img src="assets/team-logos/lions-header-mark.png?v=2026.07.22-build-309" alt="" class="brand-logo" width="48" height="48">
+          <img src="assets/team-logos/lions-header-mark.png?v=2026.08.07-build-333" alt="" class="brand-logo" width="48" height="48">
           <div class="brand-copy">
             <h1 class="sr-only">Oakmont Lions</h1>
-            <img src="assets/team-logos/lions-header-wordmark-cropped.png?v=2026.07.22-build-309" alt="" class="brand-wordmark" width="170" height="67" aria-hidden="true">
+            <img src="assets/team-logos/lions-header-wordmark-cropped.png?v=2026.08.07-build-333" alt="" class="brand-wordmark" width="170" height="67" aria-hidden="true">
           </div>
         </div>
         <nav class="tabs" aria-label="Scorebook sections">
@@ -41,7 +41,8 @@
 
       <main>
         <section class="view is-visible" id="homeView" data-panel="home">
-          <section class="home-overview-panel">
+          <section class="home-offseason-experience" id="homeOffseasonExperience" hidden></section>
+          <section class="home-overview-panel" id="homeLiveOverviewPanel">
             <div class="home-overview-head">
               <div class="home-overview-kicker">
                 <span>2026 Season Overview</span>
@@ -67,11 +68,11 @@
               </article>
             </div>
           </section>
-          <div class="home-grid">
+          <div class="home-grid" id="homeLiveDashboardGrid">
             <div class="home-left-column">
               <section class="home-panel home-hero-panel" id="homeHeroPanel">
                 <div class="home-hero-head">
-                  <span class="scout-kicker">Next Game</span>
+                  <span class="scout-kicker" id="homeHeroKicker">Next Game</span>
                   <p class="player-meta home-next-game-status" id="homeNextGameStatus">
                     <span class="home-next-game-status-icon" aria-hidden="true">
                       <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="8.25" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.75V12L15 14.25" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -81,7 +82,7 @@
                 </div>
                 <div class="home-next-game-media">
                   <img
-                    src="assets/backgrounds/lions-no-game-hero.png?v=2026.07.22-build-309"
+                    src="assets/backgrounds/lions-no-game-hero.png?v=2026.08.07-build-333"
                     alt="Oakmont Lions"
                     id="homeMatchupImage"
                     class="home-field-image is-no-game-hero">
@@ -93,6 +94,7 @@
                     <span>Playoff Game</span>
                   </div>
                 </div>
+                <div class="home-offseason-content" id="homeOffseasonContent" hidden></div>
                 <div class="home-next-game">
                   <div class="home-next-game-head">
                     <h3 id="homeNextGame">No upcoming game scheduled</h3>
@@ -362,6 +364,57 @@
               </div>
               <div class="news-editor-list" id="newsEditorList"></div>
             </section>
+            <section class="news-editor-list-shell season-storyline-manager" id="seasonStorylineManager">
+              <div class="mini-head">
+                <div>
+                  <p class="eyebrow">Homepage</p>
+                  <h3>Season Storylines</h3>
+                </div>
+                <span class="player-meta" id="seasonStorylineStatus">Using automatic storylines.</span>
+              </div>
+              <form class="season-storyline-form" id="seasonStorylineForm">
+                <input type="hidden" id="seasonStorylineIdInput">
+                <label>
+                  Title
+                  <input id="seasonStorylineTitleInput" autocomplete="off" placeholder="Walk-off win">
+                </label>
+                <label>
+                  Short Copy
+                  <textarea id="seasonStorylineDescriptionInput" rows="2" placeholder="A short homepage storyline."></textarea>
+                </label>
+                <div class="season-storyline-image-field">
+                  <label>
+                    Image
+                    <input id="seasonStorylineImageUploadInput" type="file" accept="image/*">
+                  </label>
+                  <input type="hidden" id="seasonStorylineImageInput">
+                  <div class="news-editor-image-preview season-storyline-image-preview" id="seasonStorylineImagePreview">
+                    <span>No image selected</span>
+                  </div>
+                </div>
+                <div class="season-storyline-row">
+                  <label>
+                    Link To
+                    <select id="seasonStorylineActionSelect">
+                      <option value="highlights">Highlights</option>
+                      <option value="stats">Stats</option>
+                      <option value="archive">Past Games</option>
+                      <option value="news">Team News</option>
+                      <option value="bracket">Playoff Bracket</option>
+                    </select>
+                  </label>
+                  <label>
+                    Button Label
+                    <input id="seasonStorylineCtaInput" autocomplete="off" placeholder="Open">
+                  </label>
+                </div>
+                <div class="button-row season-storyline-actions">
+                  <button type="submit" class="primary-action compact-action" id="seasonStorylineSaveBtn">Save Storyline</button>
+                  <button type="button" class="secondary-action compact-action" id="seasonStorylineResetBtn">Clear</button>
+                </div>
+              </form>
+              <div class="news-editor-list season-storyline-list" id="seasonStorylineList"></div>
+            </section>
           </div>
         </section>
 
@@ -552,7 +605,7 @@
                   </div>
                   <div class="spray-chart" id="sprayChart" role="button" tabindex="0" aria-label="Tap to set batted ball location">
                     <div class="field-layer field-background" aria-hidden="true">
-                      <img class="field-background-art" src="assets/updated-field.png?v=2026.07.22-build-309" alt="" aria-hidden="true">
+                      <img class="field-background-art" src="assets/updated-field.png?v=2026.08.07-build-333" alt="" aria-hidden="true">
                     </div>
                     <div class="field-layer position-marker-layer" aria-hidden="true"></div>
                     <div class="field-layer spray-chart-overlay">
@@ -1473,7 +1526,7 @@
             <div class="stats-spray-feature">
               <div class="stats-spray-preview" aria-hidden="true">
                 <div class="field-layer field-background stats-field-background">
-                  <img class="field-background-art stats-field-background-art" src="assets/updated-field.png?v=2026.07.22-build-309" alt="" aria-hidden="true">
+                  <img class="field-background-art stats-field-background-art" src="assets/updated-field.png?v=2026.08.07-build-333" alt="" aria-hidden="true">
                 </div>
                 <div class="stats-spray-preview-markers" id="statsSprayPreviewMarkers"></div>
               </div>
@@ -1709,6 +1762,13 @@
                   <span>Defense / Fielding</span>
                 </label>
               </fieldset>
+              <label class="highlight-season-video-option">
+                <input id="highlightSeasonVideoInput" type="checkbox">
+                <span>
+                  <strong>Season Highlight Video</strong>
+                  <small>Use this clip on the homepage season video card.</small>
+                </span>
+              </label>
               <div class="highlight-tag-grid">
                 <label>
                   Inning
@@ -2332,7 +2392,7 @@
           </div>
           <div class="spray-chart stats-spray-chart" id="statsSprayChart" aria-label="Player spray chart">
             <div class="field-layer field-background stats-field-background" aria-hidden="true">
-                <img class="field-background-art stats-field-background-art" src="assets/updated-field.png?v=2026.07.22-build-309" alt="" aria-hidden="true">
+                <img class="field-background-art stats-field-background-art" src="assets/updated-field.png?v=2026.08.07-build-333" alt="" aria-hidden="true">
             </div>
             <div class="field-layer stats-spray-chart-overlay">
               <div class="spray-markers stats-spray-markers" id="statsSprayMarkers"></div>
@@ -2444,7 +2504,7 @@
             </div>
             <div class="spray-chart stat-edit-spray-chart" id="statEditSprayChart" role="button" tabindex="0" aria-label="Tap to add a spray chart location">
               <div class="field-layer field-background" aria-hidden="true">
-                <img class="field-background-art" src="assets/updated-field.png?v=2026.07.22-build-309" alt="" aria-hidden="true">
+                <img class="field-background-art" src="assets/updated-field.png?v=2026.08.07-build-333" alt="" aria-hidden="true">
               </div>
               <div class="field-layer stats-spray-chart-overlay">
                 <div class="spray-markers stats-spray-markers" id="statEditSprayMarkers"></div>
@@ -2517,17 +2577,17 @@
       </div>
     </div>
 
-    <script src="dexie.min.js?v=2026.07.22-build-309"></script>
-    <script src="db.js?v=2026.07.22-build-309"></script>
-    <script src="storage.js?v=2026.07.22-build-309"></script>
-    <script src="matchup-images.js?v=2026.07.22-build-309"></script>
+    <script src="dexie.min.js?v=2026.08.07-build-333"></script>
+    <script src="db.js?v=2026.08.07-build-333"></script>
+    <script src="storage.js?v=2026.08.07-build-333"></script>
+    <script src="matchup-images.js?v=2026.08.07-build-333"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=2026.07.22-build-309"></script>
-    <script src="supabase-storage.js?v=2026.07.22-build-309"></script>
-    <script src="bracket-engine.js?v=2026.07.22-build-309"></script>
-    <script src="data/league-standings-cache.js?v=2026.07.22-build-309"></script>
-    <script src="data/naba-rosters-cache.js?v=2026.07.22-build-309"></script>
+    <script src="supabase-config.js?v=2026.08.07-build-333"></script>
+    <script src="supabase-storage.js?v=2026.08.07-build-333"></script>
+    <script src="bracket-engine.js?v=2026.08.07-build-333"></script>
+    <script src="data/league-standings-cache.js?v=2026.08.07-build-333"></script>
+    <script src="data/naba-rosters-cache.js?v=2026.08.07-build-333"></script>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js"></script>
-    <script src="app.js?v=2026.07.22-build-309"></script>
+    <script src="app.js?v=2026.08.07-build-333"></script>
   </body>
 </html>

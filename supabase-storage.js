@@ -223,6 +223,7 @@
         games_count: currentGameIds.length,
         current_game_ids: currentGameIds,
         deleted_game_tombstones: deletedGameTombstones,
+        season_storylines: deepClone(state?.seasonStorylines || []),
         playoff_bracket: deepClone(state?.playoffBracket || null)
       }
     };
@@ -248,6 +249,7 @@
     const playerIds = Array.isArray(row.player_ids)
       ? row.player_ids.map((id) => String(id || "").trim()).filter(Boolean)
       : [];
+    const hasSeasonFeaturedColumn = Object.prototype.hasOwnProperty.call(row, "season_featured");
     return {
       id: String(row.id || "").trim(),
       gameId: String(row.game_id || "").trim(),
@@ -257,6 +259,10 @@
       description: String(row.description || "").trim(),
       category: categories[0] || "",
       categories,
+      featured: Boolean(row.featured || metadata.featured),
+      seasonFeatured: hasSeasonFeaturedColumn
+        ? row.season_featured === true
+        : Boolean(metadata.season_featured || metadata.seasonFeatured),
       inning: String(row.inning || "").trim(),
       playType: String(row.play_type || "").trim(),
       playerIds,
@@ -277,6 +283,7 @@
       description: String(highlight?.description || "").trim(),
       category,
       categories,
+      season_featured: Boolean(highlight?.seasonFeatured || highlight?.season_featured),
       inning: String(highlight?.inning || "").trim(),
       play_type: String(highlight?.playType || highlight?.play_type || "").trim(),
       player_ids: Array.isArray(highlight?.playerIds)
@@ -285,7 +292,8 @@
       metadata: {
         updated_from: "scorebook-app",
         category,
-        categories
+        categories,
+        season_featured: Boolean(highlight?.seasonFeatured || highlight?.season_featured)
       }
     };
   }
@@ -701,6 +709,9 @@
     } else if (remoteMetadata.playoff_bracket && typeof remoteMetadata.playoff_bracket === "object") {
       nextState.playoffBracket = deepClone(remoteMetadata.playoff_bracket);
     }
+    nextState.seasonStorylines = Array.isArray(remoteMetadata.season_storylines)
+      ? deepClone(remoteMetadata.season_storylines)
+      : deepClone(nextState.seasonStorylines || []);
     if (Array.isArray(newsRows)) {
       nextState.newsArticles = newsRows.map(newsArticleFromRow).filter((article) => article?.id);
     } else {
@@ -1203,6 +1214,20 @@
         .select("*")
         .single();
     }
+    if (isMissingColumnError(response.error, "season_featured")) {
+      const { season_featured, ...legacyRow } = row;
+      response = await client
+        .from("game_highlights")
+        .upsert(legacyRow, { onConflict: "id" })
+        .select("*")
+        .single();
+      if (response.data) {
+        response.data.metadata = {
+          ...(response.data.metadata && typeof response.data.metadata === "object" ? response.data.metadata : {}),
+          season_featured: Boolean(row.season_featured)
+        };
+      }
+    }
     if (isMissingTableError(response.error, "game_highlights")) {
       return {
         data: null,
@@ -1214,6 +1239,29 @@
       ...response,
       data: highlightFromRow(response.data)
     };
+  }
+
+  async function clearSeasonFeaturedHighlights(exceptHighlightId = "") {
+    const client = getClient();
+    if (!client) return { data: [], error: new Error("Supabase client not ready.") };
+    let query = client
+      .from("game_highlights")
+      .update({ season_featured: false })
+      .eq("season_featured", true);
+    const exceptId = String(exceptHighlightId || "").trim();
+    if (exceptId) query = query.neq("id", exceptId);
+    const response = await query.select("id");
+    if (isMissingColumnError(response.error, "season_featured")) {
+      return { data: [], error: response.error, missingColumn: true };
+    }
+    if (isMissingTableError(response.error, "game_highlights")) {
+      return {
+        data: [],
+        error: new Error("Supabase game_highlights table is not available to the app. Run supabase-schema.sql in this environment or refresh the Supabase API schema cache."),
+        missingTable: true
+      };
+    }
+    return response;
   }
 
   async function deleteHighlight(highlightId) {
@@ -1412,6 +1460,7 @@
     replaceGamesSnapshot,
     deleteGames,
     upsertHighlight,
+    clearSeasonFeaturedHighlights,
     deleteHighlight,
     upsertNewsArticle,
     deleteNewsArticle,

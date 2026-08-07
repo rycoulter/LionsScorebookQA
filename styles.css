@@ -1193,6 +1193,45 @@ textarea:disabled {
   outline-offset: 2px;
 }
 
+.highlight-season-video-option {
+  display: flex !important;
+  grid-template-columns: none !important;
+  align-items: center;
+  gap: 12px !important;
+  padding: 12px 14px;
+  border: 1px solid rgba(245, 189, 33, 0.24);
+  border-radius: 8px;
+  background: rgba(245, 189, 33, 0.08);
+  color: var(--white) !important;
+  cursor: pointer;
+}
+
+.highlight-season-video-option input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--lion-gold);
+}
+
+.highlight-season-video-option span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.highlight-season-video-option strong {
+  color: var(--lion-gold);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+}
+
+.highlight-season-video-option small {
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-transform: none;
+}
+
 .highlight-tag-grid {
   display: grid;
   grid-template-columns: minmax(0, 0.45fr) minmax(0, 1fr);
@@ -1230,6 +1269,22 @@ textarea:disabled {
 .game-highlight-copy h3 {
   margin: 0;
   color: var(--white);
+}
+
+.highlight-season-video-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  border: 1px solid rgba(245, 189, 33, 0.45);
+  border-radius: 999px;
+  padding: 3px 7px;
+  color: var(--lion-gold);
+  background: rgba(245, 189, 33, 0.1);
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  vertical-align: middle;
 }
 
 .highlight-admin-copy p,
@@ -1896,6 +1951,2026 @@ main {
 .home-next-game-status-icon svg {
   width: 18px;
   height: 18px;
+}
+
+.home-offseason-content {
+  display: grid;
+  gap: 16px;
+}
+
+.home-offseason-content[hidden] {
+  display: none !important;
+}
+
+.home-hero-panel.is-offseason {
+  border-color: rgba(245, 189, 33, 0.28);
+  background:
+    radial-gradient(circle at 22% 0%, rgba(18, 132, 255, 0.18), transparent 34%),
+    radial-gradient(circle at 82% 18%, rgba(245, 189, 33, 0.18), transparent 30%),
+    linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(3, 7, 18, 0.94));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 20px 46px rgba(0, 0, 0, 0.22);
+}
+
+.home-hero-panel.is-offseason .home-field-image {
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.34),
+    0 0 0 1px rgba(245, 189, 33, 0.14);
+}
+
+.home-hero-panel.is-offseason .home-next-game {
+  display: none;
+}
+
+.home-offseason-copy {
+  display: grid;
+  gap: 8px;
+  max-width: 720px;
+}
+
+.home-offseason-copy .eyebrow {
+  margin: 0;
+  color: var(--lion-gold);
+}
+
+.home-offseason-copy h2 {
+  margin: 0;
+  color: var(--white);
+  font-size: clamp(2rem, 4.2vw, 4rem);
+  line-height: 0.98;
+}
+
+.home-offseason-copy p:not(.eyebrow) {
+  max-width: 58ch;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 1.02rem;
+  line-height: 1.45;
+}
+
+.home-offseason-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-block: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.home-offseason-stats article {
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  min-height: 104px;
+  padding: 16px 18px;
+}
+
+.home-offseason-stats article + article {
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.home-offseason-stats span {
+  color: var(--lion-gold);
+  font-size: 0.75rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.home-offseason-stats strong {
+  color: var(--white);
+  font-size: clamp(1.45rem, 2.2vw, 2.25rem);
+  font-weight: 950;
+  line-height: 1;
+}
+
+.home-offseason-stats small {
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.home-offseason-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.home-offseason-actions .home-next-game-link {
+  min-height: 42px;
+  padding: 0 15px;
+}
+
+.home-offseason-actions .home-offseason-primary {
+  border-color: rgba(245, 189, 33, 0.58);
+  background: linear-gradient(180deg, #f4c425, #eab308);
+  color: #10172a;
+  box-shadow: 0 10px 22px rgba(245, 189, 33, 0.18);
+}
+
+.home-offseason-actions .home-offseason-primary:hover,
+.home-offseason-actions .home-offseason-primary:focus-visible {
+  color: #10172a;
+  background: linear-gradient(180deg, #ffd765, #f0bd19);
+}
+
+.home-offseason-experience {
+  display: block;
+  width: 100%;
+}
+
+.home-offseason-experience[hidden] {
+  display: none !important;
+}
+
+.home-offseason-page-shell {
+  display: grid;
+  gap: 18px;
+  width: 100%;
+  min-width: 0;
+}
+
+.home-offseason-hero {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(360px, 0.9fr) minmax(260px, 340px);
+  align-items: center;
+  gap: clamp(28px, 5vw, 76px);
+  min-height: clamp(550px, 58vw, 650px);
+  overflow: hidden;
+  border: 1px solid rgba(245, 189, 33, 0.24);
+  border-radius: 16px;
+  padding: clamp(28px, 5vw, 64px);
+  background-image:
+    linear-gradient(90deg, rgba(2, 7, 18, 0.98) 0%, rgba(5, 10, 24, 0.84) 30%, rgba(5, 10, 24, 0.14) 56%, rgba(5, 10, 24, 0.64) 100%),
+    linear-gradient(0deg, rgba(2, 7, 18, 0.74) 0%, rgba(2, 7, 18, 0.1) 45%, rgba(2, 7, 18, 0.38) 100%),
+    radial-gradient(circle at 52% 28%, rgba(245, 189, 33, 0.18), transparent 30%),
+    radial-gradient(circle at 42% 18%, rgba(30, 144, 255, 0.14), transparent 34%),
+    var(--home-offseason-team-image),
+    var(--home-offseason-hero-image),
+    url("assets/backgrounds/stadium-night.png");
+  background-position: center, center, center, center, center 58%, center, center;
+  background-repeat: no-repeat;
+  background-size: cover, cover, cover, cover, cover, cover, cover;
+  background-color: #020712;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 26px 70px rgba(0, 0, 0, 0.32);
+}
+
+.home-offseason-hero::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 34%;
+  z-index: -1;
+  background: linear-gradient(0deg, rgba(2, 7, 18, 0.62), transparent);
+}
+
+.home-offseason-hero-copy,
+.home-offseason-countdown-card {
+  position: relative;
+  z-index: 1;
+}
+
+.home-offseason-hero-copy {
+  display: grid;
+  gap: 18px;
+  max-width: 640px;
+}
+
+.home-offseason-hero-copy .eyebrow,
+.home-offseason-section-head .eyebrow {
+  margin: 0;
+  color: var(--lion-gold);
+  font-size: 0.78rem;
+  font-weight: 1000;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.home-offseason-hero-copy h1 {
+  margin: 0;
+  color: var(--white);
+  font-size: clamp(3rem, 7vw, 6.5rem);
+  font-weight: 1000;
+  line-height: 0.88;
+  text-transform: uppercase;
+  text-shadow: 0 18px 44px rgba(0, 0, 0, 0.5);
+}
+
+.home-offseason-hero-title {
+  display: grid;
+  gap: 2px;
+}
+
+.home-offseason-hero-title span {
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 0.42em;
+  letter-spacing: 0.04em;
+}
+
+.home-offseason-hero-title strong {
+  color: var(--lion-gold);
+  font: inherit;
+  line-height: 0.86;
+  text-shadow:
+    0 2px 0 rgba(255, 255, 255, 0.18),
+    0 18px 42px rgba(245, 189, 33, 0.2),
+    0 22px 48px rgba(0, 0, 0, 0.6);
+}
+
+.home-offseason-hero-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, auto));
+  gap: 0;
+  max-width: 440px;
+}
+
+.home-offseason-hero-stats article {
+  display: grid;
+  gap: 3px;
+  min-width: 112px;
+  padding: 0 18px;
+  border-left: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.home-offseason-hero-stats article:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.home-offseason-hero-stats strong {
+  color: var(--white);
+  font-size: clamp(1.25rem, 2vw, 1.75rem);
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.home-offseason-hero-stats span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.home-offseason-hero-copy p:not(.eyebrow) {
+  max-width: 58ch;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.84);
+  font-size: clamp(1rem, 1.3vw, 1.18rem);
+  line-height: 1.55;
+}
+
+.home-offseason-hero-actions,
+.home-offseason-section-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.home-offseason-hero-actions {
+  flex-wrap: wrap;
+}
+
+.home-offseason-section-head {
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.home-offseason-section-head h2 {
+  margin: 4px 0 0;
+  color: var(--white);
+  font-size: clamp(1.15rem, 1.6vw, 1.55rem);
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.home-offseason-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 44px;
+  border: 1px solid rgba(245, 189, 33, 0.34);
+  border-radius: 8px;
+  padding: 0 18px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.92rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.home-offseason-action:hover,
+.home-offseason-action:focus-visible {
+  border-color: rgba(245, 189, 33, 0.58);
+  color: var(--lion-gold);
+  box-shadow: 0 0 24px rgba(245, 189, 33, 0.12);
+  transform: translateY(-1px);
+}
+
+.home-offseason-action-primary {
+  border-color: rgba(245, 189, 33, 0.78);
+  background: linear-gradient(180deg, #f7cf45, #dca915);
+  color: #07101d;
+  box-shadow: 0 18px 32px rgba(245, 189, 33, 0.18);
+}
+
+.home-offseason-action-primary:hover,
+.home-offseason-action-primary:focus-visible {
+  color: #07101d;
+  background: linear-gradient(180deg, #ffe082, #e7b72c);
+}
+
+.home-offseason-action-outline {
+  background: rgba(1, 6, 18, 0.42);
+}
+
+.home-offseason-action-ghost {
+  min-height: 36px;
+  padding-inline: 12px;
+  border-color: rgba(245, 189, 33, 0.22);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.78rem;
+}
+
+.home-offseason-countdown-card {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-height: 292px;
+  align-content: center;
+  border: 1px solid rgba(245, 189, 33, 0.32);
+  border-radius: 16px;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(245, 189, 33, 0.14), transparent 42%),
+    rgba(5, 10, 24, 0.76);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 22px 50px rgba(0, 0, 0, 0.32);
+  text-align: center;
+  backdrop-filter: blur(9px);
+}
+
+.home-offseason-countdown-kicker {
+  color: var(--white);
+  font-size: 0.85rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.home-offseason-countdown-card strong {
+  color: var(--white);
+  font-size: clamp(4rem, 7vw, 6.2rem);
+  font-weight: 1000;
+  line-height: 0.9;
+}
+
+.home-offseason-countdown-card > span:not(.home-offseason-countdown-kicker) {
+  color: var(--lion-gold);
+  font-size: 1.05rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.home-offseason-countdown-card small {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.home-offseason-countdown-list {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin-top: 12px;
+}
+
+.home-offseason-countdown-list span {
+  min-height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.home-offseason-snapshot,
+.home-offseason-card {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background:
+    linear-gradient(145deg, rgba(19, 27, 45, 0.9), rgba(5, 10, 24, 0.9)),
+    rgba(5, 10, 24, 0.88);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 18px 46px rgba(0, 0, 0, 0.2);
+}
+
+.home-offseason-snapshot {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.home-offseason-snapshot-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.home-offseason-snapshot-head h2 {
+  margin: 0;
+  color: var(--white);
+  font-size: clamp(1.05rem, 1.5vw, 1.35rem);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.home-offseason-snapshot-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(4, 10, 22, 0.42);
+}
+
+.home-offseason-snapshot-card {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 8px;
+  min-height: 124px;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 16px 12px;
+  text-align: center;
+}
+
+.home-offseason-snapshot-card:nth-child(4n) {
+  border-right: 0;
+}
+
+.home-offseason-snapshot-card:nth-child(n + 5) {
+  border-bottom: 0;
+}
+
+.home-season-glance-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(245, 189, 33, 0.72);
+  border-radius: 999px;
+  color: var(--lion-gold);
+  box-shadow:
+    0 0 0 1px rgba(245, 189, 33, 0.08),
+    0 0 16px rgba(245, 189, 33, 0.12);
+}
+
+.home-season-glance-icon svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.65;
+}
+
+.home-offseason-snapshot-card span,
+.home-offseason-playoff-summary span,
+.home-offseason-leader-tile span {
+  color: var(--lion-gold);
+  font-size: 0.74rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.home-offseason-snapshot-card strong,
+.home-offseason-snapshot-value {
+  color: var(--white);
+  font-size: clamp(1.65rem, 2.2vw, 2.3rem);
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.home-offseason-snapshot-value.is-positive {
+  color: var(--lion-gold);
+}
+
+.home-offseason-snapshot-value.is-negative {
+  color: #f87171;
+}
+
+.home-offseason-snapshot-card.is-standing-gold strong {
+  color: #ffd95a;
+}
+
+.home-offseason-snapshot-card.is-standing-silver strong {
+  color: #dbe4ef;
+}
+
+.home-offseason-snapshot-card.is-standing-bronze strong {
+  color: #d79a5b;
+}
+
+.home-offseason-card {
+  min-width: 0;
+  padding: 18px;
+}
+
+.home-offseason-primary-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(300px, 0.82fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.home-offseason-bracket-frame {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 10px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+
+.home-offseason-bracket-frame .playoff-bracket-board {
+  --round-width: 250px;
+  --round-gap: 42px;
+  --bracket-horizontal-padding: 12px;
+  gap: 12px;
+  min-width: max-content;
+}
+
+.home-offseason-bracket-frame .playoff-bracket-region {
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(3, 8, 20, 0.66);
+}
+
+.home-offseason-bracket-frame .playoff-bracket-region-head {
+  margin-bottom: 10px;
+}
+
+.home-offseason-bracket-frame .playoff-bracket-round-head {
+  min-height: 42px;
+}
+
+.home-offseason-bracket-frame .playoff-bracket-matchups {
+  gap: 18px;
+  min-height: calc((var(--matchup-count, 1) * 100px) + var(--bracket-round-offset, 0px));
+}
+
+.home-offseason-bracket-frame .playoff-bracket-card {
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.home-offseason-bracket-frame .playoff-bracket-node {
+  min-height: 92px;
+}
+
+.home-offseason-bracket-frame .playoff-bracket-team {
+  padding: 7px 8px;
+}
+
+.home-offseason-bracket-frame .playoff-bracket-team-main img,
+.home-offseason-bracket-frame .playoff-bracket-team-placeholder-icon {
+  width: 25px;
+  height: 25px;
+}
+
+.home-offseason-bracket-frame .playoff-bracket-team-main strong {
+  font-size: 0.82rem;
+}
+
+.home-offseason-bracket-frame .playoff-bracket-card.is-lions-matchup {
+  border-color: rgba(245, 189, 33, 0.5);
+  box-shadow:
+    0 0 0 1px rgba(245, 189, 33, 0.12),
+    0 0 22px rgba(245, 189, 33, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.home-offseason-playoff-compact-card {
+  overflow: hidden;
+  padding: 0;
+}
+
+.home-compact-bracket {
+  display: grid;
+  min-width: 0;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(245, 189, 33, 0.08), transparent 26%),
+    linear-gradient(145deg, rgba(10, 17, 31, 0.9), rgba(4, 10, 22, 0.92));
+}
+
+.home-compact-bracket-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 52px;
+  padding: 13px 18px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.home-compact-bracket-head h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  color: var(--white);
+  font-size: clamp(1.05rem, 1.5vw, 1.28rem);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.home-compact-bracket-head .home-offseason-icon {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+}
+
+.home-compact-bracket-head .home-offseason-icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.home-compact-bracket-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 36px;
+  border: 1px solid rgba(245, 189, 33, 0.22);
+  border-radius: 8px;
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.78rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.home-compact-bracket-link:hover,
+.home-compact-bracket-link:focus-visible {
+  border-color: rgba(245, 189, 33, 0.58);
+  color: var(--lion-gold);
+  box-shadow: 0 0 24px rgba(245, 189, 33, 0.12);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.home-compact-bracket-scroll {
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-color: rgba(245, 189, 33, 0.35) rgba(255, 255, 255, 0.08);
+}
+
+.home-compact-bracket-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.home-compact-bracket-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.home-compact-bracket-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(245, 189, 33, 0.36);
+}
+
+.home-compact-bracket-grid {
+  display: grid;
+  grid-template-columns: minmax(245px, 1.15fr) minmax(220px, 0.92fr) minmax(185px, 0.72fr);
+  gap: 28px;
+  align-items: center;
+  min-width: 0;
+  padding: 12px 18px 8px;
+}
+
+.home-compact-bracket-grid.is-two-wing {
+  grid-template-columns: max-content minmax(172px, 196px) max-content;
+  gap: 24px;
+  width: max-content;
+  min-width: 100%;
+  justify-content: center;
+  padding-bottom: 10px;
+}
+
+.home-compact-bracket-wing {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  min-width: 0;
+  scroll-snap-align: center;
+}
+
+.home-compact-bracket-wing > h3,
+.home-compact-bracket-center > span {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.68rem;
+  font-weight: 1000;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.home-compact-bracket-wing-right > h3 {
+  text-align: right;
+}
+
+.home-compact-bracket-wing-columns {
+  display: grid;
+  grid-auto-columns: minmax(166px, 184px);
+  grid-auto-flow: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.home-compact-bracket-center {
+  position: relative;
+  display: grid;
+  align-self: center;
+  gap: 6px;
+  min-width: 0;
+  scroll-snap-align: center;
+  text-align: center;
+}
+
+.home-compact-bracket-center::before,
+.home-compact-bracket-center::after {
+  content: "";
+  position: absolute;
+  top: calc(50% + 8px);
+  width: 16px;
+  border-top: 1px solid rgba(245, 189, 33, 0.58);
+}
+
+.home-compact-bracket-center::before {
+  right: calc(100% + 4px);
+}
+
+.home-compact-bracket-center::after {
+  left: calc(100% + 4px);
+}
+
+.home-compact-bracket-center > strong {
+  display: block;
+  overflow: hidden;
+  color: var(--white);
+  font-size: 0.78rem;
+  font-weight: 1000;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-compact-bracket-center-stack {
+  display: grid;
+  gap: 7px;
+}
+
+.home-compact-bracket-column {
+  position: relative;
+  display: grid;
+  align-content: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.home-compact-bracket-column:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -22px;
+  width: 18px;
+  border-top: 1px solid rgba(245, 189, 33, 0.58);
+}
+
+.home-compact-bracket-column h3 {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.72rem;
+  font-weight: 1000;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.home-compact-bracket-stack {
+  display: grid;
+  gap: 8px;
+}
+
+.home-compact-bracket-matchup {
+  position: relative;
+  display: grid;
+  gap: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 6px;
+  padding: 5px;
+  background: rgba(5, 10, 24, 0.74);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.home-compact-bracket-matchup.is-lions-matchup {
+  border-color: rgba(245, 189, 33, 0.54);
+  box-shadow:
+    0 0 0 1px rgba(245, 189, 33, 0.1),
+    0 0 18px rgba(245, 189, 33, 0.1);
+}
+
+.home-compact-bracket-matchup.is-placeholder {
+  border-style: dashed;
+  opacity: 0.82;
+}
+
+.home-compact-bracket-matchup.is-clickable {
+  cursor: pointer;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.home-compact-bracket-matchup.is-clickable:hover,
+.home-compact-bracket-matchup.is-clickable:focus-visible {
+  border-color: rgba(245, 189, 33, 0.72);
+  box-shadow: 0 0 22px rgba(245, 189, 33, 0.14);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.home-compact-bracket-team {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 27px;
+  border-radius: 5px;
+  padding: 4px 7px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.home-compact-bracket-team.is-winner {
+  background: linear-gradient(90deg, rgba(245, 189, 33, 0.16), rgba(255, 255, 255, 0.055));
+}
+
+.home-compact-bracket-team-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.home-compact-bracket-team-main b {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.68rem;
+  font-weight: 1000;
+}
+
+.home-compact-bracket-team-main img,
+.home-compact-bracket-team-main .playoff-bracket-team-placeholder-icon {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+}
+
+.home-compact-bracket-team-main .playoff-bracket-team-placeholder-icon {
+  color: var(--lion-gold);
+}
+
+.home-compact-bracket-team-main strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--white);
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-compact-bracket-team em {
+  color: var(--white);
+  font-size: 0.9rem;
+  font-style: normal;
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.home-compact-bracket-bye {
+  display: grid;
+  place-items: center;
+  min-height: 27px;
+  border: 1px dashed rgba(245, 189, 33, 0.32);
+  border-radius: 5px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 0.72rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.home-compact-bracket-note {
+  display: grid;
+  grid-template-columns: minmax(24px, 1fr) auto minmax(24px, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 5px 18px 14px;
+  color: var(--lion-gold);
+  text-align: center;
+}
+
+.home-compact-bracket-note span {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(245, 189, 33, 0.42), transparent);
+}
+
+.home-compact-bracket-note strong {
+  font-size: 0.9rem;
+  font-weight: 1000;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.home-offseason-playoff-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.home-offseason-playoff-summary article {
+  display: grid;
+  gap: 5px;
+  border: 1px solid rgba(245, 189, 33, 0.12);
+  border-radius: 10px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.home-offseason-playoff-summary strong {
+  color: var(--white);
+  font-size: 1.15rem;
+  font-weight: 1000;
+}
+
+.home-offseason-news-list {
+  display: grid;
+  gap: 10px;
+}
+
+.home-offseason-news-item {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 78px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.035);
+  color: inherit;
+  text-align: left;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.home-offseason-news-item:hover,
+.home-offseason-news-item:focus-visible {
+  border-color: rgba(245, 189, 33, 0.36);
+  background: rgba(245, 189, 33, 0.08);
+  box-shadow: 0 0 18px rgba(245, 189, 33, 0.08);
+  outline: none;
+}
+
+.home-offseason-news-item img {
+  width: 72px;
+  height: 58px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.home-offseason-news-item span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.home-offseason-news-item small {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.home-offseason-news-item strong {
+  color: var(--white);
+  font-size: 0.94rem;
+  line-height: 1.22;
+}
+
+.home-offseason-moments-track {
+  display: grid;
+  grid-auto-columns: minmax(240px, 1fr);
+  grid-auto-flow: column;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+
+.home-offseason-moment-card {
+  position: relative;
+  display: grid;
+  align-content: end;
+  min-height: 245px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 14px;
+  background: rgba(3, 8, 20, 0.78);
+  color: inherit;
+  text-align: left;
+  scroll-snap-align: start;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.home-offseason-moment-card:hover,
+.home-offseason-moment-card:focus-visible {
+  border-color: rgba(245, 189, 33, 0.46);
+  box-shadow: 0 0 28px rgba(245, 189, 33, 0.12);
+  transform: translateY(-2px);
+  outline: none;
+}
+
+.home-offseason-moment-card img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.76;
+}
+
+.home-offseason-moment-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, rgba(2, 7, 18, 0.94) 0%, rgba(2, 7, 18, 0.22) 62%, rgba(2, 7, 18, 0.08) 100%);
+}
+
+.home-offseason-moment-copy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+}
+
+.home-offseason-moment-copy strong {
+  color: var(--white);
+  font-size: 1.05rem;
+  line-height: 1.14;
+}
+
+.home-offseason-moment-copy small {
+  color: rgba(255, 255, 255, 0.76);
+  line-height: 1.35;
+}
+
+.home-offseason-moment-copy em {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--lion-gold);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.home-offseason-secondary-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.72fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.home-offseason-leaders {
+  overflow: hidden;
+  padding: 0;
+}
+
+.home-offseason-leaders-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 52px;
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.home-offseason-leaders-head h2 {
+  margin: 0;
+  color: var(--white);
+  font-size: clamp(1.05rem, 1.5vw, 1.28rem);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.home-offseason-leaders-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 36px;
+  border: 1px solid rgba(245, 189, 33, 0.22);
+  border-radius: 8px;
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.78rem;
+  font-weight: 950;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.home-offseason-leaders-link:hover,
+.home-offseason-leaders-link:focus-visible {
+  border-color: rgba(245, 189, 33, 0.58);
+  color: var(--lion-gold);
+  box-shadow: 0 0 24px rgba(245, 189, 33, 0.12);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.home-offseason-leader-board {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.home-offseason-leader-group {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-width: 0;
+  padding: 14px 18px 16px;
+}
+
+.home-offseason-leader-group + .home-offseason-leader-group {
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.home-offseason-leader-group h3 {
+  margin: 0 0 2px;
+  color: var(--lion-gold);
+  font-size: 0.82rem;
+  font-weight: 1000;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.home-offseason-leader-list {
+  display: grid;
+  gap: 7px;
+}
+
+.home-offseason-leader-row {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) minmax(44px, auto);
+  align-items: baseline;
+  gap: 12px;
+  min-height: 22px;
+}
+
+.home-offseason-leader-row span {
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.home-offseason-leader-row strong {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9rem;
+  font-weight: 850;
+  line-height: 1.14;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-offseason-leader-row b {
+  color: var(--white);
+  font-size: 1rem;
+  font-weight: 1000;
+  line-height: 1;
+  text-align: right;
+}
+
+.home-offseason-leader-row.is-empty strong {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.home-offseason-leader-row.is-empty b {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.home-offseason-leader-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.home-offseason-leader-tile {
+  display: grid;
+  gap: 8px;
+  min-height: 118px;
+  align-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 14px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(245, 189, 33, 0.12), transparent 32%),
+    rgba(255, 255, 255, 0.035);
+}
+
+.home-offseason-leader-tile strong {
+  color: var(--white);
+  font-size: clamp(1.7rem, 2.7vw, 2.55rem);
+  font-weight: 1000;
+  line-height: 0.95;
+}
+
+.home-offseason-leader-tile small {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.9rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.home-offseason-leader-tile small b {
+  color: var(--lion-gold);
+}
+
+.home-offseason-video-card {
+  display: grid;
+  grid-template-rows: auto minmax(220px, 1fr) auto;
+  overflow: hidden;
+  padding: 0;
+}
+
+.home-offseason-video-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 12px;
+}
+
+.home-offseason-video-heading h2 {
+  margin: 0;
+  color: var(--white);
+  font-size: 1.2rem;
+  font-weight: 950;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.home-offseason-dashboard-board .home-offseason-section-head h2,
+.home-offseason-dashboard-board .home-compact-bracket-head h2,
+.home-offseason-dashboard-board .home-offseason-leaders-head h2,
+.home-offseason-dashboard-board .home-offseason-video-heading h2 {
+  margin: 0;
+  color: var(--white);
+  font-family: inherit;
+  font-size: 1.08rem;
+  font-weight: 950;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.home-offseason-video-media {
+  position: relative;
+  min-height: 260px;
+  overflow: hidden;
+}
+
+.home-offseason-video-media img {
+  width: 100%;
+  height: 100%;
+  min-height: 260px;
+  object-fit: cover;
+  opacity: 0.82;
+}
+
+.home-offseason-video-card.is-placeholder .home-offseason-video-media img {
+  opacity: 0.88;
+  filter: brightness(0.72) saturate(1.08);
+}
+
+.home-offseason-video-media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, rgba(2, 7, 18, 0.72), transparent);
+}
+
+.home-offseason-play-button {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  display: inline-grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border: 1px solid rgba(245, 189, 33, 0.5);
+  border-radius: 999px;
+  background: rgba(245, 189, 33, 0.92);
+  color: #07101d;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.34);
+}
+
+.home-offseason-video-placeholder {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 170px;
+  min-height: 54px;
+  padding: 12px 22px;
+  border: 1px solid rgba(245, 189, 33, 0.62);
+  border-radius: 999px;
+  background: rgba(5, 12, 25, 0.82);
+  color: var(--lion-gold);
+  font-size: 1.08rem;
+  font-weight: 950;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.38), 0 0 26px rgba(245, 189, 33, 0.18);
+}
+
+.home-offseason-video-copy {
+  display: grid;
+  gap: 10px;
+  padding: 14px 18px 18px;
+}
+
+.home-offseason-video-copy p:not(.eyebrow) {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.74);
+  line-height: 1.45;
+}
+
+.home-offseason-road-grid,
+.home-offseason-explore-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.home-offseason-road-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.home-offseason-road-grid article {
+  display: grid;
+  gap: 8px;
+  min-height: 116px;
+  border: 1px solid rgba(245, 189, 33, 0.13);
+  border-radius: 12px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.home-offseason-road-grid span {
+  color: rgba(245, 189, 33, 0.62);
+  font-size: 0.8rem;
+  font-weight: 1000;
+}
+
+.home-offseason-road-grid strong {
+  color: var(--white);
+  font-size: 1.05rem;
+}
+
+.home-offseason-road-grid small {
+  color: rgba(255, 255, 255, 0.66);
+  font-weight: 800;
+}
+
+.home-offseason-explore-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.home-offseason-explore-card {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  min-height: 144px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.035);
+  color: inherit;
+  text-align: left;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.home-offseason-explore-card:hover,
+.home-offseason-explore-card:focus-visible {
+  border-color: rgba(245, 189, 33, 0.42);
+  background: rgba(245, 189, 33, 0.07);
+  box-shadow: 0 0 24px rgba(245, 189, 33, 0.1);
+  transform: translateY(-2px);
+  outline: none;
+}
+
+.home-offseason-explore-card strong {
+  color: var(--white);
+  font-size: 1rem;
+  text-transform: uppercase;
+}
+
+.home-offseason-explore-card span:not(.home-offseason-icon) {
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.home-offseason-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(245, 189, 33, 0.28);
+  border-radius: 999px;
+  background: rgba(245, 189, 33, 0.09);
+  color: var(--lion-gold);
+}
+
+.home-offseason-icon svg {
+  width: 23px;
+  height: 23px;
+  overflow: visible;
+}
+
+.home-offseason-icon svg path,
+.home-offseason-icon svg rect,
+.home-offseason-icon svg circle {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.home-offseason-play-button .home-offseason-icon {
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.home-offseason-dashboard-shell {
+  gap: 0;
+}
+
+.home-offseason-dashboard-board {
+  --home-dashboard-gutter: clamp(12px, 1.4vw, 24px);
+  display: grid;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 0 var(--home-dashboard-gutter) 16px;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(20, 124, 255, 0.13), transparent 34%),
+    radial-gradient(circle at 88% 16%, rgba(245, 189, 33, 0.13), transparent 32%),
+    linear-gradient(145deg, rgba(12, 18, 34, 0.92), rgba(4, 9, 22, 0.96));
+  box-shadow: none;
+}
+
+.home-offseason-dashboard-board .home-offseason-hero {
+  margin-inline: calc(var(--home-dashboard-gutter) * -1);
+  min-height: clamp(500px, 44vw, 680px);
+  border-right: 0;
+  border-left: 0;
+  border-radius: 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(245, 189, 33, 0.2);
+}
+
+.home-offseason-dashboard-board .home-offseason-snapshot {
+  width: 100%;
+  margin-inline: 0;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(245, 189, 33, 0.09), transparent 28%),
+    linear-gradient(145deg, rgba(12, 20, 35, 0.92), rgba(4, 10, 22, 0.9));
+}
+
+.home-offseason-dashboard-board .home-offseason-snapshot-card {
+  min-height: 118px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.home-offseason-dashboard-grid {
+  width: 100%;
+  margin-inline: 0;
+  padding-inline: 0;
+  display: grid;
+  grid-template-columns: minmax(430px, 1.12fr) minmax(320px, 0.8fr) minmax(420px, 1fr);
+  gap: 14px;
+  align-items: start;
+  min-width: 0;
+}
+
+.home-offseason-dashboard-column {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  min-width: 0;
+}
+
+.home-offseason-dashboard-footer {
+  width: 100%;
+  margin-inline: 0;
+  grid-template-columns: minmax(300px, 0.78fr) minmax(0, 1.22fr);
+  align-items: stretch;
+}
+
+.home-offseason-dashboard-board .home-offseason-card {
+  border-radius: 12px;
+  border-color: rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(145deg, rgba(15, 22, 39, 0.72), rgba(5, 10, 24, 0.74)),
+    rgba(5, 10, 24, 0.78);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+.home-offseason-dashboard-board .home-offseason-section-head {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(245, 189, 33, 0.12);
+}
+
+.home-offseason-dashboard-middle .home-offseason-section-head h2,
+.home-offseason-dashboard-right .home-offseason-section-head h2 {
+  font-size: 1.08rem;
+}
+
+.home-offseason-dashboard-middle .home-offseason-snapshot {
+  min-height: 0;
+}
+
+.home-offseason-dashboard-middle .home-offseason-snapshot-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.home-offseason-dashboard-middle .home-offseason-snapshot-card {
+  min-height: 108px;
+  padding: 12px 8px;
+}
+
+.home-offseason-dashboard-middle .home-season-glance-icon {
+  width: 31px;
+  height: 31px;
+}
+
+.home-offseason-dashboard-middle .home-offseason-snapshot-card strong {
+  font-size: clamp(1.35rem, 1.75vw, 1.85rem);
+}
+
+.home-offseason-dashboard-middle .home-offseason-snapshot-card span {
+  font-size: 0.66rem;
+}
+
+.home-offseason-dashboard-right .home-offseason-moments-track {
+  grid-auto-flow: row;
+  grid-auto-columns: initial;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  overflow: visible;
+  padding-bottom: 0;
+}
+
+.home-offseason-dashboard-right .home-offseason-moment-card {
+  min-height: 142px;
+  border-radius: 9px;
+}
+
+.home-offseason-dashboard-right .home-offseason-moment-copy {
+  gap: 5px;
+  padding: 10px;
+}
+
+.home-offseason-dashboard-right .home-offseason-moment-copy strong {
+  font-size: 0.78rem;
+}
+
+.home-offseason-dashboard-right .home-offseason-moment-copy small {
+  font-size: 0.68rem;
+  line-height: 1.2;
+}
+
+.home-offseason-dashboard-right .home-offseason-moment-copy em {
+  display: none;
+}
+
+.home-offseason-dashboard-sidebar .home-offseason-leader-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.home-offseason-dashboard-sidebar .home-offseason-leader-tile {
+  min-height: 88px;
+  padding: 12px;
+}
+
+.home-offseason-dashboard-sidebar .home-offseason-leader-tile strong {
+  font-size: 1.48rem;
+}
+
+.home-offseason-dashboard-sidebar .home-offseason-leader-tile small {
+  font-size: 0.78rem;
+}
+
+.home-offseason-dashboard-sidebar .home-offseason-video-card {
+  grid-template-rows: minmax(150px, auto) auto;
+}
+
+.home-offseason-dashboard-sidebar .home-offseason-video-media,
+.home-offseason-dashboard-sidebar .home-offseason-video-media img {
+  min-height: 150px;
+}
+
+.home-offseason-dashboard-sidebar .home-offseason-video-heading h2 {
+  font-size: 1.08rem;
+}
+
+.home-offseason-dashboard-sidebar .home-offseason-video-copy p:not(.eyebrow) {
+  font-size: 0.88rem;
+}
+
+.home-offseason-dashboard-board .home-offseason-road,
+.home-offseason-dashboard-board .home-offseason-explore {
+  height: 100%;
+}
+
+.home-offseason-dashboard-board .home-offseason-road-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.home-offseason-dashboard-board .home-offseason-road-grid article {
+  min-height: 92px;
+}
+
+.home-offseason-dashboard-board .home-offseason-explore-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.home-offseason-dashboard-board .home-offseason-explore-card {
+  min-height: 112px;
+  padding: 13px;
+}
+
+@media (max-width: 1120px) {
+  .home-offseason-primary-grid,
+  .home-offseason-secondary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-offseason-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-offseason-dashboard-right .home-offseason-moments-track {
+    grid-auto-columns: minmax(260px, 42vw);
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+
+  .home-offseason-dashboard-right .home-offseason-moment-card {
+    min-height: 210px;
+  }
+
+  .home-offseason-dashboard-right .home-offseason-moment-copy em {
+    display: inline-flex;
+  }
+
+  .home-offseason-moments-track {
+    grid-auto-columns: minmax(260px, 42vw);
+  }
+}
+
+@media (max-width: 760px) {
+  .home-offseason-page-shell {
+    gap: 14px;
+  }
+
+  .home-offseason-dashboard-board {
+    --home-dashboard-gutter: 10px;
+    gap: 12px;
+    padding: 0 var(--home-dashboard-gutter) 12px;
+    border-radius: 14px;
+  }
+
+  .home-offseason-hero {
+    grid-template-columns: 1fr;
+    align-items: end;
+    min-height: auto;
+    gap: 22px;
+    padding: 24px 18px;
+    background-position: center, center, center, center, center 60%, center, center;
+    background-size: cover, cover, cover, cover, cover, cover, cover;
+  }
+
+  .home-offseason-hero-copy {
+    gap: 16px;
+  }
+
+  .home-offseason-hero-copy h1 {
+    font-size: clamp(2.45rem, 14vw, 4rem);
+  }
+
+  .home-offseason-hero-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: none;
+    row-gap: 12px;
+  }
+
+  .home-offseason-hero-stats article {
+    min-width: 0;
+    padding-inline: 12px;
+  }
+
+  .home-offseason-hero-stats article:nth-child(odd) {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .home-offseason-hero-actions,
+  .home-offseason-section-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .home-offseason-action {
+    width: 100%;
+  }
+
+  .home-offseason-countdown-card {
+    min-height: 0;
+    padding: 18px;
+  }
+
+  .home-offseason-countdown-list {
+    grid-template-columns: 1fr;
+  }
+
+  .home-offseason-playoff-summary,
+  .home-offseason-leader-grid,
+  .home-offseason-road-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-offseason-snapshot {
+    padding: 14px;
+  }
+
+  .home-offseason-snapshot-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-offseason-leaders-head {
+    align-items: flex-start;
+    padding: 14px;
+  }
+
+  .home-offseason-leader-board {
+    grid-template-columns: 1fr;
+  }
+
+  .home-offseason-leader-group {
+    padding: 14px;
+  }
+
+  .home-offseason-leader-group + .home-offseason-leader-group {
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    border-left: 0;
+  }
+
+  .home-offseason-snapshot-card {
+    min-height: 96px;
+    padding: 14px;
+  }
+
+  .home-offseason-dashboard-board .home-offseason-snapshot-card:nth-child(4n) {
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .home-offseason-dashboard-board .home-offseason-snapshot-card:nth-child(even) {
+    border-right: 0;
+  }
+
+  .home-offseason-dashboard-board .home-offseason-snapshot-card:nth-child(n + 5) {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .home-offseason-dashboard-board .home-offseason-snapshot-card:nth-child(n + 7) {
+    border-bottom: 0;
+  }
+
+  .home-offseason-card {
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .home-offseason-bracket-frame {
+    margin-inline: -4px;
+    padding-inline: 4px;
+  }
+
+  .home-compact-bracket-head {
+    align-items: flex-start;
+    padding: 14px;
+  }
+
+  .home-compact-bracket-grid {
+    grid-template-columns: repeat(3, minmax(220px, 74vw));
+    gap: 18px;
+    padding: 12px 14px 10px;
+  }
+
+  .home-compact-bracket-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .home-compact-bracket-grid.is-two-wing {
+    grid-template-columns: max-content minmax(158px, 172px) max-content;
+    gap: 16px;
+    min-width: max-content;
+    padding-inline: 14px;
+  }
+
+  .home-compact-bracket-wing-columns {
+    grid-auto-columns: 168px;
+    gap: 14px;
+  }
+
+  .home-compact-bracket-column {
+    scroll-snap-align: start;
+  }
+
+  .home-compact-bracket-column:not(:last-child)::after {
+    right: -15px;
+    width: 12px;
+  }
+
+  .home-compact-bracket-center::before,
+  .home-compact-bracket-center::after {
+    width: 10px;
+  }
+
+  .home-compact-bracket-center::before {
+    right: calc(100% + 3px);
+  }
+
+  .home-compact-bracket-center::after {
+    left: calc(100% + 3px);
+  }
+
+  .home-compact-bracket-note {
+    padding-inline: 14px;
+  }
+
+  .home-offseason-bracket-frame .playoff-bracket-board {
+    --round-width: min(268px, 78vw);
+    --round-gap: 34px;
+    --bracket-horizontal-padding: 8px;
+  }
+
+  .home-offseason-news-item {
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+  }
+
+  .home-offseason-news-item img {
+    width: 64px;
+    height: 54px;
+  }
+
+  .home-offseason-moments-track {
+    grid-auto-columns: minmax(250px, 82vw);
+  }
+
+  .home-offseason-secondary-grid {
+    gap: 14px;
+  }
+
+  .home-offseason-video-card {
+    grid-template-rows: auto auto;
+  }
+
+  .home-offseason-video-media,
+  .home-offseason-video-media img {
+    min-height: 220px;
+  }
+
+  .home-offseason-explore-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-offseason-dashboard-board .home-offseason-explore-grid,
+  .home-offseason-dashboard-board .home-offseason-road-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-offseason-explore-card {
+    min-height: 112px;
+  }
+}
+
+@media (max-width: 430px) {
+  .home-offseason-playoff-summary,
+  .home-offseason-road-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-offseason-leader-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-offseason-countdown-card strong {
+    font-size: 3.25rem;
+  }
 }
 
 .home-dashboard-head {
@@ -2945,6 +5020,64 @@ button:disabled .inline-chevron-icon {
   gap: 8px;
 }
 
+.season-storyline-manager {
+  grid-column: 1 / -1;
+}
+
+.season-storyline-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(220px, 1.2fr) minmax(220px, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+
+.season-storyline-form label {
+  display: grid;
+  gap: 7px;
+  color: var(--white);
+  font-size: 0.78rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.season-storyline-form input,
+.season-storyline-form select,
+.season-storyline-form textarea {
+  width: 100%;
+}
+
+.season-storyline-image-field {
+  display: grid;
+  gap: 8px;
+}
+
+.season-storyline-image-preview {
+  min-height: 96px;
+}
+
+.season-storyline-image-preview img {
+  max-height: 140px;
+}
+
+.season-storyline-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.9fr) minmax(140px, 1fr);
+  gap: 12px;
+}
+
+.season-storyline-actions {
+  grid-column: 1 / -1;
+  justify-content: flex-start;
+}
+
+.season-storyline-list {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.season-storyline-list-item {
+  grid-template-columns: 84px minmax(0, 1fr) auto;
+}
+
 @media (max-width: 900px) {
   .team-news-layout {
     grid-template-areas:
@@ -2967,6 +5100,10 @@ button:disabled .inline-chevron-icon {
 
   .news-editor-layout {
     grid-template-areas: none;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .season-storyline-form {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -3043,7 +5180,8 @@ button:disabled .inline-chevron-icon {
   }
 
   .news-editor-generate-row,
-  .news-editor-list-item {
+  .news-editor-list-item,
+  .season-storyline-row {
     grid-template-columns: 1fr;
   }
 
@@ -3506,6 +5644,12 @@ button:disabled .inline-chevron-icon {
 
 #homeView {
   padding-top: 12px;
+}
+
+#homeView.is-offseason-page {
+  width: 100%;
+  margin: 0 0 28px;
+  padding-top: 0;
 }
 
 .section-head,
@@ -4771,6 +6915,158 @@ button:disabled .inline-chevron-icon {
   background:
     radial-gradient(circle at 50% 0%, rgba(245, 189, 33, 0.14), transparent 42%),
     rgba(5, 10, 24, 0.78);
+}
+
+.playoff-bracket-board-two-wing {
+  --round-width: 192px;
+  --round-gap: 30px;
+  --bracket-horizontal-padding: 8px;
+  --bracket-center-width: 265px;
+  min-width: max-content;
+}
+
+.playoff-bracket-region-two-wing {
+  width: max-content;
+  min-width: 100%;
+  border-left: 4px solid rgba(72, 187, 120, 0.75);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(245, 189, 33, 0.1), transparent 34%),
+    rgba(5, 10, 24, 0.74);
+}
+
+.playoff-bracket-two-wing-head {
+  align-items: center;
+}
+
+.playoff-bracket-two-wing-head > span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.82rem;
+  font-weight: 850;
+  text-align: right;
+}
+
+.playoff-bracket-two-wing-canvas {
+  display: grid;
+  grid-template-columns:
+    max-content
+    var(--bracket-center-width)
+    max-content;
+  gap: 20px;
+  align-items: center;
+}
+
+.playoff-bracket-wing {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.playoff-bracket-wing-head {
+  display: grid;
+  align-content: end;
+  gap: 3px;
+  min-height: 40px;
+}
+
+.playoff-bracket-wing-right .playoff-bracket-wing-head {
+  justify-items: end;
+  text-align: right;
+}
+
+.playoff-bracket-wing-head h3 {
+  margin: 0;
+  color: var(--white);
+  font-size: 0.95rem;
+}
+
+.playoff-bracket-wing-canvas {
+  width: max-content;
+  min-width: 0;
+}
+
+.playoff-bracket-wing-canvas .playoff-bracket-columns {
+  min-width: 0;
+  padding-bottom: 18px;
+}
+
+.playoff-bracket-wing-right .playoff-bracket-round-head,
+.playoff-bracket-wing-right .playoff-bracket-card-head,
+.playoff-bracket-wing-right .playoff-bracket-game-meta {
+  text-align: right;
+}
+
+.playoff-bracket-wing-right .playoff-bracket-game-meta {
+  justify-content: flex-end;
+}
+
+.playoff-bracket-center-stage {
+  align-self: center;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid rgba(245, 189, 33, 0.28);
+  border-radius: 10px;
+  padding: 14px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(245, 189, 33, 0.18), transparent 44%),
+    linear-gradient(180deg, rgba(18, 25, 45, 0.94), rgba(5, 10, 24, 0.96));
+  box-shadow:
+    0 0 0 1px rgba(245, 189, 33, 0.06),
+    0 18px 40px rgba(0, 0, 0, 0.28);
+}
+
+.playoff-bracket-center-title {
+  display: grid;
+  gap: 5px;
+  text-align: center;
+}
+
+.playoff-bracket-center-title h3 {
+  margin: 0;
+  color: var(--white);
+  font-size: 1rem;
+  line-height: 1.18;
+}
+
+.playoff-bracket-center-title span {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.playoff-bracket-center-badge {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  border-radius: 8px;
+  padding: 10px;
+  color: #08111f;
+  background: linear-gradient(135deg, #f5bd21, #ffe789);
+  box-shadow: 0 10px 24px rgba(245, 189, 33, 0.16);
+}
+
+.playoff-bracket-center-badge span {
+  font-size: 0.72rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.playoff-bracket-center-badge strong {
+  font-size: 1.08rem;
+  font-weight: 1000;
+}
+
+.playoff-bracket-center-card-list {
+  display: grid;
+  gap: 10px;
+}
+
+.playoff-bracket-center-card-list .playoff-bracket-card {
+  padding: 10px;
+}
+
+.playoff-bracket-center-card-list .playoff-bracket-node {
+  min-height: 90px;
 }
 
 .playoff-bracket-region-head {
@@ -8235,6 +10531,137 @@ button:focus-visible {
     width: 100%;
     justify-content: center;
   }
+}
+
+@media (max-width: 900px) {
+  .playoff-bracket-grid:has(.playoff-bracket-board-two-wing) {
+    overflow-x: auto;
+    overflow-y: visible;
+    padding-bottom: 10px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .playoff-bracket-board-two-wing {
+    --round-width: 178px;
+    --round-gap: 24px;
+    --bracket-center-width: 222px;
+    width: max-content;
+    max-width: none;
+    min-width: max-content;
+    gap: 0;
+  }
+
+  .playoff-bracket-region-two-wing {
+    width: max-content;
+    max-width: none;
+    min-width: 0;
+    overflow: visible;
+    padding: 10px;
+    scroll-snap-align: start;
+  }
+
+  .playoff-bracket-region-two-wing::after {
+    content: none;
+  }
+
+  .playoff-bracket-two-wing-head {
+    display: grid;
+    justify-content: stretch;
+  }
+
+  .playoff-bracket-two-wing-head > span {
+    text-align: left;
+  }
+
+  .playoff-bracket-two-wing-canvas {
+    grid-template-columns:
+      max-content
+      var(--bracket-center-width)
+      max-content;
+    gap: 14px;
+  }
+
+  .playoff-bracket-wing-head {
+    min-height: 34px;
+  }
+
+  .playoff-bracket-wing-head h3 {
+    font-size: 0.86rem;
+  }
+
+  .playoff-bracket-wing-canvas {
+    overflow: visible;
+    padding-bottom: 0;
+    scroll-snap-type: none;
+  }
+
+  .playoff-bracket-wing-canvas .playoff-bracket-connector-layer {
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .playoff-bracket-wing-canvas .playoff-bracket-columns {
+    column-gap: var(--round-gap);
+    padding-inline: var(--bracket-horizontal-padding);
+  }
+
+  .playoff-bracket-center-stage {
+    padding: 12px;
+  }
+
+  .playoff-bracket-center-title h3 {
+    font-size: 0.92rem;
+  }
+}
+
+@media (max-width: 430px) {
+  .playoff-bracket-board-two-wing {
+    --round-width: 168px;
+    --round-gap: 20px;
+    --bracket-center-width: 202px;
+  }
+
+  .playoff-bracket-board-two-wing .playoff-bracket-card {
+    padding: 9px;
+  }
+
+  .playoff-bracket-board-two-wing .playoff-bracket-node {
+    min-height: 94px;
+  }
+
+  .playoff-bracket-board-two-wing .playoff-bracket-team {
+    padding: 7px 8px;
+  }
+
+  .playoff-bracket-board-two-wing .playoff-bracket-team-main img,
+  .playoff-bracket-board-two-wing .playoff-bracket-team-placeholder-icon {
+    width: 25px;
+    height: 25px;
+  }
+}
+
+.home-offseason-bracket-frame .playoff-bracket-board-two-wing {
+  --round-width: 170px;
+  --round-gap: 22px;
+  --bracket-center-width: 220px;
+}
+
+.home-offseason-bracket-frame .playoff-bracket-two-wing-canvas {
+  gap: 14px;
+}
+
+.home-offseason-bracket-frame .playoff-bracket-wing-head {
+  min-height: 32px;
+}
+
+.home-offseason-bracket-frame .playoff-bracket-wing-head h3,
+.home-offseason-bracket-frame .playoff-bracket-center-title h3 {
+  font-size: 0.82rem;
+}
+
+.home-offseason-bracket-frame .playoff-bracket-center-stage {
+  padding: 10px;
 }
 
 #statsView .stats-page-head {
@@ -19618,6 +22045,65 @@ select option:checked {
     width: 100%;
     max-width: 100%;
     object-fit: contain;
+  }
+
+  .home-offseason-content {
+    gap: 14px;
+  }
+
+  .home-offseason-copy {
+    gap: 7px;
+  }
+
+  .home-offseason-copy h2 {
+    font-size: clamp(1.85rem, 9vw, 2.8rem);
+  }
+
+  .home-offseason-copy p:not(.eyebrow) {
+    font-size: 0.95rem;
+  }
+
+  .home-offseason-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-offseason-stats article {
+    min-height: 86px;
+    padding: 13px 12px;
+  }
+
+  .home-offseason-stats article + article {
+    border-left: 0;
+  }
+
+  .home-offseason-stats article:nth-child(even) {
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .home-offseason-stats article:nth-child(n + 3) {
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .home-offseason-stats strong {
+    font-size: clamp(1.25rem, 6vw, 1.8rem);
+  }
+
+  .home-offseason-stats small {
+    font-size: 0.78rem;
+  }
+
+  .home-offseason-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+
+  .home-offseason-actions .home-next-game-link {
+    justify-content: space-between;
+    width: 100%;
+    min-height: 46px;
+    padding-inline: 12px;
+    font-size: 0.9rem;
   }
 
   .home-next-game {

@@ -1,4 +1,4 @@
-const CACHE_NAME = "baseball-scorebook-v1-1-145-build-309";
+const CACHE_NAME = "baseball-scorebook-v1-1-169-build-333";
 const FILES_TO_CACHE = [
   "./",
   "./index.html",
@@ -19,6 +19,7 @@ const FILES_TO_CACHE = [
   "./lions-logo.png",
   "./new-lion.png",
   "./assets/backgrounds/lions-no-game-hero.png",
+  "./assets/backgrounds/lions-2026-team-photo.jpg",
   "./lions-watermark.png",
   "./assets/lions-left.png",
   "./assets/lions-right.png",

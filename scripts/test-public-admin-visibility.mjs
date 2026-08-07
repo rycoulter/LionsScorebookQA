@@ -27,7 +27,6 @@ function functionBody(source, functionName) {
   "boxScoreMobileEditBtn",
   "boxScoreEditModal",
   "newsEditorView",
-  "lineupView",
   "highlightsAdminTools",
   "gameForm",
   "scheduleGameBtn",

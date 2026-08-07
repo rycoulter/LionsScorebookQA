@@ -625,9 +625,19 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.145";
+const APP_VERSION = "v.1.1.169";
 const PLANNED_LEAGUE_SEASONS = ["2027"];
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
+const HOME_OFFSEASON_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
+const HOME_OFFSEASON_TEAM_IMAGE = "assets/backgrounds/lions-2026-team-photo.jpg";
+const HOME_SEASON_CONFIG = {
+  status: "offseason",
+  nextSeason: "2027",
+  openingDay: "2027-04-10",
+  registrationLabel: "Registration Open",
+  scheduleLabel: "Schedule Coming Soon",
+  workoutsLabel: "Offseason Workouts"
+};
 const NIGHT_GAME_START_MINUTES = 20 * 60;
 const ERA_GAME_INNINGS = 7;
 const LEAGUE_STANDINGS_CACHE_URL = "data/league-standings.json";
@@ -698,6 +708,7 @@ const HIGHLIGHT_FILTERS = [
 ];
 const DEFAULT_HIGHLIGHT_CATEGORY = "top-plays";
 const DEFAULT_HIGHLIGHT_CATEGORIES = [DEFAULT_HIGHLIGHT_CATEGORY];
+const SEASON_STORYLINE_ACTIONS = new Set(["highlights", "stats", "archive", "news", "bracket", "games"]);
 const FINANCE_CHARGE_FIELDS = [
   { key: "leagueFees", label: "League fees", type: "shared" },
   { key: "playoffFees", label: "Playoff fees", type: "shared" }
@@ -771,6 +782,8 @@ let highlightEditId = "";
 let highlightModalGameId = "";
 let newsEditId = "";
 let newsEditorImageDataUrl = "";
+let seasonStorylineEditId = "";
+let seasonStorylineImageDataUrl = "";
 let quickScoreGameId = "";
 let boxScoreEditGameId = "";
 let rosterFilter = "active";
@@ -941,10 +954,15 @@ const els = {
   homeWinPct: document.getElementById("homeWinPct"),
   homeLeagueStanding: document.getElementById("homeLeagueStanding"),
   homeCurrentStreak: document.getElementById("homeCurrentStreak"),
+  homeOffseasonExperience: document.getElementById("homeOffseasonExperience"),
+  homeLiveOverviewPanel: document.getElementById("homeLiveOverviewPanel"),
+  homeLiveDashboardGrid: document.getElementById("homeLiveDashboardGrid"),
   homeVisitCounterCard: document.getElementById("homeVisitCounterCard"),
   homeVisitTotal: document.getElementById("homeVisitTotal"),
   homeVisitMeta: document.getElementById("homeVisitMeta"),
   homeHeroPanel: document.getElementById("homeHeroPanel"),
+  homeHeroKicker: document.getElementById("homeHeroKicker"),
+  homeOffseasonContent: document.getElementById("homeOffseasonContent"),
   homeMatchupImage: document.getElementById("homeMatchupImage"),
   homeNextGame: document.getElementById("homeNextGame"),
   homeNextGameMobileTitle: document.getElementById("homeNextGameMobileTitle"),
@@ -1413,6 +1431,7 @@ const els = {
   highlightTitleInput: document.getElementById("highlightTitleInput"),
   highlightDescriptionInput: document.getElementById("highlightDescriptionInput"),
   highlightTagInputs: document.querySelectorAll("[data-highlight-tag-input]"),
+  highlightSeasonVideoInput: document.getElementById("highlightSeasonVideoInput"),
   highlightInningInput: document.getElementById("highlightInningInput"),
   highlightPlayTypeInput: document.getElementById("highlightPlayTypeInput"),
   highlightPlayersSelect: document.getElementById("highlightPlayersSelect"),
@@ -1445,6 +1464,20 @@ const els = {
   newsEditorSaveBtn: document.getElementById("newsEditorSaveBtn"),
   newsEditorList: document.getElementById("newsEditorList"),
   newsEditorStatus: document.getElementById("newsEditorStatus"),
+  seasonStorylineManager: document.getElementById("seasonStorylineManager"),
+  seasonStorylineForm: document.getElementById("seasonStorylineForm"),
+  seasonStorylineIdInput: document.getElementById("seasonStorylineIdInput"),
+  seasonStorylineTitleInput: document.getElementById("seasonStorylineTitleInput"),
+  seasonStorylineDescriptionInput: document.getElementById("seasonStorylineDescriptionInput"),
+  seasonStorylineImageInput: document.getElementById("seasonStorylineImageInput"),
+  seasonStorylineImageUploadInput: document.getElementById("seasonStorylineImageUploadInput"),
+  seasonStorylineImagePreview: document.getElementById("seasonStorylineImagePreview"),
+  seasonStorylineActionSelect: document.getElementById("seasonStorylineActionSelect"),
+  seasonStorylineCtaInput: document.getElementById("seasonStorylineCtaInput"),
+  seasonStorylineSaveBtn: document.getElementById("seasonStorylineSaveBtn"),
+  seasonStorylineResetBtn: document.getElementById("seasonStorylineResetBtn"),
+  seasonStorylineList: document.getElementById("seasonStorylineList"),
+  seasonStorylineStatus: document.getElementById("seasonStorylineStatus"),
   pitchingStatEditGameSelectModal: document.getElementById("pitchingStatEditGameSelectModal"),
   pitchingStatEditGameSelectTitle: document.getElementById("pitchingStatEditGameSelectTitle"),
   pitchingStatEditGameSelectHint: document.getElementById("pitchingStatEditGameSelectHint"),
@@ -2376,6 +2409,7 @@ function seedState() {
     deletedGameTombstones: {},
     highlights: [],
     newsArticles: [],
+    seasonStorylines: [],
     financialPlans: [],
     playoffBracket: seedPlayoffBracket(),
     games: [],
@@ -2483,6 +2517,7 @@ function normalizeState(nextState) {
   nextState.completedGameSyncQueue = normalizeCompletedGameSyncQueue(nextState.completedGameSyncQueue, nextState.games);
   nextState.highlights = normalizeHighlights(nextState.highlights, nextState.games);
   nextState.newsArticles = normalizeNewsArticles(nextState.newsArticles, nextState.games);
+  nextState.seasonStorylines = normalizeSeasonStorylines(nextState.seasonStorylines);
   nextState.financialPlans = normalizeFinancialPlans(nextState.financialPlans, nextState.roster);
   nextState.playoffBracket = normalizePlayoffBracket(nextState.playoffBracket, nextState.games);
   if (rosterWasReplaced) {
@@ -2915,6 +2950,36 @@ function normalizeNewsArticles(articles = [], games = state?.games || []) {
     .sort(sortNewsArticlesNewestFirst);
 }
 
+function normalizeSeasonStoryline(storyline = {}, index = 0) {
+  const title = String(storyline.title || "").trim();
+  const description = String(storyline.description || storyline.summary || "").trim();
+  if (!title && !description) return null;
+  const action = String(storyline.action || "").trim();
+  const normalizedAction = SEASON_STORYLINE_ACTIONS.has(action) ? action : "highlights";
+  const sortOrder = Number(storyline.sortOrder ?? storyline.sort_order ?? index);
+  const createdAt = storyline.createdAt || storyline.created_at || new Date().toISOString();
+  return {
+    id: String(storyline.id || createId("storyline")).trim(),
+    title,
+    description,
+    image: safeNewsImageReference(storyline.image || storyline.imageUrl || storyline.image_url || "") || HOME_OFFSEASON_HERO_IMAGE,
+    cta: String(storyline.cta || storyline.buttonLabel || storyline.button_label || "Open").trim() || "Open",
+    action: normalizedAction,
+    sortOrder: Number.isFinite(sortOrder) ? sortOrder : index,
+    highlightId: String(storyline.highlightId || storyline.highlight_id || "").trim(),
+    gameId: String(storyline.gameId || storyline.game_id || "").trim(),
+    createdAt,
+    updatedAt: storyline.updatedAt || storyline.updated_at || createdAt
+  };
+}
+
+function normalizeSeasonStorylines(storylines = []) {
+  return (Array.isArray(storylines) ? storylines : [])
+    .map((storyline, index) => normalizeSeasonStoryline(storyline, index))
+    .filter((storyline) => storyline?.id)
+    .sort((left, right) => (Number(left.sortOrder || 0) - Number(right.sortOrder || 0)) || String(left.createdAt || "").localeCompare(String(right.createdAt || "")));
+}
+
 function normalizeNewsCategory(category = "") {
   const value = String(category || "").trim();
   const allowed = new Set(["Game Recap", "Player News", "Team News", "Game Preview"]);
@@ -2950,6 +3015,8 @@ function normalizeHighlight(highlight = {}, games = state?.games || []) {
     description: String(highlight.description || "").trim(),
     category: categories[0] || "",
     categories,
+    featured: highlight.featured === true || highlight.featured === "true",
+    seasonFeatured: highlight.seasonFeatured === true || highlight.season_featured === true || highlight.seasonFeatured === "true" || highlight.season_featured === "true",
     inning: String(highlight.inning || "").trim(),
     playType: String(highlight.playType || highlight.play_type || "").trim(),
     playerIds,
@@ -3805,6 +3872,7 @@ function hasMeaningfulSupabaseSnapshot(snapshot) {
   if (Array.isArray(appState.lineup) && appState.lineup.length) return true;
   if (typeof appState.active_game_id === "string" && appState.active_game_id.trim()) return true;
   if (appState.metadata?.playoff_bracket && typeof appState.metadata.playoff_bracket === "object") return true;
+  if (Array.isArray(appState.metadata?.season_storylines) && appState.metadata.season_storylines.length) return true;
   return false;
 }
 
@@ -3889,6 +3957,7 @@ function overlaySessionSharedChanges(baseState, localState = state) {
     nextState.lineup = deepClone(currentLocalState.lineup || []);
     nextState.rosterVersion = currentLocalState.rosterVersion ?? nextState.rosterVersion;
     nextState.playoffBracket = deepClone(currentLocalState.playoffBracket || null);
+    nextState.seasonStorylines = deepClone(currentLocalState.seasonStorylines || []);
   }
 
   if (!pendingSharedGameIds.size && !pendingDeletedSharedGameIds.size) {
@@ -4258,6 +4327,7 @@ function buildSharedSnapshot(sourceState = state) {
     deletedGameTombstones: normalizeDeletedGameTombstones(sourceState?.deletedGameTombstones, sourceState?.games || []),
     activeGameId: activeSharedGame?.id || "",
     games: sharedGames,
+    seasonStorylines: normalizeSeasonStorylines(sourceState?.seasonStorylines || []),
     playoffBracket: deepClone(sourceState?.playoffBracket || null)
   };
 }
@@ -5284,6 +5354,9 @@ function bindEvents() {
   els.homeNextGameBracketBtn?.addEventListener("click", openPlayoffBracket);
   els.homeGamesBtn?.addEventListener("click", () => switchView("games"));
   els.homeNextGameScheduleLink?.addEventListener("click", () => switchView("games"));
+  els.homeHeroPanel?.addEventListener("click", handleHomeOffseasonExperienceClick);
+  els.homeOffseasonExperience?.addEventListener("click", handleHomeOffseasonExperienceClick);
+  els.homeOffseasonExperience?.addEventListener("keydown", handleGameActionKeydown);
   els.homeBattingLeadersLink?.addEventListener("click", () => switchView("stats"));
   els.homePitchingLeadersLink?.addEventListener("click", () => switchView("stats"));
   els.homeResultsPrevBtn?.addEventListener("click", () => scrollHomeResultsCarousel(-1));
@@ -5364,6 +5437,20 @@ function bindEvents() {
     const deleteButton = event.target.closest("[data-news-delete]");
     if (deleteButton) {
       deleteNewsArticle(deleteButton.dataset.newsDelete);
+    }
+  });
+  els.seasonStorylineForm?.addEventListener("submit", saveSeasonStoryline);
+  els.seasonStorylineResetBtn?.addEventListener("click", resetSeasonStorylineForm);
+  els.seasonStorylineImageUploadInput?.addEventListener("change", handleSeasonStorylineImageUpload);
+  els.seasonStorylineList?.addEventListener("click", (event) => {
+    const editButton = event.target.closest("[data-season-storyline-edit]");
+    if (editButton) {
+      editSeasonStoryline(editButton.dataset.seasonStorylineEdit);
+      return;
+    }
+    const deleteButton = event.target.closest("[data-season-storyline-delete]");
+    if (deleteButton) {
+      deleteSeasonStoryline(deleteButton.dataset.seasonStorylineDelete);
     }
   });
   els.homePastGames?.addEventListener("click", handleGameActionClick);
@@ -10177,6 +10264,75 @@ function renderScoreEmptyState(scoreGame = activeScoreGame()) {
   if (!hasActiveGame && els.scoreViewTitle) els.scoreViewTitle.textContent = "Pitch-by-pitch scorekeeping";
 }
 
+function handleHomeOffseasonExperienceClick(event) {
+  const gameAction = event.target.closest("[data-game-action]");
+  if (gameAction) {
+    handleGameActionClick(event);
+    return;
+  }
+  const boxScore = event.target.closest("[data-home-box-score-game]");
+  if (boxScore?.dataset.homeBoxScoreGame) {
+    openBoxScore(boxScore.dataset.homeBoxScoreGame);
+    return;
+  }
+  const newsButton = event.target.closest("[data-home-news-id]");
+  if (newsButton?.dataset.homeNewsId) {
+    selectedNewsArticleId = newsButton.dataset.homeNewsId || "";
+    newsLayoutMode = "article";
+    renderTeamNews();
+    switchView("news");
+    return;
+  }
+  const highlightButton = event.target.closest("[data-home-highlight-id]");
+  if (highlightButton?.dataset.homeHighlightId) {
+    selectedFeaturedHighlightId = highlightButton.dataset.homeHighlightId || "";
+    switchView("highlights");
+    renderHighlightsPage();
+    return;
+  }
+  const actionButton = event.target.closest("[data-home-offseason-action]");
+  if (!actionButton) return;
+  const action = actionButton.dataset.homeOffseasonAction;
+  if (action === "archive" || action === "past-games") {
+    switchView("archive");
+    return;
+  }
+  if (action === "bracket") {
+    openPlayoffBracket();
+    return;
+  }
+  if (action === "stats") {
+    switchView("stats");
+    return;
+  }
+  if (action === "roster") {
+    switchView("roster");
+    return;
+  }
+  if (action === "games") {
+    switchView("games");
+    return;
+  }
+  if (action === "highlights" || action === "video") {
+    switchView("highlights");
+    return;
+  }
+  if (action === "news") {
+    selectedNewsArticleId = "";
+    newsLayoutMode = "latest";
+    renderTeamNews();
+    switchView("news");
+  }
+}
+
+function homeSeasonStatus() {
+  return String(state?.season?.status || HOME_SEASON_CONFIG.status || "live").trim().toLowerCase();
+}
+
+function homeIsOffseasonLayout() {
+  return homeSeasonStatus() === "offseason";
+}
+
 function renderHome() {
   const record = seasonRecord();
   const totalGames = record.wins + record.losses + record.ties;
@@ -10184,7 +10340,9 @@ function renderHome() {
   const upcoming = upcomingScheduledGames(3);
   const liveGame = inProgressGames()[0] || null;
   const next = liveGame || upcoming[0] || null;
+  const recentFinals = completedGames();
   const overview = homeOverviewLeagueSummary(record);
+  const isOffseasonLayout = homeIsOffseasonLayout();
   els.homeRecord.textContent = `${record.wins}-${record.losses}${record.ties ? `-${record.ties}` : ""}`;
   if (els.homeWinPct) els.homeWinPct.textContent = winPct;
   if (els.homeLeagueStanding) {
@@ -10195,12 +10353,39 @@ function renderHome() {
   if (els.homeCurrentStreak) els.homeCurrentStreak.textContent = localCurrentStreakLabel();
   renderSiteVisitCounter();
   if (isAdminMode()) requestSiteVisitSummaryRefresh("home");
+  document.getElementById("homeView")?.classList.toggle("is-offseason-page", isOffseasonLayout);
+  if (els.homeOffseasonExperience) {
+    els.homeOffseasonExperience.hidden = !isOffseasonLayout;
+    if (isOffseasonLayout) {
+      els.homeOffseasonExperience.innerHTML = renderHomeOffseasonExperience({
+        record,
+        winPct,
+        overview,
+        recentFinals
+      });
+    } else {
+      els.homeOffseasonExperience.innerHTML = "";
+    }
+  }
+  if (els.homeLiveOverviewPanel) els.homeLiveOverviewPanel.hidden = isOffseasonLayout;
+  if (els.homeLiveDashboardGrid) els.homeLiveDashboardGrid.hidden = isOffseasonLayout;
+  if (els.homeVisitCounterCard) els.homeVisitCounterCard.hidden = isOffseasonLayout || !isAdminMode();
+  if (isOffseasonLayout) {
+    positionHomeCompactBracketAtChampionship(els.homeOffseasonExperience?.querySelector(".home-compact-bracket-scroll"));
+    return;
+  }
   if (els.homeStartGameBtn) els.homeStartGameBtn.hidden = true;
   if (els.homeGamesBtn) els.homeGamesBtn.hidden = true;
   if (next) {
     const nextGameStatus = homeNextGameStatusState(next);
     const nextIsPostseason = gameIsPostseason(next);
     if (els.homeHeroPanel) els.homeHeroPanel.classList.toggle("is-postseason", nextIsPostseason);
+    if (els.homeHeroPanel) els.homeHeroPanel.classList.remove("is-offseason");
+    if (els.homeHeroKicker) els.homeHeroKicker.textContent = "Next Game";
+    if (els.homeOffseasonContent) {
+      els.homeOffseasonContent.hidden = true;
+      els.homeOffseasonContent.innerHTML = "";
+    }
     if (els.homeNextGamePostseasonBadge) els.homeNextGamePostseasonBadge.hidden = !nextIsPostseason;
     if (els.homeNextGame) {
       els.homeNextGame.textContent = gameMatchupLabel(next);
@@ -10232,25 +10417,34 @@ function renderHome() {
       els.homeNextGameBracketBtn.innerHTML = `<span>View Bracket</span>${inlineChevronIcon("right")}`;
       els.homeNextGameBracketBtn.setAttribute("aria-label", `View playoff bracket for ${gameMatchupLabel(next)}`);
     }
+    if (els.homeNextGameScheduleLink) {
+      els.homeNextGameScheduleLink.innerHTML = `<span>See Full Schedule</span>${inlineChevronIcon("right")}`;
+    }
     setHomeMatchupImage(next);
   } else {
     if (els.homeHeroPanel) els.homeHeroPanel.classList.remove("is-postseason");
+    if (els.homeHeroPanel) els.homeHeroPanel.classList.add("is-offseason");
+    if (els.homeHeroKicker) els.homeHeroKicker.textContent = "Offseason Hub";
+    if (els.homeOffseasonContent) {
+      els.homeOffseasonContent.hidden = false;
+      els.homeOffseasonContent.innerHTML = renderHomeOffseasonContent(record, recentFinals);
+    }
     if (els.homeNextGamePostseasonBadge) els.homeNextGamePostseasonBadge.hidden = true;
     if (els.homeNextGame) {
-      els.homeNextGame.textContent = "No upcoming game scheduled";
+      els.homeNextGame.textContent = `${currentLeagueSeason()} Season Complete`;
       els.homeNextGame.hidden = false;
     }
     if (els.homeNextGameMobileTitle) {
-      els.homeNextGameMobileTitle.textContent = "No upcoming game scheduled";
+      els.homeNextGameMobileTitle.textContent = `${currentLeagueSeason()} Season Complete`;
       els.homeNextGameMobileTitle.hidden = false;
     }
-    if (els.homeNextGameWhen) els.homeNextGameWhen.textContent = "Date and time TBD";
+    if (els.homeNextGameWhen) els.homeNextGameWhen.textContent = "Offseason updates are live";
     syncHomeNextGameLocation(null);
-    if (els.homeNextGameStatusText) els.homeNextGameStatusText.textContent = "Schedule and score updates show up here automatically.";
+    if (els.homeNextGameStatusText) els.homeNextGameStatusText.textContent = "Catch up on results, leaders, highlights, and team news.";
     if (els.homeNextGameStatus) els.homeNextGameStatus.classList.remove("is-live");
     if (els.homeNextGameWeather) {
       delete els.homeNextGameWeather.dataset.weatherGameId;
-      els.homeNextGameWeather.textContent = "Add date and field location for weather.";
+      els.homeNextGameWeather.textContent = "2027 schedule will appear here when added.";
     }
     if (els.homeNextGameScoreBtn) {
       els.homeNextGameScoreBtn.hidden = true;
@@ -10262,9 +10456,11 @@ function renderHome() {
       delete els.homeNextGameBracketBtn.dataset.gameId;
       els.homeNextGameBracketBtn.removeAttribute("aria-label");
     }
+    if (els.homeNextGameScheduleLink) {
+      els.homeNextGameScheduleLink.innerHTML = `<span>Browse Schedule</span>${inlineChevronIcon("right")}`;
+    }
     setHomeMatchupImage(null);
   }
-  const recentFinals = completedGames();
   renderHomeLastGameResultHeading(recentFinals[0] || null);
   syncHomeResultsCarouselControls(recentFinals);
   if (els.homeRecentResultBody) {
@@ -10354,6 +10550,763 @@ function renderHome() {
       }).join("")
       : `<div class="upcoming-empty">League standings will appear here after the next refresh.</div>`;
   }
+}
+
+function renderHomeOffseasonExperience({ record = seasonRecord(), winPct = ".000", overview = homeOverviewLeagueSummary(record), recentFinals = completedGames() } = {}) {
+  const season = String(currentLeagueSeason());
+  const postseasonGames = recentFinals.filter(gameIsPostseason);
+  return `<div class="home-offseason-page-shell home-offseason-dashboard-shell">
+    <section class="home-offseason-dashboard-board" aria-label="${escapeHtml(season)} offseason dashboard">
+      ${renderHomeOffseasonHero(season, record, winPct, overview)}
+      <div class="home-offseason-dashboard-grid">
+        <div class="home-offseason-dashboard-column home-offseason-dashboard-left">
+          ${renderHomeOffseasonTeamLeaders(season)}
+          ${renderHomeOffseasonPlayoffCenter(season, postseasonGames)}
+        </div>
+        <div class="home-offseason-dashboard-column home-offseason-dashboard-middle">
+          ${renderHomeOffseasonSnapshot(record, winPct, overview)}
+          ${renderHomeOffseasonNewsSidebar()}
+        </div>
+        <div class="home-offseason-dashboard-column home-offseason-dashboard-right">
+          ${renderHomeOffseasonBestMoments(recentFinals)}
+          ${renderHomeOffseasonFeaturedVideo()}
+        </div>
+      </div>
+    </section>
+  </div>`;
+}
+
+function renderHomeOffseasonHero(season = String(currentLeagueSeason()), record = seasonRecord(), winPct = ".000", overview = homeOverviewLeagueSummary(record)) {
+  const nextSeason = HOME_SEASON_CONFIG.nextSeason || String(Number(season) + 1);
+  const countdown = homeOffseasonCountdownDays(HOME_SEASON_CONFIG.openingDay);
+  const countdownLabel = Number.isFinite(countdown) ? String(countdown) : "--";
+  return `<section class="home-offseason-hero" style="--home-offseason-hero-image: url('${escapeHtml(HOME_OFFSEASON_HERO_IMAGE)}'); --home-offseason-team-image: url('${escapeHtml(HOME_OFFSEASON_TEAM_IMAGE)}');">
+    <div class="home-offseason-hero-copy">
+      <h1 class="home-offseason-hero-title">
+        <span>${escapeHtml(season)} Season</span>
+        <strong>Complete.</strong>
+      </h1>
+      <div class="home-offseason-hero-stats" aria-label="${escapeHtml(season)} season summary">
+        <article><strong>${escapeHtml(`${record.wins}-${record.losses}${record.ties ? `-${record.ties}` : ""}`)}</strong><span>Overall Record</span></article>
+        <article><strong>${escapeHtml(winPct)}</strong><span>Win %</span></article>
+        <article><strong>${escapeHtml(overview.standing || "--")}</strong><span>League Finish</span></article>
+      </div>
+      <p>Thank you to our players, coaches, families and fans for an unforgettable ${escapeHtml(season)} season. We'll see you in ${escapeHtml(nextSeason)}.</p>
+      <div class="home-offseason-hero-actions">
+        ${renderHomeOffseasonActionButton("Game Archive", "archive", "primary")}
+        ${renderHomeOffseasonActionButton("Playoff Bracket", "bracket", "primary")}
+        ${renderHomeOffseasonActionButton("View Stats", "stats", "primary")}
+      </div>
+    </div>
+    <aside class="home-offseason-countdown-card" aria-label="Opening Day countdown">
+      <span class="home-offseason-countdown-kicker">Opening Day ${escapeHtml(nextSeason)}</span>
+      <strong>${escapeHtml(countdownLabel)}</strong>
+      <span>Days</span>
+      <small>${escapeHtml(HOME_SEASON_CONFIG.openingDay ? formatGameDateWithYear(HOME_SEASON_CONFIG.openingDay) : "Date coming soon")}</small>
+      <div class="home-offseason-countdown-list">
+        <span>${escapeHtml(HOME_SEASON_CONFIG.registrationLabel || "Registration Open")}</span>
+        <span>${escapeHtml(HOME_SEASON_CONFIG.scheduleLabel || "Schedule Coming Soon")}</span>
+        <span>${escapeHtml(HOME_SEASON_CONFIG.workoutsLabel || "Offseason Workouts")}</span>
+      </div>
+    </aside>
+  </section>`;
+}
+
+function renderHomeOffseasonSnapshot(record = seasonRecord(), winPct = ".000", overview = homeOverviewLeagueSummary(record)) {
+  const runDiff = Number(record.runsFor || 0) - Number(record.runsAgainst || 0);
+  const runDiffLabel = `${runDiff > 0 ? "+" : ""}${runDiff}`;
+  const values = [
+    { label: "Wins", value: record.wins || 0, icon: "win" },
+    { label: "Losses", value: record.losses || 0, icon: "loss" },
+    { label: "Win %", value: winPct, icon: "percent" },
+    { label: "Runs", value: record.runsFor || 0, icon: "bat" },
+    { label: "Runs Allowed", value: record.runsAgainst || 0, icon: "field" },
+    { label: "Run Differential", value: runDiffLabel, icon: "diff", valueClass: runDiff > 0 ? "is-positive" : runDiff < 0 ? "is-negative" : "" },
+    { label: "Regular Season Finish", value: overview.standing || "--", icon: "standings", cardClass: overview.tierClass || "" },
+    { label: "Playoff Finish", value: "3/4", icon: "trophy" }
+  ];
+  return `<section class="home-offseason-snapshot home-offseason-card" aria-label="Season at a glance">
+    <div class="home-offseason-snapshot-head">
+      <h2>Season at a Glance</h2>
+    </div>
+    <div class="home-offseason-snapshot-grid">
+      ${values.map(renderHomeOffseasonSnapshotCard).join("")}
+    </div>
+  </section>`;
+}
+
+function renderHomeOffseasonSnapshotCard(item = {}) {
+  const classes = ["home-offseason-snapshot-card", item.cardClass || ""].filter(Boolean).join(" ");
+  const valueClasses = ["home-offseason-snapshot-value", item.valueClass || ""].filter(Boolean).join(" ");
+  return `<article class="${escapeHtml(classes)}">
+    ${homeSeasonGlanceIcon(item.icon || "star")}
+    <strong class="${escapeHtml(valueClasses)}">${escapeHtml(String(item.value ?? "--"))}</strong>
+    <span>${escapeHtml(item.label || "")}</span>
+  </article>`;
+}
+
+function homeSeasonGlanceIcon(name = "star") {
+  const icons = {
+    win: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16.5 9.5 12l3 3L19 8.5"></path><path d="M4 12a8 8 0 1 0 16 0 8 8 0 0 0-16 0Z"></path></svg>`,
+    loss: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 8 8 8M16 8l-8 8"></path><path d="M4 12a8 8 0 1 0 16 0 8 8 0 0 0-16 0Z"></path></svg>`,
+    percent: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7"></path><circle cx="7.5" cy="7.5" r="2"></circle><circle cx="16.5" cy="16.5" r="2"></circle></svg>`,
+    bat: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 18 9.5-9.5c.9-.9 2.45-.5 2.78.73.15.56 0 1.17-.4 1.58L8.4 20.3 6 18Z"></path><path d="m4.25 19.75 2-2"></path><path d="M14.5 6.5 17 4"></path></svg>`,
+    field: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 20 12 12 20 4 12 12 4Z"></path><path d="M12 4v16M4 12h16"></path></svg>`,
+    diff: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12M6 16h12"></path><path d="M8 5v6M16 13v6"></path></svg>`,
+    standings: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19V9M12 19V5M18 19v-7"></path><path d="M4 19h16"></path></svg>`,
+    trophy: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.75h10v2.5c0 3.15-1.88 5.72-4.25 6.14v2.36h2.75v2H8.5v-2h2.75v-2.36C8.88 12.97 7 10.4 7 7.25v-2.5Z"></path><path d="M7.25 6.5H4.75v1.25c0 1.66 1.19 3.02 2.76 3.31M16.75 6.5h2.5v1.25c0 1.66-1.19 3.02-2.76 3.31"></path></svg>`
+  };
+  return `<span class="home-season-glance-icon">${icons[name] || icons.trophy}</span>`;
+}
+
+function renderHomeOffseasonPlayoffCenter(season = String(currentLeagueSeason()), postseasonGames = []) {
+  const bracket = playoffBracketDisplayData(season, { ignorePreview: true });
+  const hasBracket = playoffBracketRounds(bracket).some((round) => round.matchups.length);
+  return `<section class="home-offseason-card home-offseason-playoff-center home-offseason-playoff-compact-card">
+    ${hasBracket ? renderHomeOffseasonCompactBracket(bracket, season) : `
+      <div class="home-offseason-section-head">
+        <div>
+          <p class="eyebrow">${escapeHtml(season)} Playoffs</p>
+          <h2>Playoff Center</h2>
+        </div>
+        ${renderHomeOffseasonActionButton("View Full Bracket", "bracket", "ghost")}
+      </div>
+      <div class="upcoming-empty">Postseason bracket will appear here when matchups are available.</div>
+    `}
+  </section>`;
+}
+
+function renderHomeOffseasonCompactBracket(bracket = {}, season = String(currentLeagueSeason())) {
+  const twoWing = homeOffseasonCompactTwoWingLayout(bracket);
+  const columns = twoWing ? [] : homeOffseasonCompactBracketColumns(bracket);
+  const note = homeOffseasonCompactBracketNote(bracket);
+  return `<div class="home-compact-bracket" aria-label="${escapeHtml(season)} playoff bracket summary">
+    <div class="home-compact-bracket-head">
+      <h2>${homeOffseasonIcon("trophy")}<span>${escapeHtml(season)} Playoffs</span></h2>
+      <button type="button" class="home-compact-bracket-link" data-home-offseason-action="bracket">
+        <span>View Full Bracket</span>
+        ${inlineChevronIcon("right")}
+      </button>
+    </div>
+    <div class="home-compact-bracket-scroll">
+      <div class="home-compact-bracket-grid${twoWing ? " is-two-wing" : ""}">
+        ${twoWing
+          ? `${renderHomeOffseasonCompactBracketWing("Left Side", "left", twoWing.leftColumns)}
+            ${renderHomeOffseasonCompactChampionship(twoWing.championship, bracket)}
+            ${renderHomeOffseasonCompactBracketWing("Right Side", "right", twoWing.rightColumns)}`
+          : columns.map((column) => renderHomeOffseasonCompactBracketColumn(column)).join("")}
+      </div>
+    </div>
+    ${note ? `<div class="home-compact-bracket-note"><span></span><strong>${escapeHtml(note)}</strong><span></span></div>` : ""}
+  </div>`;
+}
+
+function homeOffseasonCompactTwoWingLayout(bracket = {}) {
+  if (!playoffBracketUsesTwoWingLayout(bracket)) return null;
+  const lookup = playoffBracketMatchupLookup(bracket);
+  const leftColumns = [
+    { title: "Opening", matchups: bracketMatchupsForCodes(lookup, ["BYE-1", "AA-1", "AA-6"]) },
+    { title: "Qualifiers", matchups: bracketMatchupsForCodes(lookup, ["AA-4", "AA-7"]) },
+    { title: "Semifinal", matchups: bracketMatchupsForCodes(lookup, ["AA-10"]) }
+  ].filter((column) => column.matchups.length);
+  const rightColumns = [
+    { title: "Semifinal", matchups: bracketMatchupsForCodes(lookup, ["AA-9"]) },
+    { title: "Qualifiers", matchups: bracketMatchupsForCodes(lookup, ["AA-5", "AA-8"]) },
+    { title: "Opening", matchups: bracketMatchupsForCodes(lookup, ["AA-3", "AA-2"]) }
+  ].filter((column) => column.matchups.length);
+  const championship = bracketMatchupsForCodes(lookup, ["AAPNC-1", "AAPNC-2", "AAPNC-3"]);
+  if (!leftColumns.length && !rightColumns.length && !championship.length) return null;
+  return { leftColumns, championship, rightColumns };
+}
+
+function homeOffseasonCompactBracketColumns(bracket = {}) {
+  const lookup = playoffBracketMatchupLookup(bracket);
+  const firstRound = bracketMatchupsForCodes(lookup, ["BYE-1", "AA-1", "AA-2", "AA-3"]);
+  const semifinals = bracketMatchupsForCodes(lookup, ["AA-4", "AA-5"]);
+  const championship = bracketMatchupsForCodes(lookup, ["AAPNC-1"]);
+  if (firstRound.length || semifinals.length || championship.length) {
+    return [
+      { title: "Quarterfinals", matchups: firstRound },
+      { title: "Semifinals", matchups: semifinals },
+      { title: "Championship", matchups: championship }
+    ];
+  }
+
+  const winnersRounds = playoffBracketRounds(bracket)
+    .map((round) => ({
+      ...round,
+      matchups: round.matchups.filter((matchup) => normalizeBracketSideKey(matchup.bracketSide || round.bracketSide) === "winners")
+    }))
+    .filter((round) => round.matchups.length);
+  const championshipRound = playoffBracketRounds(bracket)
+    .map((round) => ({
+      ...round,
+      matchups: round.matchups.filter((matchup) => normalizeBracketSideKey(matchup.bracketSide || round.bracketSide) === "championship")
+    }))
+    .find((round) => round.matchups.length);
+  return [
+    { title: winnersRounds[0]?.name || "Opening Round", matchups: winnersRounds[0]?.matchups || [] },
+    { title: winnersRounds[1]?.name || "Semifinals", matchups: winnersRounds[1]?.matchups || [] },
+    { title: championshipRound?.name || "Championship", matchups: championshipRound?.matchups?.slice(0, 1) || winnersRounds[2]?.matchups?.slice(0, 1) || [] }
+  ].filter((column) => column.matchups.length);
+}
+
+function renderHomeOffseasonCompactBracketColumn(column = {}) {
+  return `<section class="home-compact-bracket-column">
+    <h3>${escapeHtml(column.title || "Round")}</h3>
+    <div class="home-compact-bracket-stack">
+      ${(column.matchups || []).map(renderHomeOffseasonCompactMatchup).join("")}
+    </div>
+  </section>`;
+}
+
+function renderHomeOffseasonCompactBracketWing(title, side, columns = []) {
+  return `<section class="home-compact-bracket-wing home-compact-bracket-wing-${escapeHtml(side)}">
+    <h3>${escapeHtml(title)}</h3>
+    <div class="home-compact-bracket-wing-columns">
+      ${columns.map((column) => renderHomeOffseasonCompactBracketColumn(column)).join("")}
+    </div>
+  </section>`;
+}
+
+function renderHomeOffseasonCompactChampionship(matchups = [], bracket = {}) {
+  const title = bracket.title || `${bracket.season || currentLeagueSeason()} Championship`;
+  return `<section class="home-compact-bracket-center" data-home-compact-bracket-center>
+    <span>Championship</span>
+    <strong>${escapeHtml(title)}</strong>
+    <div class="home-compact-bracket-center-stack">
+      ${matchups.length
+        ? matchups.slice(0, 1).map(renderHomeOffseasonCompactMatchup).join("")
+        : `<article class="home-compact-bracket-matchup is-placeholder">
+          ${renderHomeOffseasonCompactTeam({ teamA: "Winner Left", teamB: "Winner Right", scoreA: "", scoreB: "", winner: "" }, "A")}
+          ${renderHomeOffseasonCompactTeam({ teamA: "Winner Left", teamB: "Winner Right", scoreA: "", scoreB: "", winner: "" }, "B")}
+        </article>`}
+    </div>
+  </section>`;
+}
+
+function renderHomeOffseasonCompactMatchup(matchup = {}) {
+  const game = matchup.linkedGameId ? state.games.find((item) => item.id === matchup.linkedGameId) : null;
+  const linkedTeams = game ? bracketTeamsForGame(game) : null;
+  const view = normalizeBracketMatchup({
+    ...matchup,
+    teamA: matchup.teamA || linkedTeams?.teamA || "",
+    scoreA: matchup.scoreA || linkedTeams?.scoreA || "",
+    teamB: matchup.teamB || linkedTeams?.teamB || "",
+    scoreB: matchup.scoreB || linkedTeams?.scoreB || ""
+  }, 0, state.games);
+  const hasLions = /(^|\s)(oakmont\s+)?lions(\s|$)/i.test(`${view.teamA || ""} ${view.teamB || ""}`);
+  const actionAttrs = game
+    ? ` data-game-action="boxscore" data-game-id="${escapeHtml(game.id)}" role="button" tabindex="0" aria-label="${escapeHtml(`Open box score for ${view.teamA || "TBD"} vs ${view.teamB || "TBD"}`)}"`
+    : "";
+  return `<article class="home-compact-bracket-matchup${hasLions ? " is-lions-matchup" : ""}${game ? " is-clickable" : ""}"${actionAttrs}>
+    ${renderHomeOffseasonCompactTeam(view, "A")}
+    ${view.isBye ? renderHomeOffseasonCompactByeRow() : renderHomeOffseasonCompactTeam(view, "B")}
+  </article>`;
+}
+
+function renderHomeOffseasonCompactTeam(matchup, side) {
+  const isA = side === "A";
+  const team = isA ? matchup.teamA : matchup.teamB;
+  const seed = isA ? matchup.seedA : matchup.seedB;
+  const score = isA ? matchup.scoreA : matchup.scoreB;
+  const winner = matchup.winner === side;
+  const icon = bracketPlaceholderTeam(team)
+    ? bracketTrophyIconMarkup()
+    : `<img src="${escapeHtml(bracketTeamLogo(team))}" alt="" loading="lazy" decoding="async">`;
+  return `<div class="home-compact-bracket-team${winner ? " is-winner" : ""}">
+    <span class="home-compact-bracket-team-main">
+      ${seed ? `<b>${escapeHtml(seed)}</b>` : ""}
+      ${icon}
+      <strong>${escapeHtml(homeOffseasonCompactTeamName(team))}</strong>
+    </span>
+    <em>${escapeHtml(score || "-")}</em>
+  </div>`;
+}
+
+function renderHomeOffseasonCompactByeRow() {
+  return `<div class="home-compact-bracket-bye">Bye</div>`;
+}
+
+function homeOffseasonCompactTeamName(team = "") {
+  const name = String(team || "").trim();
+  if (!name) return "TBD";
+  if (/^oakmont lions$/i.test(name)) return "Lions";
+  if (/^winner\s+/i.test(name)) return name.replace(/^winner\s+/i, "Winner ");
+  if (/^loser\s+/i.test(name)) return name.replace(/^loser\s+/i, "Loser ");
+  return name;
+}
+
+function homeOffseasonCompactBracketNote(bracket = {}) {
+  const matchups = playoffBracketRounds(bracket).flatMap((round) => round.matchups || []);
+  const lionsMatchups = matchups
+    .filter((matchup) => /(^|\s)(oakmont\s+)?lions(\s|$)/i.test(`${matchup.teamA || ""} ${matchup.teamB || ""}`))
+    .sort((a, b) => (Number(b.roundNumber || 0) - Number(a.roundNumber || 0)) || (Number(b.displayOrder || 0) - Number(a.displayOrder || 0)));
+  const latestFinal = lionsMatchups.find((matchup) => matchup.winner);
+  if (!latestFinal) return "Lions playoff path";
+  const lionsSide = /(^|\s)(oakmont\s+)?lions(\s|$)/i.test(latestFinal.teamA || "") ? "A" : "B";
+  if (latestFinal.winner !== lionsSide) return "Lions postseason run complete";
+  const destination = String(latestFinal.winnerDestination || "").toUpperCase();
+  if (/AAPNC/.test(destination) || normalizeBracketSideKey(latestFinal.bracketSide) === "championship") return "Lions advance to championship";
+  if (destination) return "Lions advance to semifinals";
+  return "Lions advance";
+}
+
+function renderHomeOffseasonNewsSidebar() {
+  const articles = teamNewsArticles().slice(0, 4);
+  return `<section class="home-offseason-card home-offseason-news">
+    <div class="home-offseason-section-head">
+      <div>
+        <p class="eyebrow">Team News</p>
+        <h2>Latest News</h2>
+      </div>
+      ${renderHomeOffseasonActionButton("View All News", "news", "ghost")}
+    </div>
+    <div class="home-offseason-news-list">
+      ${articles.length ? articles.map((article) => `<button type="button" class="home-offseason-news-item" data-home-news-id="${escapeHtml(article.id)}">
+        <img src="${escapeHtml(newsArticleImage(article))}" alt="" loading="lazy" decoding="async">
+        <span>
+          <small>${escapeHtml(formatShortMonthDay(article.date))}</small>
+          <strong>${escapeHtml(article.title)}</strong>
+        </span>
+        ${inlineChevronIcon("right", "home-offseason-news-arrow")}
+      </button>`).join("") : `<div class="upcoming-empty">Team news will appear here soon.</div>`}
+    </div>
+  </section>`;
+}
+
+function renderHomeOffseasonBestMoments(recentFinals = completedGames()) {
+  const moments = homeOffseasonMomentCards(recentFinals);
+  return `<section class="home-offseason-card home-offseason-moments">
+    <div class="home-offseason-section-head">
+      <div>
+        <h2>Season Storylines</h2>
+      </div>
+      ${renderHomeOffseasonActionButton("View All", "highlights", "ghost")}
+    </div>
+    <div class="home-offseason-moments-track" aria-label="Best moments carousel">
+      ${moments.map(renderHomeOffseasonMomentCard).join("")}
+    </div>
+  </section>`;
+}
+
+function renderHomeOffseasonTeamLeaders(season = String(currentLeagueSeason())) {
+  const { hitterRows, pitcherRows } = homeOffseasonLeaderRows(season);
+  const battingLeaders = [
+    homeOffseasonLeader("AVG", hitterRows, (row) => row.stats.avg, formatRate),
+    homeOffseasonLeader("HITS", hitterRows, (row) => row.stats.h, String),
+    homeOffseasonLeader("RBI", hitterRows, (row) => row.stats.rbi, String),
+    homeOffseasonLeader("RUNS", hitterRows, (row) => row.runs, String),
+    homeOffseasonLeader("OPS", hitterRows, (row) => row.stats.ops, formatRate)
+  ];
+  const pitchingLeaders = [
+    homeOffseasonLeader("W", pitcherRows, (row) => row.stats.wins, String),
+    homeOffseasonLeader("ERA", pitcherRows, (row) => row.stats.era, formatEra, { lowWins: true, includeZero: true, tieBreaker: (row) => row.stats.outs }),
+    homeOffseasonLeader("K", pitcherRows, (row) => row.stats.k, String),
+    homeOffseasonLeader("WHIP", pitcherRows, (row) => row.stats.whip, formatRate, { lowWins: true, includeZero: true, tieBreaker: (row) => row.stats.outs }),
+    homeOffseasonLeader("IP", pitcherRows, (row) => row.stats.outs, (value) => formatInnings(value), { includeZero: false })
+  ];
+  return `<section class="home-offseason-card home-offseason-leaders">
+    <div class="home-offseason-leaders-head">
+      <h2>Season Leaders</h2>
+      <button type="button" class="home-offseason-leaders-link" data-home-offseason-action="stats">
+        <span>View All Stats</span>
+        ${inlineChevronIcon("right")}
+      </button>
+    </div>
+    <div class="home-offseason-leader-board">
+      ${renderHomeOffseasonLeaderGroup("Batting Leaders", battingLeaders)}
+      ${renderHomeOffseasonLeaderGroup("Pitching Leaders", pitchingLeaders)}
+    </div>
+  </section>`;
+}
+
+function renderHomeOffseasonFeaturedVideo() {
+  const featured = selectedSeasonHighlightVideo(highlightSourceData());
+  const hasSeasonVideo = Boolean(featured);
+  const thumbnail = hasSeasonVideo ? youtubeThumbnailUrl(featured.youtubeVideoId) : HOME_OFFSEASON_HERO_IMAGE;
+  const description = hasSeasonVideo
+    ? featured.title || featured.description
+    : "Season highlight video will appear here once a clip is selected.";
+  return `<section class="home-offseason-card home-offseason-video-card${hasSeasonVideo ? "" : " is-placeholder"}">
+    <div class="home-offseason-video-heading">
+      <h2>Season Highlights</h2>
+    </div>
+    <div class="home-offseason-video-media">
+      <img src="${escapeHtml(thumbnail)}" alt="" loading="lazy" decoding="async">
+      ${hasSeasonVideo
+        ? `<button type="button" class="home-offseason-play-button" data-home-highlight-id="${escapeHtml(featured.id)}" aria-label="Watch season highlight video">
+          ${homeOffseasonIcon("play")}
+        </button>`
+        : `<div class="home-offseason-video-placeholder" aria-label="Season highlight video coming soon">Coming Soon</div>`}
+    </div>
+    <div class="home-offseason-video-copy">
+      <p>${escapeHtml(description)}</p>
+      ${hasSeasonVideo ? renderHomeOffseasonActionButton("Watch Season Movie", "highlights", "secondary") : ""}
+    </div>
+  </section>`;
+}
+
+function selectedSeasonHighlightVideo(highlights = highlightSourceData()) {
+  const pool = normalizeHighlights(highlights, state.games);
+  return pool.find((highlight) => highlight.seasonFeatured) || null;
+}
+
+function renderHomeOffseasonRoadToNextSeason() {
+  const nextSeason = HOME_SEASON_CONFIG.nextSeason || String(Number(currentLeagueSeason()) + 1);
+  const milestones = [
+    ["Roster Updates", "Coming Soon"],
+    ["Registration", HOME_SEASON_CONFIG.registrationLabel || "Coming Soon"],
+    ["Schedule Release", HOME_SEASON_CONFIG.scheduleLabel || "Coming Soon"],
+    ["Opening Day", HOME_SEASON_CONFIG.openingDay ? formatGameDateWithYear(HOME_SEASON_CONFIG.openingDay) : "Coming Soon"]
+  ];
+  return `<section class="home-offseason-card home-offseason-road">
+    <div class="home-offseason-section-head">
+      <div>
+        <p class="eyebrow">Road to ${escapeHtml(nextSeason)}</p>
+        <h2>What Comes Next</h2>
+      </div>
+    </div>
+    <div class="home-offseason-road-grid">
+      ${milestones.map(([title, value], index) => `<article>
+        <span>${escapeHtml(String(index + 1).padStart(2, "0"))}</span>
+        <strong>${escapeHtml(title)}</strong>
+        <small>${escapeHtml(value)}</small>
+      </article>`).join("")}
+    </div>
+  </section>`;
+}
+
+function renderHomeOffseasonExploreGrid() {
+  const links = [
+    ["archive", "Season Archive", "Box scores, results, and complete game history.", "calendar"],
+    ["bracket", "Bracket", "Review the postseason path and matchups.", "trophy"],
+    ["highlights", "Highlights", "Watch saved YouTube clips and moments.", "play"],
+    ["stats", "Statistics", "Open the Lions analytics dashboard.", "chart"],
+    ["roster", "Roster", "Review the current Lions roster.", "users"],
+    ["archive", "Awards", "Season honors and recognition.", "star"],
+    ["archive", "Hall of Fame", "Team history and legacy moments.", "shield"],
+    ["past-games", "Past Games", "Browse every completed matchup.", "scorebook"]
+  ];
+  return `<section class="home-offseason-card home-offseason-explore">
+    <div class="home-offseason-section-head">
+      <div>
+        <p class="eyebrow">Explore</p>
+        <h2>Lions Offseason Hub</h2>
+      </div>
+    </div>
+    <div class="home-offseason-explore-grid">
+      ${links.map(([action, title, description, icon]) => `<button type="button" class="home-offseason-explore-card" data-home-offseason-action="${escapeHtml(action)}">
+        ${homeOffseasonIcon(icon)}
+        <strong>${escapeHtml(title)}</strong>
+        <span>${escapeHtml(description)}</span>
+      </button>`).join("")}
+    </div>
+  </section>`;
+}
+
+function renderHomeOffseasonActionButton(label, action, variant = "secondary") {
+  return `<button type="button" class="home-offseason-action home-offseason-action-${escapeHtml(variant)}" data-home-offseason-action="${escapeHtml(action)}">
+    <span>${escapeHtml(label)}</span>
+    ${inlineChevronIcon("right")}
+  </button>`;
+}
+
+function homeOffseasonCountdownDays(dateValue = "") {
+  const targetValue = String(dateValue || "").trim();
+  if (!targetValue) return NaN;
+  const today = Date.parse(`${todayValue()}T00:00:00`);
+  const target = Date.parse(`${targetValue}T00:00:00`);
+  if (!Number.isFinite(today) || !Number.isFinite(target)) return NaN;
+  return Math.max(0, Math.ceil((target - today) / 86400000));
+}
+
+function homeOffseasonPostseasonSummary(games = []) {
+  const wins = games.filter((game) => gameResultKey(game) === "W").length;
+  const losses = games.filter((game) => gameResultKey(game) === "L").length;
+  const ties = games.filter((game) => gameResultKey(game) === "T").length;
+  const runsFor = games.reduce((sum, game) => sum + Number(game?.score?.lions || 0), 0);
+  const runsAllowed = games.reduce((sum, game) => sum + Number(game?.score?.opponent || 0), 0);
+  return [
+    { label: "Postseason Record", value: games.length ? `${wins}-${losses}${ties ? `-${ties}` : ""}` : "--" },
+    { label: "Final Finish", value: games.length ? "Postseason" : "TBD" },
+    { label: "Runs Scored", value: String(runsFor) },
+    { label: "Runs Allowed", value: String(runsAllowed) }
+  ];
+}
+
+function homeOffseasonLeaderRows(season = String(currentLeagueSeason())) {
+  const minimumGames = statLeaderMinimumGames(season);
+  const hitterRows = rosterStatPlayerRows()
+    .map((player) => ({
+      player,
+      stats: statsForPlayer(player.id, season),
+      runs: runsScoredForPlayer(player.id, season),
+      gp: gamesPlayedForPlayer(player.id, season)
+    }))
+    .filter((row) => statLeaderEligible(row, minimumGames));
+  const pitcherRows = rosterStatPlayerRows()
+    .map((player) => ({
+      player,
+      stats: pitcherStats(player.id, null, season),
+      gp: gamesPitchedForPlayer(player.id, season)
+    }))
+    .filter((row) => hasPitchingStats(row.stats))
+    .filter((row) => statLeaderEligible(row, minimumGames));
+  return { hitterRows, pitcherRows };
+}
+
+function homeOffseasonLeader(label, rows, scorer, formatter, options = {}) {
+  const { includeZero = false, lowWins = false, tieBreaker = null } = options;
+  const leader = rows
+    .filter((row) => {
+      const value = Number(scorer(row));
+      return Number.isFinite(value) && (value > 0 || includeZero);
+    })
+    .sort((a, b) => compareLeaderRows(a, b, scorer, { lowWins, tieBreaker }))[0] || null;
+  return { label, leader, scorer, formatter };
+}
+
+function renderHomeOffseasonLeaderGroup(title, leaders = []) {
+  return `<section class="home-offseason-leader-group">
+    <h3>${escapeHtml(title)}</h3>
+    <div class="home-offseason-leader-list">
+      ${leaders.map(renderHomeOffseasonLeaderRow).join("")}
+    </div>
+  </section>`;
+}
+
+function renderHomeOffseasonLeaderRow(item) {
+  if (!item.leader) {
+    return `<article class="home-offseason-leader-row is-empty">
+      <span>${escapeHtml(item.label)}</span>
+      <strong>No leader yet</strong>
+      <b>--</b>
+    </article>`;
+  }
+  const player = item.leader.player || {};
+  const value = item.formatter(item.scorer(item.leader));
+  return `<article class="home-offseason-leader-row">
+    <span>${escapeHtml(item.label)}</span>
+    <strong>${escapeHtml(player.name || "Unknown Player")}</strong>
+    <b>${escapeHtml(value)}</b>
+  </article>`;
+}
+
+function renderHomeOffseasonLeaderTile(item) {
+  if (!item.leader) {
+    return `<article class="home-offseason-leader-tile is-empty">
+      <span>${escapeHtml(item.label)}</span>
+      <strong>--</strong>
+      <small>No data yet</small>
+    </article>`;
+  }
+  const player = item.leader.player;
+  return `<article class="home-offseason-leader-tile">
+    <span>${escapeHtml(item.label)}</span>
+    <strong>${escapeHtml(item.formatter(item.scorer(item.leader)))}</strong>
+    <small><b>#${escapeHtml(player.number || "--")}</b> ${escapeHtml(player.name)}</small>
+  </article>`;
+}
+
+function homeOffseasonMomentCards(recentFinals = completedGames()) {
+  const customStorylines = normalizeSeasonStorylines(state.seasonStorylines || []);
+  if (customStorylines.length) {
+    return customStorylines.map((storyline) => ({
+      title: storyline.title,
+      description: storyline.description,
+      image: storyline.image,
+      cta: storyline.cta,
+      action: storyline.action,
+      highlightId: storyline.highlightId,
+      gameId: storyline.gameId
+    }));
+  }
+  const highlights = highlightSourceData();
+  const moments = [
+    homeOffseasonHighlightMoment("Walk-Off", "Late-inning drama and the swing that changed the night.", highlights, /walk/i),
+    homeOffseasonBiggestWinMoment(recentFinals),
+    homeOffseasonWinStreakMoment(recentFinals),
+    homeOffseasonShutoutMoment(recentFinals),
+    homeOffseasonPostseasonWinMoment(recentFinals),
+    homeOffseasonHighlightMoment("Season Highlights", "The plays, wins, and clubhouse moments worth watching again.", highlights)
+  ].filter(Boolean);
+  if (moments.length) return moments;
+  return [{
+    title: "Season Highlights",
+    description: "Best moments will appear here once games, clips, or news are added.",
+    image: HOME_OFFSEASON_HERO_IMAGE,
+    cta: "Open Highlights",
+    action: "highlights"
+  }];
+}
+
+function homeOffseasonHighlightMoment(title, fallbackDescription, highlights = [], pattern = null) {
+  const highlight = pattern
+    ? highlights.find((item) => pattern.test([item.title, item.description, ...highlightDisplayTags(item)].join(" ")))
+    : selectedFeaturedHighlight(highlights);
+  if (!highlight) return null;
+  return {
+    title,
+    description: highlight.description || fallbackDescription,
+    image: youtubeThumbnailUrl(highlight.youtubeVideoId),
+    cta: "Watch Clip",
+    highlightId: highlight.id
+  };
+}
+
+function homeOffseasonBiggestWinMoment(games = []) {
+  const game = games
+    .filter((item) => gameResultKey(item) === "W")
+    .sort((a, b) => (Number(b?.score?.lions || 0) - Number(b?.score?.opponent || 0)) - (Number(a?.score?.lions || 0) - Number(a?.score?.opponent || 0)))[0] || null;
+  if (!game) return null;
+  return {
+    title: "Biggest Win",
+    description: `Lions ${Number(game?.score?.lions || 0)} - ${Number(game?.score?.opponent || 0)} over ${homeOpponentName(game)}.`,
+    image: getMatchupImage(homeOpponentName(game), lionsSide(game)),
+    cta: "View Box Score",
+    gameId: game.id
+  };
+}
+
+function homeOffseasonWinStreakMoment(games = []) {
+  const ordered = [...games].sort(sortGamesOldestFirst);
+  let best = 0;
+  let current = 0;
+  ordered.forEach((game) => {
+    if (gameResultKey(game) === "W") {
+      current += 1;
+      best = Math.max(best, current);
+      return;
+    }
+    current = 0;
+  });
+  if (!best) return null;
+  return {
+    title: "Longest Winning Streak",
+    description: `${best} straight ${best === 1 ? "win" : "wins"} during the ${currentLeagueSeason()} season.`,
+    image: HOME_OFFSEASON_HERO_IMAGE,
+    cta: "Past Games",
+    action: "archive"
+  };
+}
+
+function homeOffseasonShutoutMoment(games = []) {
+  const game = games.find((item) => gameResultKey(item) === "W" && Number(item?.score?.opponent || 0) === 0);
+  if (!game) return null;
+  return {
+    title: "Shutout",
+    description: `${homeOpponentName(game)} held scoreless in a ${Number(game?.score?.lions || 0)}-0 Lions win.`,
+    image: getMatchupImage(homeOpponentName(game), lionsSide(game)),
+    cta: "View Box Score",
+    gameId: game.id
+  };
+}
+
+function homeOffseasonPostseasonWinMoment(games = []) {
+  const game = games.find((item) => gameIsPostseason(item) && gameResultKey(item) === "W");
+  if (!game) return null;
+  return {
+    title: "Playoff Win",
+    description: `A postseason win over ${homeOpponentName(game)} kept the Lions moving.`,
+    image: getMatchupImage(homeOpponentName(game), lionsSide(game)),
+    cta: "View Bracket",
+    action: "bracket"
+  };
+}
+
+function renderHomeOffseasonMomentCard(moment) {
+  const attrs = moment.highlightId
+    ? ` data-home-highlight-id="${escapeHtml(moment.highlightId)}"`
+    : moment.gameId
+      ? ` data-home-box-score-game="${escapeHtml(moment.gameId)}"`
+      : ` data-home-offseason-action="${escapeHtml(moment.action || "highlights")}"`;
+  return `<button type="button" class="home-offseason-moment-card"${attrs}>
+    <img src="${escapeHtml(moment.image || HOME_OFFSEASON_HERO_IMAGE)}" alt="" loading="lazy" decoding="async">
+    <span class="home-offseason-moment-copy">
+      <strong>${escapeHtml(moment.title)}</strong>
+      <small>${escapeHtml(moment.description)}</small>
+      <em>${escapeHtml(moment.cta || "Open")}${inlineChevronIcon("right")}</em>
+    </span>
+  </button>`;
+}
+
+function homeOffseasonIcon(name = "star") {
+  const icons = {
+    calendar: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M8 3.75V7M16 3.75V7M4 9.5H20"></path></svg>`,
+    trophy: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.75h10v2.5c0 3.15-1.88 5.72-4.25 6.14v2.36h2.75v2H8.5v-2h2.75v-2.36C8.88 12.97 7 10.4 7 7.25v-2.5Z"></path><path d="M7.25 6.5H4.75v1.25c0 1.66 1.19 3.02 2.76 3.31M16.75 6.5h2.5v1.25c0 1.66-1.19 3.02-2.76 3.31"></path></svg>`,
+    play: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5 18 12 8 18.5V5.5Z"></path></svg>`,
+    chart: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V5M5 19H20M9 16V11M13 16V8M17 16V6"></path></svg>`,
+    users: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"></circle><path d="M3.75 19c.55-3 2.37-5 5.25-5s4.7 2 5.25 5"></path><path d="M15.5 11a2.5 2.5 0 1 0 0-5"></path><path d="M16 14c2.35.25 3.75 2.05 4.25 5"></path></svg>`,
+    star: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.47 6.03.88-4.37 4.26 1.03 6.01L12 16.79l-5.39 2.83 1.03-6.01-4.37-4.26 6.03-.88L12 3Z"></path></svg>`,
+    shield: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.75 19 6v5.2c0 4.1-2.7 7.55-7 9.05-4.3-1.5-7-4.95-7-9.05V6l7-2.25Z"></path></svg>`,
+    scorebook: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="16" rx="2"></rect><path d="M9 8h6M9 12h6M9 16h4"></path></svg>`
+  };
+  return `<span class="home-offseason-icon">${icons[name] || icons.star}</span>`;
+}
+
+function renderHomeOffseasonContent(record = seasonRecord(), recentFinals = completedGames()) {
+  const season = String(currentLeagueSeason());
+  const gamesLogged = recentFinals.length;
+  const postseasonGames = recentFinals.filter(gameIsPostseason).length;
+  const latest = recentFinals[0] || null;
+  const latestOpponent = latest ? homeOpponentName(latest) : "";
+  const latestResult = latest
+    ? `${gameResultKey(latest)} ${Number(latest?.score?.lions || 0)}-${Number(latest?.score?.opponent || 0)}`
+    : "--";
+  const latestMeta = latest
+    ? `${formatShortMonthDay(latest.date)} ${lionsSide(latest) === "home" ? "vs" : "@"} ${latestOpponent}`
+    : "Finals will appear after games are completed.";
+  const runDiff = Number(record.runsFor || 0) - Number(record.runsAgainst || 0);
+  const runDiffLabel = gamesLogged ? `${runDiff > 0 ? "+" : ""}${runDiff}` : "--";
+  const postseasonLabel = postseasonGames
+    ? `${postseasonGames} ${postseasonGames === 1 ? "game" : "games"} logged`
+    : "Bracket and playoff games will live here.";
+  return `<div class="home-offseason-copy">
+    <p class="eyebrow">Lions Offseason</p>
+    <h2>${escapeHtml(season)} archive is open.</h2>
+    <p>Relive the season, check the leaders, catch the latest clips, and follow team updates while the Lions prepare for 2027.</p>
+  </div>
+  <div class="home-offseason-stats" aria-label="${escapeHtml(season)} season recap">
+    <article>
+      <span>Games Logged</span>
+      <strong>${escapeHtml(String(gamesLogged))}</strong>
+      <small>${escapeHtml(`${record.wins || 0} W | ${record.losses || 0} L${record.ties ? ` | ${record.ties} T` : ""}`)}</small>
+    </article>
+    <article>
+      <span>Latest Final</span>
+      <strong>${escapeHtml(latestResult)}</strong>
+      <small>${escapeHtml(latestMeta)}</small>
+    </article>
+    <article>
+      <span>Run Diff</span>
+      <strong>${escapeHtml(runDiffLabel)}</strong>
+      <small>${escapeHtml(`${record.runsFor || 0} scored | ${record.runsAgainst || 0} allowed`)}</small>
+    </article>
+    <article>
+      <span>Postseason</span>
+      <strong>${escapeHtml(postseasonGames ? "Tracked" : "Ready")}</strong>
+      <small>${escapeHtml(postseasonLabel)}</small>
+    </article>
+  </div>
+  <div class="home-offseason-actions" aria-label="Offseason quick links">
+    <button class="home-dashboard-link home-next-game-link home-offseason-primary" type="button" data-home-offseason-action="archive">
+      <span>Game Archive</span>
+      ${inlineChevronIcon("right")}
+    </button>
+    <button class="home-dashboard-link home-next-game-link" type="button" data-home-offseason-action="stats">
+      <span>Season Stats</span>
+      ${inlineChevronIcon("right")}
+    </button>
+    <button class="home-dashboard-link home-next-game-link" type="button" data-home-offseason-action="highlights">
+      <span>Highlights</span>
+      ${inlineChevronIcon("right")}
+    </button>
+    <button class="home-dashboard-link home-next-game-link" type="button" data-home-offseason-action="news">
+      <span>Team News</span>
+      ${inlineChevronIcon("right")}
+    </button>
+  </div>`;
 }
 
 function renderLeagueStandings() {
@@ -11004,6 +11957,7 @@ function renderNewsEditor() {
     ? articles.map(renderNewsEditorListItem).join("")
     : `<div class="upcoming-empty">No manual news articles yet.</div>`;
   renderNewsEditorImagePreview();
+  renderSeasonStorylineManager();
 }
 
 function renderNewsEditorListItem(article) {
@@ -11020,6 +11974,188 @@ function renderNewsEditorListItem(article) {
       <button type="button" class="secondary-action compact-action danger-action" data-news-delete="${escapeHtml(article.id)}">Delete</button>
     </div>
   </article>`;
+}
+
+function seasonStorylineActionLabel(action = "highlights") {
+  return {
+    highlights: "Highlights",
+    stats: "Stats",
+    archive: "Past Games",
+    news: "Team News",
+    bracket: "Playoff Bracket",
+    games: "Schedule"
+  }[action] || "Highlights";
+}
+
+function renderSeasonStorylineManager() {
+  if (!els.seasonStorylineList) return;
+  const storylines = normalizeSeasonStorylines(state.seasonStorylines || []);
+  if (els.seasonStorylineStatus) {
+    els.seasonStorylineStatus.textContent = storylines.length
+      ? `${storylines.length} custom ${storylines.length === 1 ? "storyline" : "storylines"}`
+      : "Using automatic storylines.";
+  }
+  els.seasonStorylineList.innerHTML = storylines.length
+    ? storylines.map(renderSeasonStorylineListItem).join("")
+    : `<div class="upcoming-empty">No custom storylines yet. The homepage will use automatic moments.</div>`;
+}
+
+function renderSeasonStorylineListItem(storyline) {
+  return `<article class="news-editor-list-item season-storyline-list-item">
+    <img class="news-editor-list-thumb" src="${escapeHtml(storyline.image || HOME_OFFSEASON_HERO_IMAGE)}" alt="" loading="lazy" decoding="async">
+    <div class="news-editor-list-copy">
+      <h3>${escapeHtml(storyline.title || "Untitled storyline")}</h3>
+      <p>${escapeHtml(storyline.description || "")}</p>
+      <span class="player-meta">${escapeHtml(seasonStorylineActionLabel(storyline.action))} | ${escapeHtml(storyline.cta || "Open")}</span>
+    </div>
+    <div class="news-editor-list-actions">
+      <button type="button" class="secondary-action compact-action" data-season-storyline-edit="${escapeHtml(storyline.id)}">Edit</button>
+      <button type="button" class="secondary-action compact-action danger-action" data-season-storyline-delete="${escapeHtml(storyline.id)}">Delete</button>
+    </div>
+  </article>`;
+}
+
+function renderSeasonStorylineImagePreview() {
+  if (!els.seasonStorylineImagePreview) return;
+  const source = seasonStorylineImageDataUrl || els.seasonStorylineImageInput?.value || "";
+  els.seasonStorylineImagePreview.innerHTML = source
+    ? `<img src="${escapeHtml(source)}" alt="Storyline image preview">`
+    : `<span>No image selected</span>`;
+}
+
+function resetSeasonStorylineForm() {
+  seasonStorylineEditId = "";
+  seasonStorylineImageDataUrl = "";
+  if (els.seasonStorylineIdInput) els.seasonStorylineIdInput.value = "";
+  if (els.seasonStorylineImageInput) els.seasonStorylineImageInput.value = "";
+  if (els.seasonStorylineForm) els.seasonStorylineForm.reset();
+  if (els.seasonStorylineActionSelect) els.seasonStorylineActionSelect.value = "highlights";
+  if (els.seasonStorylineCtaInput) els.seasonStorylineCtaInput.value = "";
+  if (els.seasonStorylineSaveBtn) els.seasonStorylineSaveBtn.textContent = "Save Storyline";
+  renderSeasonStorylineImagePreview();
+}
+
+function editSeasonStoryline(storylineId) {
+  if (!requireAdminAccess("Admin sign-in required to edit season storylines.")) return;
+  const storyline = normalizeSeasonStorylines(state.seasonStorylines || []).find((item) => item.id === storylineId);
+  if (!storyline) return;
+  seasonStorylineEditId = storyline.id;
+  if (els.seasonStorylineIdInput) els.seasonStorylineIdInput.value = storyline.id;
+  if (els.seasonStorylineTitleInput) els.seasonStorylineTitleInput.value = storyline.title || "";
+  if (els.seasonStorylineDescriptionInput) els.seasonStorylineDescriptionInput.value = storyline.description || "";
+  if (els.seasonStorylineImageInput) els.seasonStorylineImageInput.value = storyline.image || "";
+  if (els.seasonStorylineImageUploadInput) els.seasonStorylineImageUploadInput.value = "";
+  seasonStorylineImageDataUrl = storyline.image || "";
+  renderSeasonStorylineImagePreview();
+  if (els.seasonStorylineActionSelect) els.seasonStorylineActionSelect.value = storyline.action || "highlights";
+  if (els.seasonStorylineCtaInput) els.seasonStorylineCtaInput.value = storyline.cta || "";
+  if (els.seasonStorylineSaveBtn) els.seasonStorylineSaveBtn.textContent = "Update Storyline";
+  els.seasonStorylineTitleInput?.focus();
+}
+
+async function handleSeasonStorylineImageUpload(event) {
+  const file = event?.target?.files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith("image/")) {
+    window.alert("Choose an image file for the storyline preview.");
+    if (els.seasonStorylineImageUploadInput) els.seasonStorylineImageUploadInput.value = "";
+    return;
+  }
+  try {
+    seasonStorylineImageDataUrl = await resizeNewsImageFile(file);
+    if (els.seasonStorylineImageInput) els.seasonStorylineImageInput.value = seasonStorylineImageDataUrl;
+    renderSeasonStorylineImagePreview();
+  } catch (error) {
+    console.warn("Unable to load storyline image.", error);
+    window.alert("Unable to load that image. Try a smaller image file.");
+  }
+}
+
+async function prepareSeasonStorylineImageValue(storylineId, imageSource, previous = {}) {
+  const source = String(imageSource || "").trim();
+  const previousImage = safeNewsImageReference(previous?.image || previous?.imageUrl || previous?.image_url || "");
+  if (!source) return "";
+  if (source === previousImage) return previousImage;
+  const imageUrl = safeNewsImageReference(source);
+  if (imageUrl) return imageUrl;
+  const imageDataUrl = validNewsImageDataUrl(source);
+  if (!imageDataUrl) return previousImage;
+  const imageFields = await prepareNewsArticleImageFields(`storyline-${storylineId}`, imageDataUrl, {
+    imageUrl: previousImage,
+    thumbnailUrl: previousImage
+  });
+  return imageFields.thumbnailUrl || imageFields.imageUrl || previousImage;
+}
+
+async function saveSeasonStoryline(event) {
+  event?.preventDefault?.();
+  if (!requireSharedAdminSession("Sign in as an approved admin before saving season storylines.")) return;
+  const title = String(els.seasonStorylineTitleInput?.value || "").trim();
+  const description = String(els.seasonStorylineDescriptionInput?.value || "").trim();
+  if (!title) {
+    window.alert("Add a title before saving this storyline.");
+    els.seasonStorylineTitleInput?.focus();
+    return;
+  }
+  const previous = (state.seasonStorylines || []).find((item) => item.id === seasonStorylineEditId);
+  const storylines = normalizeSeasonStorylines(state.seasonStorylines || []);
+  const storylineId = seasonStorylineEditId || createId("storyline");
+  let storylineImage = "";
+  try {
+    storylineImage = await prepareSeasonStorylineImageValue(
+      storylineId,
+      seasonStorylineImageDataUrl || els.seasonStorylineImageInput?.value || previous?.image || "",
+      previous
+    );
+  } catch (error) {
+    console.warn("Unable to upload storyline image.", error);
+    window.alert(error?.message || "Unable to upload that storyline image. Try again before saving this storyline.");
+    return;
+  }
+  const storyline = normalizeSeasonStoryline({
+    id: storylineId,
+    title,
+    description,
+    image: storylineImage,
+    action: els.seasonStorylineActionSelect?.value || "highlights",
+    cta: els.seasonStorylineCtaInput?.value || "",
+    sortOrder: previous?.sortOrder ?? storylines.length,
+    createdAt: previous?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }, storylines.length);
+  if (!storyline) return;
+  state.seasonStorylines = [
+    ...storylines.filter((item) => item.id !== storyline.id),
+    storyline
+  ];
+  await persistSeasonStorylines("season-storyline-save");
+  resetSeasonStorylineForm();
+}
+
+async function deleteSeasonStoryline(storylineId) {
+  if (!requireSharedAdminSession("Sign in as an approved admin before deleting season storylines.")) return;
+  const storyline = normalizeSeasonStorylines(state.seasonStorylines || []).find((item) => item.id === storylineId);
+  if (!storyline) return;
+  if (!window.confirm(`Delete "${storyline.title || "this storyline"}"?`)) return;
+  state.seasonStorylines = normalizeSeasonStorylines(state.seasonStorylines || []).filter((item) => item.id !== storyline.id);
+  if (seasonStorylineEditId === storyline.id) resetSeasonStorylineForm();
+  await persistSeasonStorylines("season-storyline-delete");
+}
+
+async function persistSeasonStorylines(reason = "season-storylines") {
+  state.seasonStorylines = normalizeSeasonStorylines(state.seasonStorylines || []);
+  markSharedAppStateDirty();
+  saveState({ markLiveGamesDirty: false, capturePendingScoring: false });
+  render();
+  const response = await syncSharedSnapshot(reason, { skipFreshBaselineCheck: true });
+  if (response?.error) {
+    console.warn(`Season storyline sync failed (${reason}).`, response.error);
+    window.alert([
+      response.error.message || "The season storylines were saved locally, but could not sync to Supabase yet.",
+      "",
+      "Refresh, sign in again as admin, and try saving again before relying on another device."
+    ].join("\n"));
+  }
 }
 
 function resetNewsEditorForm() {
@@ -15089,16 +16225,18 @@ function renderArchivePostseasonBracket() {
   }
 
   const bracket = playoffBracketDisplayData(archiveSeasonFilter, { ignorePreview: true });
-  const hasMatchups = bracket.rounds.some((round) => round.matchups.length);
+  const hasMatchups = playoffBracketRounds(bracket).some((round) => round.matchups.length);
   const postseasonGameCount = playoffBracketPostseasonGames(archiveSeasonFilter).length;
   if (els.archivePostseasonBracketTitle) els.archivePostseasonBracketTitle.textContent = bracket.title || `${archiveSeasonFilter} Playoff Bracket`;
   if (els.archivePostseasonBracketMeta) {
     els.archivePostseasonBracketMeta.textContent = `${archiveSeasonFilter} postseason | ${postseasonGameCount} ${postseasonGameCount === 1 ? "game" : "games"} logged | Select a Lions game in the bracket to open its box score.`;
   }
   if (els.archiveBracketGrid) els.archiveBracketGrid.innerHTML = hasMatchups ? renderPlayoffBracketBoard(bracket) : "";
-  if (els.archiveBracketGrid) els.archiveBracketGrid.scrollLeft = 0;
   updateArchivePostseasonBracketCollapseUi(hasMatchups);
-  if (hasMatchups && !archivePostseasonBracketCollapsed) queuePlayoffBracketConnectorRender();
+  if (hasMatchups && !archivePostseasonBracketCollapsed) {
+    positionPlayoffBracketAtChampionship(els.archiveBracketGrid);
+    queuePlayoffBracketConnectorRender();
+  }
 }
 
 function renderArchive() {
@@ -15266,8 +16404,12 @@ function playoffBracketDisplayData(season = state.playoffBracket?.season || Stri
   const targetSeason = String(season || currentLeagueSeason());
   if (playoffBracketPreviewDraft && !options.ignorePreview) return normalizePlayoffBracket(playoffBracketPreviewDraft, state.games);
   const saved = normalizePlayoffBracket(state.playoffBracket, state.games);
-  if (saved.rounds.some((round) => round.matchups.length) && String(saved.season || "") === targetSeason) return saved;
+  if (playoffBracketRounds(saved).some((round) => round.matchups.length) && String(saved.season || "") === targetSeason) return saved;
   return autoPlayoffBracketFromPostseasonGames(targetSeason);
+}
+
+function playoffBracketRounds(bracket = {}) {
+  return Array.isArray(bracket?.rounds) ? bracket.rounds : [];
 }
 
 function bracketMatchupStatusLabel(matchup, game = null) {
@@ -15301,9 +16443,10 @@ function renderBracketTeamRow(matchup, side) {
 
 function playoffBracketRegions(bracket) {
   const regionOrder = ["bye", "winners", "losers", "championship"];
+  const rounds = playoffBracketRounds(bracket);
   return regionOrder
     .map((side) => {
-      const rounds = bracket.rounds
+      const regionRounds = rounds
         .map((round) => ({
           ...round,
           matchups: round.matchups.filter((matchup) => normalizeBracketSideKey(matchup.bracketSide || round.bracketSide) === side)
@@ -15312,7 +16455,7 @@ function playoffBracketRegions(bracket) {
       return {
         side,
         title: bracketSideLabel(side),
-        rounds
+        rounds: regionRounds
       };
     })
     .filter((region) => region.rounds.length);
@@ -15328,6 +16471,7 @@ function renderBracketMatchup(matchup) {
     teamB: matchup.teamB || linkedTeams?.teamB || "",
     scoreB: matchup.scoreB || linkedTeams?.scoreB || ""
   }, 0, state.games);
+  const hasLions = /(^|\s)(oakmont\s+)?lions(\s|$)/i.test(`${view.teamA || ""} ${view.teamB || ""}`);
   const matchupActionAttrs = game
     ? ` data-game-action="boxscore" data-game-id="${escapeHtml(game.id)}" role="button" tabindex="0" aria-label="${escapeHtml(`Open box score for ${view.teamA || "TBD"} vs ${view.teamB || "TBD"}`)}"`
     : "";
@@ -15344,7 +16488,7 @@ function renderBracketMatchup(matchup) {
   const byeRow = view.isBye
     ? `<div class="playoff-bracket-bye-row">BYE</div>`
     : renderBracketTeamRow(view, "B");
-  return `<article class="playoff-bracket-card playoff-bracket-node${view.winner ? " has-winner" : ""}${view.isBye ? " is-bye" : ""}${game ? " is-clickable" : ""}"${matchupActionAttrs}>
+  return `<article class="playoff-bracket-card playoff-bracket-node${view.winner ? " has-winner" : ""}${view.isBye ? " is-bye" : ""}${game ? " is-clickable" : ""}${hasLions ? " is-lions-matchup" : ""}"${matchupActionAttrs}>
     <div class="playoff-bracket-card-head">
       <span>${escapeHtml(bracketMatchupStatusLabel(view, game))}</span>
       ${game ? `<span>${escapeHtml(gameLocationLabel(game) || "Location TBD")}</span>` : ""}
@@ -15379,6 +16523,110 @@ function renderBracketRound(round, side = "winners", regionRoundIndex = 0) {
   </section>`;
 }
 
+function playoffBracketMatchupLookup(bracket = {}) {
+  const lookup = new Map();
+  playoffBracketRounds(bracket).forEach((round) => {
+    round.matchups.forEach((matchup) => {
+      const code = String(matchup.matchupCode || matchup.label || "").trim().toUpperCase();
+      if (code) lookup.set(code, matchup);
+    });
+  });
+  return lookup;
+}
+
+function playoffBracketUsesTwoWingLayout(bracket = {}) {
+  const templateId = String(bracket.templateId || "").trim().toLowerCase();
+  if (templateId === "pittsburgh-naba-aa") return true;
+  const lookup = playoffBracketMatchupLookup(bracket);
+  return ["AA-9", "AA-10", "AAPNC-1"].every((code) => lookup.has(code));
+}
+
+function renderBracketCustomColumn(column = {}, columnIndex = 0) {
+  const matchups = Array.isArray(column.matchups) ? column.matchups : [];
+  const roundOffset = Number(column.offset || 0) || 0;
+  return `<section class="playoff-bracket-column playoff-bracket-wing-column" data-bracket-round-index="${escapeHtml(String(columnIndex))}">
+    <div class="playoff-bracket-round-head">
+      <p class="eyebrow">${escapeHtml(column.eyebrow || "Round")}</p>
+      <h3>${escapeHtml(column.title || "Matchups")}</h3>
+    </div>
+    <div class="playoff-bracket-matchups" style="--matchup-count: ${escapeHtml(String(Math.max(matchups.length, 1)))}; --bracket-round-offset: ${escapeHtml(String(roundOffset))}px">
+      ${matchups.length ? matchups.map((matchup, matchupIndex) => `<div class="playoff-bracket-node-wrap" data-bracket-matchup-index="${escapeHtml(String(matchupIndex))}">${renderBracketMatchup(matchup)}</div>`).join("") : `<p class="player-meta">No matchups in this round yet.</p>`}
+    </div>
+  </section>`;
+}
+
+function bracketMatchupsForCodes(lookup, codes = []) {
+  return codes
+    .map((code) => lookup.get(String(code || "").toUpperCase()))
+    .filter(Boolean);
+}
+
+function renderBracketWingCanvas(title, wing, columns) {
+  const flow = wing === "right" ? "rtl" : "ltr";
+  return `<section class="playoff-bracket-wing playoff-bracket-wing-${escapeHtml(wing)}">
+    <div class="playoff-bracket-wing-head">
+      <p class="eyebrow">${escapeHtml(wing === "right" ? "Right Side" : "Left Side")}</p>
+      <h3>${escapeHtml(title)}</h3>
+    </div>
+    <div class="playoff-bracket-region-canvas playoff-bracket-wing-canvas" data-bracket-flow="${escapeHtml(flow)}" style="--round-count: ${escapeHtml(String(Math.max(columns.length, 1)))}">
+      <svg class="playoff-bracket-connector-layer" aria-hidden="true" focusable="false"></svg>
+      <div class="playoff-bracket-columns">
+        ${columns.map((column, columnIndex) => renderBracketCustomColumn(column, columnIndex)).join("")}
+      </div>
+    </div>
+  </section>`;
+}
+
+function renderBracketCenterStage(bracket, lookup) {
+  const championshipMatchups = bracketMatchupsForCodes(lookup, ["AAPNC-1", "AAPNC-2", "AAPNC-3"]);
+  const championshipTitle = bracket.title || `${bracket.season || currentLeagueSeason()} Championship Series`;
+  const championshipSubtitle = bracket.subtitle || "Double Elimination Tournament";
+  return `<section class="playoff-bracket-center-stage">
+    <div class="playoff-bracket-center-title">
+      <p class="eyebrow">${escapeHtml(bracket.division || "AA")} Championship</p>
+      <h3>${escapeHtml(championshipTitle)}</h3>
+      <span>${escapeHtml(championshipSubtitle)}</span>
+    </div>
+    <div class="playoff-bracket-center-badge">
+      <span>${escapeHtml(bracket.season || String(currentLeagueSeason()))}</span>
+      <strong>AA Champions</strong>
+    </div>
+    <div class="playoff-bracket-center-card-list">
+      ${championshipMatchups.length ? championshipMatchups.map(renderBracketMatchup).join("") : `<p class="player-meta">Championship games will appear here once the bracket is built.</p>`}
+    </div>
+  </section>`;
+}
+
+function renderTwoWingPlayoffBracketBoard(bracket) {
+  const lookup = playoffBracketMatchupLookup(bracket);
+  const leftColumns = [
+    { eyebrow: "Round 1", title: "Byes / Opening", matchups: bracketMatchupsForCodes(lookup, ["BYE-1", "AA-1", "AA-6"]), offset: 0 },
+    { eyebrow: "Round 2", title: "Left Qualifiers", matchups: bracketMatchupsForCodes(lookup, ["AA-4", "AA-7"]), offset: 58 },
+    { eyebrow: "Semifinal", title: "Left Final", matchups: bracketMatchupsForCodes(lookup, ["AA-10"]), offset: 144 }
+  ];
+  const rightColumns = [
+    { eyebrow: "Semifinal", title: "Right Final", matchups: bracketMatchupsForCodes(lookup, ["AA-9"]), offset: 144 },
+    { eyebrow: "Round 2", title: "Right Qualifiers", matchups: bracketMatchupsForCodes(lookup, ["AA-5", "AA-8"]), offset: 58 },
+    { eyebrow: "Round 1", title: "Opening Games", matchups: bracketMatchupsForCodes(lookup, ["AA-3", "AA-2"]), offset: 0 }
+  ];
+  return `<div class="playoff-bracket-board playoff-bracket-board-double playoff-bracket-board-two-wing">
+    <section class="playoff-bracket-region playoff-bracket-region-two-wing" style="--round-count: 3">
+      <div class="playoff-bracket-region-head playoff-bracket-two-wing-head">
+        <div>
+          <p class="eyebrow">Double Elim</p>
+          <h3>${escapeHtml(bracket.title || "Playoff Bracket")}</h3>
+        </div>
+        <span>${escapeHtml(bracket.subtitle || "Pittsburgh NABA AA Playoffs")}</span>
+      </div>
+      <div class="playoff-bracket-two-wing-canvas">
+        ${renderBracketWingCanvas("Left Bracket", "left", leftColumns)}
+        ${renderBracketCenterStage(bracket, lookup)}
+        ${renderBracketWingCanvas("Right Bracket", "right", rightColumns)}
+      </div>
+    </section>
+  </div>`;
+}
+
 function renderBracketRegion(region) {
   const roundCount = Math.max(region.rounds.length, 1);
   return `<section class="playoff-bracket-region playoff-bracket-region-${escapeHtml(region.side)}" style="--round-count: ${escapeHtml(String(roundCount))}">
@@ -15397,7 +16645,70 @@ function renderBracketRegion(region) {
 
 function renderPlayoffBracketBoard(bracket) {
   const regions = playoffBracketRegions(bracket);
+  if (playoffBracketUsesTwoWingLayout(bracket)) return renderTwoWingPlayoffBracketBoard(bracket);
   return `<div class="playoff-bracket-board playoff-bracket-board-double">${regions.map(renderBracketRegion).join("")}</div>`;
+}
+
+function positionPlayoffBracketAtChampionship(grid) {
+  if (!grid) return;
+  const centerStage = grid.querySelector(".playoff-bracket-center-stage");
+  if (!centerStage) {
+    grid.scrollLeft = 0;
+    return;
+  }
+
+  const applyCenterScroll = () => {
+    const gridWidth = grid.clientWidth;
+    if (!gridWidth) return;
+    const gridRect = grid.getBoundingClientRect();
+    const centerRect = centerStage.getBoundingClientRect();
+    const centerPoint = grid.scrollLeft + (centerRect.left - gridRect.left) + centerRect.width / 2;
+    const maxScroll = Math.max(grid.scrollWidth - gridWidth, 0);
+    grid.scrollLeft = Math.min(Math.max(centerPoint - gridWidth / 2, 0), maxScroll);
+  };
+
+  applyCenterScroll();
+  if (typeof window !== "undefined") {
+    window.requestAnimationFrame(() => {
+      applyCenterScroll();
+      window.requestAnimationFrame(applyCenterScroll);
+    });
+    [80, 220, 420].forEach((delay) => window.setTimeout(applyCenterScroll, delay));
+  }
+  if (typeof document !== "undefined" && document.fonts?.ready) {
+    document.fonts.ready.then(applyCenterScroll).catch(() => {});
+  }
+}
+
+function positionHomeCompactBracketAtChampionship(scroller) {
+  if (!scroller) return;
+  const centerStage = scroller.querySelector("[data-home-compact-bracket-center]");
+  if (!centerStage) {
+    scroller.scrollLeft = 0;
+    return;
+  }
+
+  const applyCenterScroll = () => {
+    const scrollerWidth = scroller.clientWidth;
+    if (!scrollerWidth) return;
+    const scrollerRect = scroller.getBoundingClientRect();
+    const centerRect = centerStage.getBoundingClientRect();
+    const centerPoint = scroller.scrollLeft + (centerRect.left - scrollerRect.left) + centerRect.width / 2;
+    const maxScroll = Math.max(scroller.scrollWidth - scrollerWidth, 0);
+    scroller.scrollLeft = Math.min(Math.max(centerPoint - scrollerWidth / 2, 0), maxScroll);
+  };
+
+  applyCenterScroll();
+  if (typeof window !== "undefined") {
+    window.requestAnimationFrame(() => {
+      applyCenterScroll();
+      window.requestAnimationFrame(applyCenterScroll);
+    });
+    [80, 220, 420].forEach((delay) => window.setTimeout(applyCenterScroll, delay));
+  }
+  if (typeof document !== "undefined" && document.fonts?.ready) {
+    document.fonts.ready.then(applyCenterScroll).catch(() => {});
+  }
 }
 
 let playoffBracketConnectorFrame = 0;
@@ -15416,27 +16727,30 @@ function queuePlayoffBracketConnectorRender() {
 }
 
 function bracketConnectorPath(startX, startY, endX, endY) {
-  const gap = Math.max(endX - startX, 24);
-  const midX = startX + gap / 2;
+  const direction = endX >= startX ? 1 : -1;
+  const gap = Math.max(Math.abs(endX - startX), 24);
+  const midX = startX + (gap / 2) * direction;
   return `M ${startX.toFixed(1)} ${startY.toFixed(1)} H ${midX.toFixed(1)} V ${endY.toFixed(1)} H ${endX.toFixed(1)}`;
 }
 
-function renderPlayoffBracketRegionConnectors(region) {
-  const canvas = region.querySelector(".playoff-bracket-region-canvas");
-  const svg = region.querySelector(".playoff-bracket-connector-layer");
+function renderPlayoffBracketCanvasConnectors(canvas) {
+  const svg = canvas.querySelector(".playoff-bracket-connector-layer");
   if (!canvas || !svg) return;
 
-  const columns = [...region.querySelectorAll(".playoff-bracket-column")];
+  const columns = [...canvas.querySelectorAll(".playoff-bracket-column")];
   const canvasRect = canvas.getBoundingClientRect();
   const width = Math.max(canvas.scrollWidth, canvasRect.width, 1);
   const height = Math.max(canvas.scrollHeight, canvasRect.height, 1);
+  const isRtl = canvas.dataset.bracketFlow === "rtl";
   const paths = [];
 
-  columns.forEach((column, columnIndex) => {
-    const nextColumn = columns[columnIndex + 1];
-    if (!nextColumn) return;
-    const sourceCards = [...column.querySelectorAll(".playoff-bracket-node-wrap")];
-    const targetCards = [...nextColumn.querySelectorAll(".playoff-bracket-node-wrap")];
+  const columnPairs = isRtl
+    ? columns.slice(1).map((column, index) => ({ source: column, target: columns[index] }))
+    : columns.slice(0, -1).map((column, index) => ({ source: column, target: columns[index + 1] }));
+
+  columnPairs.forEach(({ source, target }) => {
+    const sourceCards = [...source.querySelectorAll(".playoff-bracket-node-wrap")];
+    const targetCards = [...target.querySelectorAll(".playoff-bracket-node-wrap")];
     if (!sourceCards.length || !targetCards.length) return;
 
     sourceCards.forEach((sourceCard, sourceIndex) => {
@@ -15448,11 +16762,14 @@ function renderPlayoffBracketRegionConnectors(region) {
       const sourceRect = sourceCard.getBoundingClientRect();
       const targetRect = targetCard.getBoundingClientRect();
       const connectorClearance = 14;
-      const startX = sourceRect.right - canvasRect.left + connectorClearance;
+      const startX = isRtl
+        ? sourceRect.left - canvasRect.left - connectorClearance
+        : sourceRect.right - canvasRect.left + connectorClearance;
       const startY = sourceRect.top + sourceRect.height / 2 - canvasRect.top;
-      const endX = targetRect.left - canvasRect.left - connectorClearance;
+      const endX = isRtl
+        ? targetRect.right - canvasRect.left + connectorClearance
+        : targetRect.left - canvasRect.left - connectorClearance;
       const endY = targetRect.top + targetRect.height / 2 - canvasRect.top;
-      if (endX <= startX) return;
       paths.push(`<path d="${bracketConnectorPath(startX, startY, endX, endY)}"></path>`);
     });
   });
@@ -15463,8 +16780,12 @@ function renderPlayoffBracketRegionConnectors(region) {
   svg.innerHTML = paths.join("");
 }
 
+function renderPlayoffBracketRegionConnectors(region) {
+  region.querySelectorAll(".playoff-bracket-region-canvas").forEach(renderPlayoffBracketCanvasConnectors);
+}
+
 function renderPlayoffBracketConnectors() {
-  document.querySelectorAll(".playoff-bracket-region").forEach(renderPlayoffBracketRegionConnectors);
+  document.querySelectorAll(".playoff-bracket-region-canvas").forEach(renderPlayoffBracketCanvasConnectors);
 }
 
 function setupPlayoffBracketConnectorObservers() {
@@ -15489,7 +16810,7 @@ function setupPlayoffBracketConnectorObservers() {
 function renderPlayoffBracket() {
   if (!els.playoffBracketGrid) return;
   const bracket = playoffBracketDisplayData(playoffBracketViewSeason || state.playoffBracket?.season || String(currentLeagueSeason()));
-  const hasMatchups = bracket.rounds.some((round) => round.matchups.length);
+  const hasMatchups = playoffBracketRounds(bracket).some((round) => round.matchups.length);
   if (els.playoffBracketPageTitle) els.playoffBracketPageTitle.textContent = bracket.title || "Playoff Bracket";
   if (els.playoffBracketPageMeta) {
     const postseasonGameCount = playoffBracketPostseasonGames(bracket.season).length;
@@ -15500,7 +16821,7 @@ function renderPlayoffBracket() {
   els.playoffBracketGrid.innerHTML = hasMatchups
     ? renderPlayoffBracketBoard(bracket)
     : "";
-  els.playoffBracketGrid.scrollLeft = 0;
+  positionPlayoffBracketAtChampionship(els.playoffBracketGrid);
   if (els.playoffBracketEmpty) els.playoffBracketEmpty.hidden = hasMatchups;
   queuePlayoffBracketConnectorRender();
 }
@@ -17613,7 +18934,7 @@ function renderHighlightManagerCard(highlight) {
   const tag = highlightTagText(highlight);
   return `<article class="highlight-admin-card">
     <div class="highlight-admin-copy">
-      <h3>${escapeHtml(highlight.title || "Untitled highlight")}</h3>
+      <h3>${escapeHtml(highlight.title || "Untitled highlight")}${highlight.seasonFeatured ? ` <span class="highlight-season-video-badge">Season Video</span>` : ""}</h3>
       ${tag ? `<p class="player-meta">${escapeHtml(tag)}</p>` : ""}
       ${highlight.description ? `<p>${escapeHtml(highlight.description)}</p>` : ""}
       <a href="${escapeHtml(highlight.youtubeUrl)}" target="_blank" rel="noopener">Open YouTube URL</a>
@@ -17646,6 +18967,7 @@ function resetHighlightForm() {
   if (els.highlightTitleInput) els.highlightTitleInput.value = "";
   if (els.highlightDescriptionInput) els.highlightDescriptionInput.value = "";
   setHighlightTagInputs(DEFAULT_HIGHLIGHT_CATEGORIES);
+  if (els.highlightSeasonVideoInput) els.highlightSeasonVideoInput.checked = false;
   if (els.highlightInningInput) els.highlightInningInput.value = "";
   if (els.highlightPlayTypeInput) els.highlightPlayTypeInput.value = "";
   if (els.highlightPlayersSelect) [...els.highlightPlayersSelect.options].forEach((option) => { option.selected = false; });
@@ -17663,6 +18985,7 @@ function beginHighlightEdit(highlightId) {
   if (els.highlightTitleInput) els.highlightTitleInput.value = highlight.title || "";
   if (els.highlightDescriptionInput) els.highlightDescriptionInput.value = highlight.description || "";
   setHighlightTagInputs(highlightCategories(highlight));
+  if (els.highlightSeasonVideoInput) els.highlightSeasonVideoInput.checked = Boolean(highlight.seasonFeatured);
   if (els.highlightInningInput) els.highlightInningInput.value = highlight.inning || "";
   if (els.highlightPlayTypeInput) els.highlightPlayTypeInput.value = highlight.playType || "";
   if (els.highlightPlayersSelect) {
@@ -17711,6 +19034,7 @@ async function saveHighlightRecord(event) {
     title,
     description: els.highlightDescriptionInput?.value || "",
     categories: selectedHighlightTags(),
+    seasonFeatured: Boolean(els.highlightSeasonVideoInput?.checked),
     inning: els.highlightInningInput?.value || "",
     playType: els.highlightPlayTypeInput?.value || "",
     playerIds: [...els.highlightPlayersSelect?.selectedOptions || []].map((option) => option.value),
@@ -17729,8 +19053,16 @@ async function saveHighlightRecord(event) {
     const { data, error } = await supabaseStorage.upsertHighlight(highlight);
     if (error) throw error;
     const saved = normalizeHighlight(data || highlight, state.games);
+    if (saved.seasonFeatured && supabaseStorage.clearSeasonFeaturedHighlights) {
+      const clearResponse = await supabaseStorage.clearSeasonFeaturedHighlights(saved.id);
+      if (clearResponse?.error && !clearResponse?.missingColumn) {
+        console.warn("Unable to clear prior season highlight video flags.", clearResponse.error);
+      }
+    }
     state.highlights = [
-      ...(state.highlights || []).filter((item) => item.id !== saved.id),
+      ...(state.highlights || [])
+        .filter((item) => item.id !== saved.id)
+        .map((item) => saved.seasonFeatured ? { ...item, seasonFeatured: false } : item),
       saved
     ].sort(sortHighlightsNewestFirst);
     saveState({ markLiveGamesDirty: false, capturePendingScoring: false });
