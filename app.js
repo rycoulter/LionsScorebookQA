@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.175";
+const APP_VERSION = "v.1.1.176";
 const PLANNED_LEAGUE_SEASONS = ["2027"];
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const HOME_OFFSEASON_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
@@ -2872,6 +2872,99 @@ function addFinanceTransaction(plan, transaction) {
     ...(Array.isArray(plan.transactions) ? plan.transactions : [])
   ];
   return upsertFinancialPlanInState(plan);
+}
+
+function mergeFinanceItemsById(remoteItems = [], localItems = [], normalizer = (item) => item) {
+  const itemsById = new Map();
+  [...(Array.isArray(remoteItems) ? remoteItems : []), ...(Array.isArray(localItems) ? localItems : [])]
+    .map(normalizer)
+    .filter(Boolean)
+    .forEach((item) => {
+      const key = String(item.id || createId("finance-item")).trim();
+      itemsById.set(key, { ...item, id: key });
+    });
+  return [...itemsById.values()];
+}
+
+function mergeFinancePlayersForSharedSave(remotePlayers = [], localPlayers = []) {
+  const rowsByPlayerId = new Map();
+  (Array.isArray(remotePlayers) ? remotePlayers : [])
+    .map(normalizeFinancePlayerRow)
+    .filter((row) => row?.playerId)
+    .forEach((row) => rowsByPlayerId.set(row.playerId, row));
+  (Array.isArray(localPlayers) ? localPlayers : [])
+    .map(normalizeFinancePlayerRow)
+    .filter((row) => row?.playerId)
+    .forEach((row) => {
+      const existing = rowsByPlayerId.get(row.playerId);
+      rowsByPlayerId.set(row.playerId, {
+        ...existing,
+        ...row,
+        paid: Math.max(financeNumber(existing?.paid), financeNumber(row.paid))
+      });
+    });
+  return [...rowsByPlayerId.values()];
+}
+
+function mergeFinancialPlanForSharedSave(localPlan = {}, remotePlan = null) {
+  const local = normalizeFinancialPlan(localPlan, state.roster);
+  if (!remotePlan) return local;
+  const remote = normalizeFinancialPlan(remotePlan, state.roster);
+  return normalizeFinancialPlan({
+    ...local,
+    customFees: mergeFinanceItemsById(remote.customFees, local.customFees, normalizeFinanceCustomFee),
+    expensePayments: mergeFinanceItemsById(remote.expensePayments, local.expensePayments, normalizeFinanceExpensePayment),
+    transactions: mergeFinanceItemsById(remote.transactions, local.transactions, normalizeFinanceTransaction),
+    players: mergeFinancePlayersForSharedSave(remote.players, local.players)
+  }, state.roster);
+}
+
+async function fetchSharedFinancialPlanForSeason(season) {
+  if (!supabaseStorage?.isReady?.() || !supabaseStorage.fetchFinancialPlans || !supabaseAdminEmail) return null;
+  const { data, error } = await supabaseStorage.fetchFinancialPlans();
+  if (error) {
+    console.warn("Unable to refresh finance plan before save.", error);
+    return null;
+  }
+  const normalizedSeason = financeSeasonId(season);
+  return (data || []).find((plan) => financeSeasonId(plan.season) === normalizedSeason) || null;
+}
+
+async function prepareFinancialPlanForSharedSave(plan) {
+  const remotePlan = await fetchSharedFinancialPlanForSeason(plan?.season || financePlannerSeason);
+  return mergeFinancialPlanForSharedSave(plan, remotePlan);
+}
+
+async function autoSyncFinancePlanAfterLog(plan, successNotice) {
+  if (!supabaseStorage?.isReady?.() || !supabaseStorage.upsertFinancialPlan || !supabaseAdminEmail) return false;
+  if (!requireSharedAdminSession("Sign in as an approved admin before syncing finance data.")) return false;
+  if (els.financeSaveBtn) els.financeSaveBtn.disabled = true;
+  financePlannerNotice = "Syncing finance log to Supabase...";
+  renderFinancePlannerStatus();
+  try {
+    const sharedPlan = await prepareFinancialPlanForSharedSave(plan);
+    const { data, error, missingTable } = await supabaseStorage.upsertFinancialPlan(sharedPlan);
+    if (error) {
+      financePlannerNotice = missingTable
+        ? "Finance log saved locally. Run supabase-schema.sql to sync finance data."
+        : `Finance log saved locally. Supabase sync failed: ${error.message || "Unable to save."}`;
+      console.warn("Unable to auto-sync finance log.", error);
+      return false;
+    }
+    upsertFinancialPlanInState(data || sharedPlan);
+    financePlannerLoaded = true;
+    financePlannerNotice = successNotice || "Finance log synced to Supabase.";
+    saveState({ markLiveGamesDirty: false, capturePendingScoring: false });
+    return true;
+  } catch (error) {
+    financePlannerNotice = `Finance log saved locally. Supabase sync failed: ${error?.message || "Unable to save."}`;
+    console.warn("Finance log auto-sync failed.", error);
+    return false;
+  } finally {
+    if (els.financeSaveBtn) els.financeSaveBtn.disabled = false;
+    if (currentView === "finance") renderFinancePlanner();
+    else renderFinancePlannerStatus();
+  }
 }
 
 function financePaidExpenseTotal(plan = {}) {
@@ -6098,23 +6191,27 @@ function bindEvents() {
     requestCompletedGameSyncRetry("online");
     requestLiveGameSnapshotSync("online-live-game");
     requestLifecycleSupabaseRefresh("online", { skipWhenHidden: false });
+    refreshActiveFinancePlanner("online");
   });
   window.addEventListener("offline", render);
   window.addEventListener("focus", () => {
     scheduleScoreGameRenderFlush("focus");
     if (isAdminMode()) requestSiteVisitSummaryRefresh("focus");
     requestLifecycleSupabaseRefresh("focus");
+    refreshActiveFinancePlanner("focus");
   });
 window.addEventListener("pageshow", () => {
   scheduleScoreGameRenderFlush("pageshow");
   recordSiteVisitOnce("pageshow");
   requestLifecycleSupabaseRefresh("pageshow", { skipWhenHidden: false });
+  refreshActiveFinancePlanner("pageshow");
 });
 
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
       scheduleScoreGameRenderFlush("visibility");
       requestLifecycleSupabaseRefresh("visibility");
+      refreshActiveFinancePlanner("visibility");
     }
   });
   els.finishGameBtn.addEventListener("click", finishGame);
@@ -9639,6 +9736,11 @@ async function requestFinancePlannerRefresh(reason = "finance", options = {}) {
   }
 }
 
+function refreshActiveFinancePlanner(reason = "finance-active") {
+  if (currentView !== "finance") return;
+  requestFinancePlannerRefresh(reason, { force: true });
+}
+
 function financeStatusClass(status = "") {
   const key = String(status || "").toLowerCase();
   if (key === "paid") return "is-paid";
@@ -10302,7 +10404,7 @@ function handleFinancePlannerChange(event) {
   renderFinancePlanner();
 }
 
-function handleFinancePlannerClick(event) {
+async function handleFinancePlannerClick(event) {
   const tabButton = event.target.closest("[data-finance-tab]");
   if (tabButton) {
     financePlannerTab = tabButton.dataset.financeTab === "history" ? "history" : "planner";
@@ -10370,6 +10472,8 @@ function handleFinancePlannerClick(event) {
     resetFinanceContributionDraft(plan);
     financePlannerNotice = `${row.name} contribution logged. Save Planner to sync it across devices.`;
     saveState({ markLiveGamesDirty: false, capturePendingScoring: false });
+    const synced = await autoSyncFinancePlanAfterLog(plan, `${row.name} contribution logged and synced to Supabase.`);
+    if (synced) return;
     renderFinancePlanner();
     return;
   }
@@ -10393,8 +10497,10 @@ function handleFinancePlannerClick(event) {
       notes: draft.notes || ""
     });
     resetFinanceExpenseDraft(plan);
-    financePlannerNotice = `${label} paid expense logged.`;
+    financePlannerNotice = `${label} paid expense logged. Save Planner to sync it across devices.`;
     saveState({ markLiveGamesDirty: false, capturePendingScoring: false });
+    const synced = await autoSyncFinancePlanAfterLog(plan, `${label} paid expense logged and synced to Supabase.`);
+    if (synced) return;
     renderFinancePlanner();
     return;
   }
@@ -10429,8 +10535,10 @@ function handleFinancePlannerClick(event) {
     });
   }
   upsertFinancialPlanInState(plan);
-  financePlannerNotice = `${row.name} marked paid in full.`;
+  financePlannerNotice = `${row.name} marked paid in full. Save Planner to sync it across devices.`;
   saveState({ markLiveGamesDirty: false, capturePendingScoring: false });
+  const synced = await autoSyncFinancePlanAfterLog(plan, `${row.name} marked paid in full and synced to Supabase.`);
+  if (synced) return;
   renderFinancePlanner();
 }
 
@@ -10455,7 +10563,8 @@ async function saveFinancialPlanOrAlert() {
   financePlannerNotice = "Saving finance planner...";
   renderFinancePlannerStatus();
   try {
-    const { data, error, missingTable } = await supabaseStorage.upsertFinancialPlan(plan);
+    const sharedPlan = await prepareFinancialPlanForSharedSave(plan);
+    const { data, error, missingTable } = await supabaseStorage.upsertFinancialPlan(sharedPlan);
     if (error) {
       const message = missingTable
         ? "Supabase season_financial_plans table is not available. Run supabase-schema.sql and refresh the API schema cache."
@@ -10465,7 +10574,7 @@ async function saveFinancialPlanOrAlert() {
       window.alert(message);
       return;
     }
-    upsertFinancialPlanInState(data || plan);
+    upsertFinancialPlanInState(data || sharedPlan);
     financePlannerLoaded = true;
     financePlannerNotice = "Finance planner saved to Supabase.";
     saveState({ markLiveGamesDirty: false, capturePendingScoring: false });

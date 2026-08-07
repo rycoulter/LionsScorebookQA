@@ -54,6 +54,10 @@ mustMatch(functionBody(appJs, "normalizeFinancialPlan"), /left\.included === fal
 mustNotMatch(functionBody(appJs, "normalizeFinancialPlan"), /moneyOnHand/, "Finance normalization should not keep money-on-hand state");
 mustMatch(functionBody(appJs, "calculateFinancialPlanSummary"), /financeBaseChargeTotal[\s\S]*customFees[\s\S]*sharedPerPlayer[\s\S]*financePlayerContributionTotal[\s\S]*outstandingTotal[\s\S]*expensesPaidTotal[\s\S]*contributionTotal[\s\S]*totalIn/, "Finance summary should calculate shared charges, custom fees, player contributions, paid expenses, total in, and outstanding totals");
 mustNotMatch(functionBody(appJs, "calculateFinancialPlanSummary"), /moneyRemaining|moneyOnHand/, "Finance summary should not calculate money left");
+mustMatch(functionBody(appJs, "mergeFinancialPlanForSharedSave"), /transactions:[\s\S]*mergeFinanceItemsById\(remote\.transactions, local\.transactions, normalizeFinanceTransaction\)/, "Finance shared saves should merge remote and local transaction history");
+mustMatch(functionBody(appJs, "prepareFinancialPlanForSharedSave"), /fetchSharedFinancialPlanForSeason[\s\S]*mergeFinancialPlanForSharedSave/, "Finance saves should refresh the shared plan before writing");
+mustMatch(functionBody(appJs, "autoSyncFinancePlanAfterLog"), /upsertFinancialPlan[\s\S]*Finance log synced to Supabase|upsertFinancialPlan[\s\S]*successNotice/, "Finance transaction logging should auto-sync when Supabase admin auth is active");
+mustMatch(functionBody(appJs, "refreshActiveFinancePlanner"), /currentView !== "finance"[\s\S]*requestFinancePlannerRefresh\(reason, \{ force: true \}\)/, "Finance should force-refresh from Supabase when the active finance view regains focus");
 const renderFinancePlannerBody = functionBody(appJs, "renderFinancePlanner");
 mustMatch(renderFinancePlannerBody, /finance-summary-grid/, "Finance view should render the summary controls");
 mustMatch(renderFinancePlannerBody, /data-finance-add-fee/, "Finance view should render custom fee controls");
@@ -76,10 +80,11 @@ mustMatch(functionBody(appJs, "exportFinanceTransactionHistory"), /financeTransa
 mustMatch(functionBody(appJs, "recordFinanceTransactionForInput"), /player-payment/, "Finance should record player payment transactions");
 mustMatch(functionBody(appJs, "handleFinancePlannerFocusIn"), /data-finance-clear-zero[\s\S]*financeInputIsZero[\s\S]*input\.value = ""/, "Finance amount inputs should clear a zero value on focus");
 mustMatch(functionBody(appJs, "handleFinancePlannerFocusOut"), /data-finance-clear-zero[\s\S]*input\.value = "0"/, "Finance amount inputs should restore zero when left blank");
-mustMatch(functionBody(appJs, "handleFinancePlannerClick"), /data-finance-log-contribution[\s\S]*type: "player-contribution"/, "Logging a player contribution should add a player-contribution transaction");
-mustMatch(functionBody(appJs, "handleFinancePlannerClick"), /data-finance-log-expense[\s\S]*type: "team-expense"/, "Logging a paid expense should add a team-expense transaction");
-mustMatch(functionBody(appJs, "saveFinancialPlanOrAlert"), /upsertFinancialPlan[\s\S]*season_financial_plans/, "Saving should use the dedicated Supabase finance table");
+mustMatch(functionBody(appJs, "handleFinancePlannerClick"), /data-finance-log-contribution[\s\S]*type: "player-contribution"[\s\S]*autoSyncFinancePlanAfterLog/, "Logging a player contribution should add a transaction and try to sync it");
+mustMatch(functionBody(appJs, "handleFinancePlannerClick"), /data-finance-log-expense[\s\S]*type: "team-expense"[\s\S]*autoSyncFinancePlanAfterLog/, "Logging a paid expense should add a transaction and try to sync it");
+mustMatch(functionBody(appJs, "saveFinancialPlanOrAlert"), /prepareFinancialPlanForSharedSave[\s\S]*upsertFinancialPlan[\s\S]*season_financial_plans/, "Saving should merge remote finance data and use the dedicated Supabase finance table");
 mustMatch(functionBody(appJs, "bindEvents"), /financePlannerBody[\s\S]*handleFinancePlannerFocusIn[\s\S]*handleFinancePlannerInput[\s\S]*financeSaveBtn[\s\S]*saveFinancialPlanOrAlert[\s\S]*financeExportTransactionsBtn[\s\S]*exportFinanceTransactionHistory/, "Finance controls should be wired through delegated handlers and export");
+mustMatch(functionBody(appJs, "bindEvents"), /window\.addEventListener\("focus"[\s\S]*refreshActiveFinancePlanner\("focus"\)[\s\S]*window\.addEventListener\("pageshow"[\s\S]*refreshActiveFinancePlanner\("pageshow"\)[\s\S]*visibilitychange[\s\S]*refreshActiveFinancePlanner\("visibility"\)/, "Finance should refresh on focus, pageshow, and visibility changes");
 mustMatch(functionBody(appJs, "switchView"), /nextView === "finance"[\s\S]*renderFinancePlanner/, "Finance planner should render when the admin tab is opened");
 
 mustMatch(supabaseStorageJs, /const FINANCIAL_PLAN_COLUMNS/, "Supabase adapter should define finance columns");
