@@ -26644,6 +26644,8 @@ select option:checked {
 .finance-notes-field textarea,
 .finance-ledger-table input,
 .finance-custom-fee-row input,
+.finance-contribution-row input,
+.finance-contribution-row select,
 .finance-expense-row input,
 .finance-expense-row select {
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -26657,6 +26659,8 @@ select option:checked {
 .finance-charge-field input,
 .finance-ledger-table input,
 .finance-custom-fee-row input,
+.finance-contribution-row input,
+.finance-contribution-row select,
 .finance-expense-row input,
 .finance-expense-row select {
   min-height: 38px;
@@ -26823,6 +26827,7 @@ select option:checked {
 .finance-ledger-table input[data-finance-player-field="paid"],
 .finance-ledger-table input[data-finance-player-field="adjustment"],
 .finance-custom-fee-row input[data-finance-custom-fee-field="amount"],
+.finance-contribution-row input[data-finance-contribution-draft-field="amount"],
 .finance-expense-row input[data-finance-expense-draft-field="amount"] {
   text-align: right;
 }
@@ -26854,12 +26859,14 @@ select option:checked {
 }
 
 .finance-custom-fee-list,
+.finance-contribution-list,
 .finance-expense-list {
   display: grid;
   gap: 7px;
 }
 
 .finance-custom-fee-row,
+.finance-contribution-row,
 .finance-expense-row {
   display: grid;
   gap: 7px;
@@ -26883,6 +26890,7 @@ select option:checked {
 }
 
 .finance-custom-fee-row label,
+.finance-contribution-row label,
 .finance-expense-row label {
   display: grid;
   gap: 4px;
@@ -26903,6 +26911,20 @@ select option:checked {
 
 .finance-expense-logger .finance-log-expense-button {
   grid-column: 1 / -1;
+  justify-self: end;
+}
+
+.finance-contribution-logger {
+  grid-template-columns: minmax(0, 1fr) minmax(112px, 0.42fr);
+}
+
+.finance-contribution-player-field,
+.finance-contribution-notes-field,
+.finance-contribution-logger .finance-log-contribution-button {
+  grid-column: 1 / -1;
+}
+
+.finance-contribution-logger .finance-log-contribution-button {
   justify-self: end;
 }
 
@@ -26983,19 +27005,16 @@ select option:checked {
   position: sticky;
   left: 0;
   z-index: 3;
-  width: 22%;
+  width: 20%;
   min-width: 0;
   background: #0c1327;
 }
 
 .finance-ledger-table th:nth-child(2),
 .finance-ledger-table th:nth-child(3),
-.finance-ledger-table th:nth-child(4) {
-  width: 10%;
-}
-
+.finance-ledger-table th:nth-child(4),
 .finance-ledger-table th:nth-child(5) {
-  width: 10%;
+  width: 9%;
 }
 
 .finance-ledger-table th:nth-child(6) {
@@ -27003,15 +27022,19 @@ select option:checked {
 }
 
 .finance-ledger-table th:nth-child(7) {
-  width: 17%;
+  width: 8%;
 }
 
 .finance-ledger-table th:nth-child(8) {
-  width: 7%;
+  width: 15%;
 }
 
 .finance-ledger-table th:nth-child(9) {
-  width: 7%;
+  width: 6%;
+}
+
+.finance-ledger-table th:nth-child(10) {
+  width: 6%;
 }
 
 .finance-ledger-table tbody tr:nth-child(even) td,
@@ -27201,6 +27224,12 @@ select option:checked {
   color: #86efac;
 }
 
+.finance-transaction-type.is-contribution {
+  border: 1px solid rgba(245, 189, 33, 0.48);
+  background: rgba(245, 189, 33, 0.13);
+  color: var(--lion-gold);
+}
+
 .finance-transaction-type.is-expense {
   border: 1px solid rgba(248, 113, 113, 0.45);
   background: rgba(248, 113, 113, 0.1);
@@ -27214,6 +27243,10 @@ select option:checked {
 
 .finance-transaction-amount.is-payment {
   color: #86efac;
+}
+
+.finance-transaction-amount.is-contribution {
+  color: var(--lion-gold);
 }
 
 .finance-transaction-amount.is-expense {
@@ -27266,6 +27299,7 @@ select option:checked {
   }
 
   .finance-custom-fee-row,
+  .finance-contribution-row,
   .finance-expense-row {
     grid-template-columns: 1fr;
   }
