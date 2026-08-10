@@ -625,7 +625,7 @@ const defaultRoster = parseRosterCsv(`
 33,Rodella,Goat,UTL
 `);
 
-const APP_VERSION = "v.1.1.176";
+const APP_VERSION = "v.1.1.177";
 const PLANNED_LEAGUE_SEASONS = ["2027"];
 const HOME_NO_GAME_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
 const HOME_OFFSEASON_HERO_IMAGE = "assets/backgrounds/lions-no-game-hero.png";
@@ -2797,7 +2797,11 @@ function upsertFinancialPlanInState(plan) {
   return normalized;
 }
 
-function financialPlanForSeason(season = financePlannerSeason || currentLeagueSeason()) {
+function defaultFinanceSeason() {
+  return financeSeasonId(financeSeasonOptions()[0] || currentLeagueSeason());
+}
+
+function financialPlanForSeason(season = financePlannerSeason || defaultFinanceSeason()) {
   const normalizedSeason = financeSeasonId(season);
   const existing = (state.financialPlans || []).find((plan) => financeSeasonId(plan.season) === normalizedSeason);
   const plan = normalizeFinancialPlan(existing || { season: normalizedSeason }, state.roster);
@@ -10133,7 +10137,7 @@ function renderFinancePlanner() {
     renderFinancePlannerStatus();
     return;
   }
-  financePlannerSeason = financeSeasonId(financePlannerSeason || currentLeagueSeason());
+  financePlannerSeason = financeSeasonId(financePlannerSeason || defaultFinanceSeason());
   if (!financePlannerLoaded && !financePlannerLoading) requestFinancePlannerRefresh("finance-view");
   const plan = financialPlanForSeason(financePlannerSeason);
   const summary = calculateFinancialPlanSummary(plan);

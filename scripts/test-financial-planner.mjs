@@ -48,6 +48,8 @@ mustMatch(appJs, /const FINANCE_EXPENSE_CATEGORIES[\s\S]*League Fees[\s\S]*Umpir
 mustMatch(functionBody(appJs, "defaultFinanceCharges"), /umpireRate[\s\S]*umpireGames[\s\S]*jerseyPrice[\s\S]*jerseyCount/, "Finance charges should include umpire and jersey split fields");
 mustMatch(functionBody(appJs, "financeUmpireTotal"), /umpireRate[\s\S]*umpireGames/, "Finance should calculate umpire total as rate times games");
 mustMatch(functionBody(appJs, "financeJerseyTotal"), /jerseyPrice[\s\S]*jerseyCount/, "Finance should calculate jersey total as price times count");
+mustMatch(functionBody(appJs, "defaultFinanceSeason"), /financeSeasonOptions\(\)\[0\][\s\S]*currentLeagueSeason\(\)/, "Finance should default to the newest available/planned season instead of the current calendar year");
+mustMatch(functionBody(appJs, "financialPlanForSeason"), /financePlannerSeason \|\| defaultFinanceSeason\(\)/, "Finance plans should fall back to the finance default season");
 mustMatch(functionBody(appJs, "financeExpenseCategoryAmount"), /umpireFees[\s\S]*umpireRate[\s\S]*jerseyFees[\s\S]*financeJerseyTotal[\s\S]*custom:/, "Paid expense defaults should come from fixed charges, umpire rate, jersey total, or additional fees");
 mustMatch(functionBody(appJs, "normalizeFinancialPlan"), /customFees[\s\S]*expensePayments[\s\S]*transactions/, "Finance normalization should retain custom fees, paid expenses, and transaction history");
 mustMatch(functionBody(appJs, "normalizeFinancialPlan"), /left\.included === false[\s\S]*right\.included === false[\s\S]*left\.name\.localeCompare/, "Finance players should sort included players first and alphabetically");
@@ -59,6 +61,7 @@ mustMatch(functionBody(appJs, "prepareFinancialPlanForSharedSave"), /fetchShared
 mustMatch(functionBody(appJs, "autoSyncFinancePlanAfterLog"), /upsertFinancialPlan[\s\S]*Finance log synced to Supabase|upsertFinancialPlan[\s\S]*successNotice/, "Finance transaction logging should auto-sync when Supabase admin auth is active");
 mustMatch(functionBody(appJs, "refreshActiveFinancePlanner"), /currentView !== "finance"[\s\S]*requestFinancePlannerRefresh\(reason, \{ force: true \}\)/, "Finance should force-refresh from Supabase when the active finance view regains focus");
 const renderFinancePlannerBody = functionBody(appJs, "renderFinancePlanner");
+mustMatch(renderFinancePlannerBody, /financePlannerSeason = financeSeasonId\(financePlannerSeason \|\| defaultFinanceSeason\(\)\)/, "Finance planner should open on the finance default season");
 mustMatch(renderFinancePlannerBody, /finance-summary-grid/, "Finance view should render the summary controls");
 mustMatch(renderFinancePlannerBody, /data-finance-add-fee/, "Finance view should render custom fee controls");
 mustMatch(renderFinancePlannerBody, /renderFinanceContributionLogger/, "Finance view should render the player contribution logger");
